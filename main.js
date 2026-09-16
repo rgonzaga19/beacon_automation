@@ -1,4 +1,4 @@
-const { app, BrowserWindow, WebContentsView, ipcMain, dialog, shell, screen } = require("electron");
+const { app, BrowserWindow, WebContentsView, ipcMain, dialog, shell, screen, Menu } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
@@ -12,6 +12,7 @@ const isDev = !app.isPackaged;
 const ICON_PATH = path.join(__dirname, "bot.ico");
 
 let serverProcess = null;
+let isQuitting = false;
 const windows = {
   login: null,
   dashboard: null,
@@ -35,6 +36,40 @@ const workspaceViews = {
 const WORKSPACE_TOP = 97; // custom titlebar (34) + dashboard toolbar (63)
 let workspaceSidebarWidth = 232;
 let activeWorkspaceKey = null;
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+  process.exit(0);
+}
+
+function attachEditContextMenu(webContents) {
+  webContents.on("context-menu", (_event, params) => {
+    const template = [];
+
+    if (params.isEditable) {
+      template.push(
+        { role: "undo", enabled: params.editFlags.canUndo },
+        { role: "redo", enabled: params.editFlags.canRedo },
+        { type: "separator" },
+        { role: "cut", enabled: params.editFlags.canCut },
+        { role: "copy", enabled: params.editFlags.canCopy },
+        { role: "paste", enabled: params.editFlags.canPaste },
+        { type: "separator" },
+        { role: "selectAll", enabled: params.editFlags.canSelectAll },
+      );
+    } else if (params.selectionText) {
+      template.push(
+        { role: "copy", enabled: params.editFlags.canCopy },
+        { type: "separator" },
+        { role: "selectAll", enabled: params.editFlags.canSelectAll },
+      );
+    }
+
+    if (template.length) {
+      Menu.buildFromTemplate(template).popup({ window: BrowserWindow.fromWebContents(webContents) });
+    }
+  });
+}
 
 function layoutWorkspaceView() {
   const dash = windows.dashboard;
@@ -63,6 +98,7 @@ function createWorkspaceView(key, htmlFile) {
   });
   view.setBackgroundColor("#00000000");
   view.setVisible(false);
+  attachEditContextMenu(view.webContents);
   view.webContents.loadFile(path.join(__dirname, "renderer", htmlFile), {
     search: "embedded=1",
   });
@@ -394,6 +430,23 @@ function broadcastTheme(theme, excludeWebContents) {
 // ---------------------------------------------------------------------------
 // Backend server lifecycle
 // ---------------------------------------------------------------------------
+function getDevPythonLaunch() {
+  const candidates = [
+    process.env.PYTHON,
+    process.env.VIRTUAL_ENV && path.join(process.env.VIRTUAL_ENV, "Scripts", "python.exe"),
+    path.join(__dirname, "venv", "Scripts", "python.exe"),
+    path.join(__dirname, ".venv", "Scripts", "python.exe"),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return { command: candidate, args: ["-u", "server.py"] };
+    }
+  }
+
+  return { command: "python", args: ["-u", "server.py"] };
+}
+
 function startServer() {
   // Force UTF-8 for the child process's stdout/stderr. On Windows, a
   // spawned Python process otherwise defaults to the system's ANSI
@@ -429,7 +482,8 @@ function startServer() {
     // "-u" is redundant with PYTHONUNBUFFERED above (both do the same
     // thing in CPython) but kept as a belt-and-suspenders since it's
     // free and makes the intent explicit at the call site too.
-    serverProcess = spawn("python", ["-u", "server.py"], {
+    const pythonLaunch = getDevPythonLaunch();
+    serverProcess = spawn(pythonLaunch.command, pythonLaunch.args, {
       cwd: __dirname,
       env: pythonEnv,
       windowsHide: true,
@@ -446,20 +500,75 @@ function startServer() {
     });
   }
 
-  serverProcess.stdout?.on("data", makeLineForwarder("info"));
-  serverProcess.stderr?.on("data", makeLineForwarder("error"));
-  serverProcess.on("exit", (code) => {
+  const child = serverProcess;
+  child.stdout?.on("data", makeLineForwarder("info"));
+  child.stderr?.on("data", makeLineForwarder("error"));
+  child.on("exit", (code) => {
     const line = `exited with code ${code}`;
     console.log(`[server] ${line}`);
     broadcastServerLog(code === 0 ? "info" : "error", line);
+    if (serverProcess === child) {
+      serverProcess = null;
+    }
   });
 }
 
 function stopServer() {
-  if (serverProcess) {
-    serverProcess.kill();
-    serverProcess = null;
+  if (!serverProcess) return;
+
+  const child = serverProcess;
+  serverProcess = null;
+
+  if (child.killed || child.exitCode !== null) return;
+
+  if (process.platform === "win32" && child.pid) {
+    const killer = spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], {
+      windowsHide: true,
+      stdio: "ignore",
+    });
+    killer.on("error", () => {
+      try {
+        child.kill();
+      } catch (err) {
+        console.error("[server] failed to stop:", err);
+      }
+    });
+    return;
   }
+
+  try {
+    child.kill();
+  } catch (err) {
+    console.error("[server] failed to stop:", err);
+  }
+}
+
+function destroyWorkspaceViews() {
+  Object.entries(workspaceViews).forEach(([key, view]) => {
+    if (view && !view.webContents.isDestroyed()) {
+      view.webContents.close();
+    }
+    workspaceViews[key] = null;
+  });
+  activeWorkspaceKey = null;
+}
+
+function quitApplication() {
+  if (isQuitting) return;
+  isQuitting = true;
+  forcedUpdateActive = false;
+  quittingForUpdate = true;
+
+  destroyWorkspaceViews();
+  stopServer();
+
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (win.isDestroyed()) return;
+    win.setClosable(true);
+    win.close();
+  });
+
+  app.quit();
 }
 
 /** Polls the server until it responds, then calls `onReady`. */
@@ -518,6 +627,31 @@ function hideOtherExclusiveWindows(exceptKey) {
     if (win && !win.isDestroyed()) win.hide();
   });
 }
+
+function focusExistingAppWindow() {
+  const candidate =
+    windows.dashboard ||
+    windows.login ||
+    windows.about ||
+    BrowserWindow.getAllWindows().find((win) => !win.isDestroyed());
+
+  if (candidate && !candidate.isDestroyed()) {
+    if (candidate.isMinimized()) candidate.restore();
+    candidate.show();
+    candidate.focus();
+    return;
+  }
+
+  if (forcedUpdateActive) {
+    createAboutWindow(true);
+  } else {
+    createLoginWindow();
+  }
+}
+
+app.on("second-instance", () => {
+  focusExistingAppWindow();
+});
 
 function anyOtherExclusiveWindowVisible(exceptKey) {
   return EXCLUSIVE_KEYS.some((key) => {
@@ -581,6 +715,7 @@ function createWindow(key, htmlFile, options = {}) {
     path.join(__dirname, "renderer", htmlFile),
     options.search ? { search: options.search } : undefined
   );
+  attachEditContextMenu(win.webContents);
   win.once("ready-to-show", () => {
     if (options.docked) {
       dockAutomationWindow(key, win);
@@ -592,6 +727,12 @@ function createWindow(key, htmlFile, options = {}) {
       hideOtherExclusiveWindows(key);
     }
     win.show();
+  });
+  win.on("close", (event) => {
+    if (options.quitOnClose && !isQuitting && !forcedUpdateActive) {
+      event.preventDefault();
+      quitApplication();
+    }
   });
   win.on("closed", () => {
     windows[key] = null;
@@ -622,6 +763,7 @@ function createLoginWindow() {
     minWidth: Math.min(720, width),
     minHeight: Math.min(560, height),
     resizable: true,
+    quitOnClose: true,
     windowOverrides: { center: true },
   });
 }
@@ -638,6 +780,7 @@ function createDashboardWindow() {
     minWidth: Math.min(900, width),
     minHeight: Math.min(600, height),
     resizable: true,
+    quitOnClose: true,
     windowOverrides: { center: true },
   });
   if (!win.__workspaceLayoutBound) {
@@ -887,9 +1030,6 @@ ipcMain.handle("app:releaseForceLock", () => {
 // Relaunching re-runs checkMandatoryUpdate() and re-locks them here until
 // they actually install.
 ipcMain.handle("app:quitApp", () => {
-  forcedUpdateActive = false;
-  quittingForUpdate = true;
-
   // setClosable(false) was set when this window opened in forced mode.
   // It blocks close at the OS level — not just the visible ✕ button, but
   // any programmatic close too, including the one app.quit() below tries
@@ -900,7 +1040,7 @@ ipcMain.handle("app:quitApp", () => {
     win.setClosable(true);
   }
 
-  app.quit();
+  quitApplication();
 });
 
 // ---------------------------------------------------------------------------
@@ -1185,11 +1325,9 @@ ipcMain.handle("app:installUpdate", async () => {
     aboutWindow.setClosable(true);
   }
 
-  // Stop the backend server before replacing the installation.
-  stopServer();
-
-  // Close every Beabots window and finish shutting down the application.
-  app.quit();
+  // Close every Beabots window and stop the backend before replacing the
+  // installation.
+  quitApplication();
 
   return true;
 
@@ -1280,6 +1418,7 @@ app.whenReady().then(() => {
   });
 
   app.on("activate", () => {
+    if (isQuitting) return;
     if (BrowserWindow.getAllWindows().length === 0) {
       if (forcedUpdateActive) {
         createAboutWindow(true);
@@ -1288,6 +1427,10 @@ app.whenReady().then(() => {
       }
     }
   });
+});
+
+app.on("before-quit", () => {
+  isQuitting = true;
 });
 
 app.on("window-all-closed", () => {

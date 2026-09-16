@@ -583,6 +583,8 @@ document.getElementById("guideCard").addEventListener("click", () => {
 // ---------------------------------------------------------------------------
 const startBtn = document.getElementById("startBtn");
 const startBtnLabel = document.getElementById("startBtnLabel");
+const clearBtn = document.getElementById("clearBtn");
+let cf2StopRequested = false;
 
 copyTransmittalsBtn.addEventListener("click", async () => {
   const transmittals = getTransmittalNumbers();
@@ -605,21 +607,32 @@ copyTransmittalsBtn.addEventListener("click", async () => {
 });
 
 function setControlsRunning(running) {
-  startBtn.disabled = running;
-  startBtnLabel.textContent = running ? "Automation Running…" : "Start Automation";
+  startBtn.disabled = false;
+  startBtnLabel.textContent = running
+    ? (cf2StopRequested ? "Stopping..." : "Stop Automation")
+    : "Start Automation";
   startBtn.classList.toggle("running", running);
   uploadBtn.disabled = running;
   claimYearSelect.disabled = running;
   claimMonthSelect.disabled = running;
   modeNewDraftBtn.disabled = running;
   modeExistingDraftBtn.disabled = running;
+  clearBtn.disabled = running;
 }
 
 startBtn.addEventListener("click", async () => {
+  if (cf2RunActive) {
+    cf2StopRequested = true;
+    setControlsRunning(true);
+    await fetchJSON("/api/cf2/stop", { method: "POST" });
+    return;
+  }
+
   if (!hasPatientRecords) return; // matches: if len(patient_records) == 0: return
 
   if (cf2LogStopTimer) clearTimeout(cf2LogStopTimer);
   cf2RunActive = true;
+  cf2StopRequested = false;
   detailsLogBox.innerHTML = "";
   lastDetailLine = "";
   lastDetailAt = 0;
@@ -640,7 +653,21 @@ startBtn.addEventListener("click", async () => {
     scrollLogToEnd();
     setControlsRunning(false);
     cf2RunActive = false;
+    cf2StopRequested = false;
   }
+});
+
+clearBtn.addEventListener("click", () => {
+  if (cf2RunActive) return;
+  setMode("new_draft");
+  fileLabel.textContent = "No file selected";
+  sheetsLine.textContent = "Sheets : -";
+  patientsLine.textContent = "Patients Found : 0";
+  claimYearSelect.value = String(new Date().getFullYear());
+  claimMonthSelect.value = MONTH_NAMES[new Date().getMonth()];
+  hasPatientRecords = false;
+  clearLog();
+  updateBatchHeader();
 });
 
 // ---------------------------------------------------------------------------
@@ -678,7 +705,12 @@ socket.on("cf2_done", (data) => {
     summaryLogBox.scrollTop = summaryLogBox.scrollHeight;
   }
 
+  if (data?.stopped) {
+    detailLog("Automation stopped by user.", "WARNING");
+  }
+
   setControlsRunning(false);
+  cf2StopRequested = false;
   // stdout and Socket.IO travel over separate channels. Keep a short grace
   // period so final buffered CF2 lines arrive, then detach this panel from
   // the shared stream before SOA or CF4 starts.

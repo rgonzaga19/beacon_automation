@@ -693,7 +693,7 @@ class SOAAutomation:
 
         return result
 
-    def run(self, transmittals):
+    def run(self, transmittals, should_stop=None):
         """
         Run all transmittals with the existing retry semantics.
 
@@ -705,11 +705,25 @@ class SOAAutomation:
             report.results.clear()
             self.results.clear()
 
+            should_stop = should_stop or (lambda: False)
+
             for idx, transmittal_no in enumerate(transmittals):
+                if should_stop():
+                    logger.warning(
+                        "STOP REQUESTED: SOA automation stopped before the next transmittal."
+                    )
+                    break
+
                 transmittal_no = str(transmittal_no).strip()
                 max_attempts = self.max_retries + 1
 
                 for attempt_number in range(1, max_attempts + 1):
+                    if should_stop():
+                        logger.warning(
+                            "STOP REQUESTED: SOA automation stopped before the next retry."
+                        )
+                        break
+
                     logger.info("")
                     logger.info("=" * 60)
                     logger.info(
@@ -764,6 +778,12 @@ class SOAAutomation:
                         f"Retrying SAME transmittal "
                         f"({retries_used}/{self.max_retries})..."
                     )
+
+                if should_stop():
+                    logger.warning(
+                        "STOP REQUESTED: SOA automation stopped after the current safe step."
+                    )
+                    break
 
             logger.info("=" * 60)
             logger.info("SOA UPLOAD AUTOMATION COMPLETED")

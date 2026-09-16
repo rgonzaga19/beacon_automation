@@ -497,11 +497,13 @@ def cf2_download_template():
 # instead of log_box.after(...).
 # ---------------------------------------------------------------------------
 _cf2_running = False
+_cf2_stop_event = threading.Event()
 
 
 def _run_cf2_automation():
     global _cf2_running
     automation = None
+    stopped = False
     try:
         records = _state["patient_records"]
         total = len(records)
@@ -536,6 +538,13 @@ def _run_cf2_automation():
             ) if automation and automation._progress_record is not None else None,
         )
         for current, record in enumerate(records, start=1):
+            if _cf2_stop_event.is_set():
+                stopped = True
+                socketio.emit("log", {
+                    "message": "STOP REQUESTED: CF2 automation stopped before the next patient.",
+                    "level": "WARNING",
+                })
+                break
             try:
                 emit_progress(record, current, "running", "Starting", "Preparing patient row.")
                 result = automation.process_patient(record, current=current, total=total)
@@ -564,6 +573,13 @@ def _run_cf2_automation():
                     failed_result["message"],
                     result=failed_result,
                 )
+            if _cf2_stop_event.is_set():
+                stopped = True
+                socketio.emit("log", {
+                    "message": "STOP REQUESTED: CF2 automation stopped after the current patient.",
+                    "level": "WARNING",
+                })
+                break
     except Exception as ex:
         socketio.emit("log", {"message": f"ERROR: {ex}", "level": "ERROR"})
     finally:
@@ -578,7 +594,8 @@ def _run_cf2_automation():
 
         results = automation.get_summary() if automation is not None else []
         _cf2_running = False
-        socketio.emit("cf2_done", {"results": results})
+        _cf2_stop_event.clear()
+        socketio.emit("cf2_done", {"results": results, "stopped": stopped})
 
 
 @app.route("/api/cf2/start", methods=["POST"])
@@ -589,9 +606,22 @@ def cf2_start():
     if _cf2_running:
         return jsonify({"error": "Automation already running."}), 409
 
+    _cf2_stop_event.clear()
     _cf2_running = True
     threading.Thread(target=_run_cf2_automation, daemon=True).start()
     return jsonify({"started": True})
+
+
+@app.route("/api/cf2/stop", methods=["POST"])
+def cf2_stop():
+    if not _cf2_running:
+        return jsonify({"stopped": False, "running": False})
+    _cf2_stop_event.set()
+    socketio.emit("log", {
+        "message": "Stop requested. CF2 automation will end after the current safe step.",
+        "level": "WARNING",
+    })
+    return jsonify({"stopped": True, "running": True})
 
 
 # ---------------------------------------------------------------------------
@@ -600,20 +630,24 @@ def cf2_start():
 # disabling (the renderer handles disabling its own controls).
 # ---------------------------------------------------------------------------
 _soa_running = False
+_soa_stop_event = threading.Event()
 
 
 def _run_soa_automation(soa_folder, transmittals):
     global _soa_running
     soa_automation = None
+    stopped = False
     try:
         soa_automation = SOAAutomation(soa_folder=soa_folder)
-        soa_automation.run(transmittals)
+        soa_automation.run(transmittals, should_stop=_soa_stop_event.is_set)
+        stopped = _soa_stop_event.is_set()
     except Exception as ex:
         socketio.emit("log", {"message": f"FATAL ERROR: {ex}", "level": "ERROR"})
     finally:
         results = soa_automation.get_results() if soa_automation is not None else []
         _soa_running = False
-        socketio.emit("soa_done", {"results": results})
+        _soa_stop_event.clear()
+        socketio.emit("soa_done", {"results": results, "stopped": stopped})
 
 
 @app.route("/api/soa/start", methods=["POST"])
@@ -638,9 +672,22 @@ def soa_start():
     settings["soa_folder"] = soa_folder
     save_login_settings(settings)
 
+    _soa_stop_event.clear()
     _soa_running = True
     threading.Thread(target=_run_soa_automation, args=(soa_folder, transmittals), daemon=True).start()
     return jsonify({"started": True})
+
+
+@app.route("/api/soa/stop", methods=["POST"])
+def soa_stop():
+    if not _soa_running:
+        return jsonify({"stopped": False, "running": False})
+    _soa_stop_event.set()
+    socketio.emit("log", {
+        "message": "Stop requested. SOA automation will end after the current safe step.",
+        "level": "WARNING",
+    })
+    return jsonify({"stopped": True, "running": True})
 
 
 # ---------------------------------------------------------------------------
@@ -650,21 +697,26 @@ def soa_start():
 # run against a plain list of transmittals.
 # ---------------------------------------------------------------------------
 _beacon_running = False
+_beacon_stop_event = threading.Event()
 
 
 def _run_beacon_automation(transmittals, auto_encode_cf4, cf4_settings):
     global _beacon_running
+    stopped = False
     try:
         beacon_run(
             transmittals,
             auto_encode_cf4=auto_encode_cf4,
             cf4_data=cf4_settings,
+            should_stop=_beacon_stop_event.is_set,
         )
+        stopped = _beacon_stop_event.is_set()
     except Exception as ex:
         socketio.emit("log", {"message": f"ERROR: {ex}", "level": "ERROR"})
     finally:
         _beacon_running = False
-        socketio.emit("beacon_done", {"results": report.results})
+        _beacon_stop_event.clear()
+        socketio.emit("beacon_done", {"results": report.results, "stopped": stopped})
 
 
 @app.route("/api/beacon/start", methods=["POST"])
@@ -685,6 +737,7 @@ def beacon_start():
     # than whatever was hardcoded in beacon.py at build time.
     cf4_settings = _load_cf4_settings()
 
+    _beacon_stop_event.clear()
     _beacon_running = True
     threading.Thread(
         target=_run_beacon_automation,
@@ -692,6 +745,18 @@ def beacon_start():
         daemon=True,
     ).start()
     return jsonify({"started": True})
+
+
+@app.route("/api/beacon/stop", methods=["POST"])
+def beacon_stop():
+    if not _beacon_running:
+        return jsonify({"stopped": False, "running": False})
+    _beacon_stop_event.set()
+    socketio.emit("log", {
+        "message": "Stop requested. CF4 automation will end after the current safe step.",
+        "level": "WARNING",
+    })
+    return jsonify({"stopped": True, "running": True})
 
 
 if __name__ == "__main__":

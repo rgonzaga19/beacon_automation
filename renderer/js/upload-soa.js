@@ -268,16 +268,29 @@ function updateSummaryFromLog(message, level = "INFO") {
 // ---------------------------------------------------------------------------
 const automateBtn = document.getElementById("automateBtn");
 const automateBtnLabel = document.getElementById("automateBtnLabel");
+const clearBtn = document.getElementById("clearBtn");
+let soaStopRequested = false;
 
 function setControlsRunning(running) {
   transmittalsInput.disabled = running;
-  automateBtn.disabled = running;
+  automateBtn.disabled = false;
   automateBtn.classList.toggle("running", running);
-  automateBtnLabel.textContent = running ? "AUTOMATING UPLOAD…" : "AUTOMATE UPLOAD";
+  automateBtnLabel.textContent = running
+    ? (soaStopRequested ? "STOPPING..." : "STOP AUTOMATION")
+    : "AUTOMATE UPLOAD";
   browseBtn.disabled = running;
+  soaFolderInput.disabled = running;
+  clearBtn.disabled = running;
 }
 
 automateBtn.addEventListener("click", async () => {
+  if (soaRunActive) {
+    soaStopRequested = true;
+    setControlsRunning(true);
+    await fetchJSON("/api/soa/stop", { method: "POST" });
+    return;
+  }
+
   const transmittals = transmittalsInput.value
     .split("\n")
     .map((l) => l.trim())
@@ -298,6 +311,7 @@ automateBtn.addEventListener("click", async () => {
   clearLog();
   setSoaRows(transmittals);
   soaRunActive = true;
+  soaStopRequested = false;
   soaSummary.running = true;
   soaSummary.total = transmittals.length;
   renderSummary();
@@ -311,10 +325,20 @@ automateBtn.addEventListener("click", async () => {
   if (result.error) {
     showModal("Error", result.error);
     soaRunActive = false;
+    soaStopRequested = false;
     soaSummary.running = false;
     renderSummary();
     setControlsRunning(false);
   }
+});
+
+clearBtn.addEventListener("click", () => {
+  if (soaRunActive) return;
+  transmittalsInput.value = "";
+  soaFolderInput.value = "";
+  setSoaRows([]);
+  clearLog();
+  updateCount();
 });
 
 // ---------------------------------------------------------------------------
@@ -329,7 +353,11 @@ socket.on("log", (data) => {
 
 socket.on("soa_done", (data) => {
   renderFinalSummary(data?.results || []);
+  if (data?.stopped) {
+    writeLog("Automation stopped by user.", "WARNING");
+  }
   soaRunActive = false;
+  soaStopRequested = false;
   setControlsRunning(false);
 });
 

@@ -723,23 +723,31 @@ function showReport(results) {
 // AUTOMATION: Status and controls
 // ---------------------------------------------------------------------------
 const startBtn = document.getElementById("startBtn");
+const clearBtn = document.getElementById("clearBtn");
+let cf4StopRequested = false;
 
-function disableControls() {
-  startBtn.disabled = true;
-  transmittalsInput.disabled = true;
-  startBtn.classList.add("running");
-}
-
-function enableControls() {
+function setControlsRunning(running) {
   startBtn.disabled = false;
-  transmittalsInput.disabled = false;
-  startBtn.classList.remove("running");
+  transmittalsInput.disabled = running;
+  document.getElementById("autoEncodeCf4").disabled = running;
+  clearBtn.disabled = running;
+  startBtn.classList.toggle("running", running);
+  startBtn.textContent = running
+    ? (cf4StopRequested ? "STOPPING..." : "STOP AUTOMATION")
+    : "▶ START AUTOMATION";
 }
 
 // ---------------------------------------------------------------------------
 // AUTOMATION: Start automation (same flow as ui.py's start_automation())
 // ---------------------------------------------------------------------------
 startBtn.addEventListener("click", async () => {
+  if (cf4Running) {
+    cf4StopRequested = true;
+    setControlsRunning(true);
+    await fetchJSON("/api/beacon/stop", { method: "POST" });
+    return;
+  }
+
   // License check
   const license = await fetchJSON("/api/license/validate", { method: "POST" });
   if (!license.valid) {
@@ -760,10 +768,11 @@ startBtn.addEventListener("click", async () => {
   clearLogs();
   setCf4Rows(transmittals);
   cf4Running = true;
+  cf4StopRequested = false;
   showReport();
   writeLog("Automation started.");
   writeLog(`Found ${transmittals.length} transmittal(s).`);
-  disableControls();
+  setControlsRunning(true);
 
   const result = await fetchJSON("/api/beacon/start", {
     method: "POST",
@@ -776,9 +785,20 @@ startBtn.addEventListener("click", async () => {
   if (result.error) {
     writeLog(`ERROR: ${result.error}`, "ERROR");
     cf4Running = false;
+    cf4StopRequested = false;
     showReport();
-    enableControls();
+    setControlsRunning(false);
   }
+});
+
+clearBtn.addEventListener("click", () => {
+  if (cf4Running) return;
+  transmittalsInput.value = "";
+  document.getElementById("autoEncodeCf4").checked = false;
+  clearLogs();
+  setCf4Rows([]);
+  showReport([]);
+  updateCount();
 });
 
 // ---------------------------------------------------------------------------
@@ -794,7 +814,11 @@ socket.on("log", (data) => {
 socket.on("beacon_done", (data) => {
   cf4Running = false;
   showReport(data.results);
-  enableControls();
+  if (data?.stopped) {
+    writeLog("Automation stopped by user.", "WARNING");
+  }
+  cf4StopRequested = false;
+  setControlsRunning(false);
 });
 
 // Initialize counts on load

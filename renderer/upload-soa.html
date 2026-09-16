@@ -194,6 +194,20 @@
     box-shadow: none;
   }
   #automateBtn:hover { box-shadow: none; }
+  .automation-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+  }
+  .automation-actions #automateBtn {
+    flex: 1;
+    margin-top: 0;
+  }
+  #clearBtn {
+    flex: 0 0 auto;
+    min-width: 120px;
+    padding: 12px 16px;
+  }
   @property --soa-progress-angle {
     syntax: "<angle>";
     initial-value: 0deg;
@@ -428,10 +442,13 @@
         <div class="bottom-row">
           <span class="count text-sec text-small" id="countLabel">0 transmittals</span>
         </div>
-        <button class="solid-btn" id="automateBtn">
-          <span class="icon-flat"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 4.5v15l13-7.5z"/></svg></span>
-          <span id="automateBtnLabel">AUTOMATE UPLOAD</span>
-        </button>
+        <div class="automation-actions">
+          <button class="solid-btn" id="automateBtn">
+            <span class="icon-flat"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 4.5v15l13-7.5z"/></svg></span>
+            <span id="automateBtnLabel">AUTOMATE UPLOAD</span>
+          </button>
+          <button class="cyber-btn" id="clearBtn" type="button">Clear</button>
+        </div>
       </div>
 
       <div class="col">

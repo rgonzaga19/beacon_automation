@@ -798,20 +798,33 @@ def _process_transmittal(
     )
 
 
-def run(transmittals, auto_encode_cf4=False, cf4_data=None):
+def run(transmittals, auto_encode_cf4=False, cf4_data=None, should_stop=None):
     """Run CF4 automation for all transmittals using API calls only."""
     cf4_data = {**DEFAULT_CF4_DATA, **(cf4_data or {})}
+    should_stop = should_stop or (lambda: False)
     report.results.clear()
 
     # Preserve original recovery semantics: initial attempt + one retry.
     max_recovery_retries = 1
 
     for idx, transmittal_no in enumerate(transmittals):
+        if should_stop():
+            logger.warning(
+                "STOP REQUESTED: CF4 automation stopped before the next transmittal."
+            )
+            break
+
         transmittal_no = str(transmittal_no).strip()
         attempt = 0
         last_error = None
 
         while True:
+            if should_stop():
+                logger.warning(
+                    "STOP REQUESTED: CF4 automation stopped before the next retry."
+                )
+                break
+
             try:
                 _process_transmittal(
                     idx,
@@ -841,6 +854,12 @@ def run(transmittals, auto_encode_cf4=False, cf4_data=None):
                     f"Retrying SAME transmittal "
                     f"({attempt}/{max_recovery_retries})..."
                 )
+
+        if should_stop():
+            logger.warning(
+                "STOP REQUESTED: CF4 automation stopped after the current safe step."
+            )
+            break
 
         if last_error is not None:
             logger.error(
