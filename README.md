@@ -2,8 +2,6 @@
 
 Beabots is a Windows desktop application for API-driven automation and automated encoding of PhilHealth Beacon claims. It combines an Electron user interface with a local Python service that handles authentication, licensing, Excel processing, CF2/CF4 workflows, SOA uploads, reports, and live automation logs.
 
-Current application version: **4.0.1**
-
 ## What the application contains
 
 - **Electron desktop shell** — login, dashboard, settings, About, CF2, CF4, and Upload SOA views.
