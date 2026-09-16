@@ -33,7 +33,7 @@ const workspaceViews = {
   about: null,
   settings: null,
 };
-const WORKSPACE_TOP = 97; // custom titlebar (34) + dashboard toolbar (63)
+const WORKSPACE_TOP = 34; // custom titlebar only
 let workspaceSidebarWidth = 232;
 let activeWorkspaceKey = null;
 
@@ -103,12 +103,20 @@ function createWorkspaceView(key, htmlFile) {
     search: "embedded=1",
   });
   view.webContents.once("did-finish-load", () => {
-    // The dashboard supplies the window chrome. Removing the page's own
-    // titlebar and rounded outer edge makes the view meet the shell cleanly.
+    // The dashboard supplies the window chrome. Remove each embedded page's
+    // own titlebar and rounded corners, but keep the shell edge so light
+    // mode still has separation when the app overlaps white content.
     view.webContents.insertCSS(`
       .titlebar { display: none !important; }
-      .app-window { border-radius: 0 !important; }
-      .app-window::after { display: none !important; }
+      .app-window {
+        border-radius: 0 0 14px 0 !important;
+        overflow: hidden !important;
+      }
+      .app-window::after {
+        inset: 0 !important;
+        border-radius: 0 0 13px 0 !important;
+        box-shadow: var(--window-edge) !important;
+      }
     `);
   });
   workspaceViews[key] = view;
@@ -690,7 +698,7 @@ function createWindow(key, htmlFile, options = {}) {
     resizable: options.resizable !== false,
     frame: false,
     thickFrame: false,
-    hasShadow: false,
+    hasShadow: true,
     transparent: true,
     useContentSize: true,
     icon: ICON_PATH,

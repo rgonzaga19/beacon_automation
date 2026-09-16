@@ -10,6 +10,7 @@
 :root {
   /* ---- Dark theme (default) ---- */
   --bg-dark: #0a0e16;
+  --bg-base: #0a0e16;
   --bg-panel: #10151f;
   --bg-card: #161e2b;
   --border: #232c3d;
@@ -45,6 +46,7 @@
    against a near-black background. */
 html[data-theme="light"] {
   --bg-dark: #f5f7fb;
+  --bg-base: #f5f7fb;
   --bg-panel: #ffffff;
   --bg-card: #eef2f8;
   --border: #dde3ec;
@@ -60,7 +62,10 @@ html[data-theme="light"] {
 
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.06);
   --shadow-md: 0 8px 20px rgba(16, 24, 40, 0.08), 0 2px 6px rgba(16, 24, 40, 0.05);
-  --window-edge: inset 0 0 0 1px var(--border);
+  --window-edge:
+    inset 0 0 0 1px #aeb8c8,
+    inset 0 0 0 2px rgba(255, 255, 255, 0.72),
+    inset 0 10px 24px rgba(16, 24, 40, 0.08);
 }
 
 * {
@@ -148,6 +153,10 @@ html, body {
   box-shadow: none;
 }
 
+html[data-theme="light"] .app-window.no-glow::after {
+  box-shadow: var(--window-edge);
+}
+
 /* ---------- Custom title bar (replaces the native OS frame) ---------- */
 .titlebar {
   height: 34px;
@@ -193,13 +202,15 @@ html, body {
 
 .titlebar-btn {
   -webkit-app-region: no-drag;
-  width: 34px;
+  width: 46px;
   height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-sec);
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 600;
   cursor: pointer;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
