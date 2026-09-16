@@ -34,6 +34,7 @@ const workspaceViews = {
   settings: null,
 };
 const WORKSPACE_TOP = 34; // custom titlebar only
+const WORKSPACE_EDGE_INSET = 1; // leave room for the dashboard shell edge
 let workspaceSidebarWidth = 232;
 let activeWorkspaceKey = null;
 
@@ -77,10 +78,10 @@ function layoutWorkspaceView() {
   if (!dash || dash.isDestroyed() || !view) return;
   const [width, height] = dash.getContentSize();
   view.setBounds({
-    x: workspaceSidebarWidth,
-    y: WORKSPACE_TOP,
-    width: Math.max(1, width - workspaceSidebarWidth),
-    height: Math.max(1, height - WORKSPACE_TOP),
+    x: workspaceSidebarWidth + WORKSPACE_EDGE_INSET,
+    y: WORKSPACE_TOP + WORKSPACE_EDGE_INSET,
+    width: Math.max(1, width - workspaceSidebarWidth - (WORKSPACE_EDGE_INSET * 2)),
+    height: Math.max(1, height - WORKSPACE_TOP - (WORKSPACE_EDGE_INSET * 2)),
   });
 }
 
@@ -103,20 +104,20 @@ function createWorkspaceView(key, htmlFile) {
     search: "embedded=1",
   });
   view.webContents.once("did-finish-load", () => {
-    // The dashboard supplies the window chrome. Remove each embedded page's
-    // own titlebar and rounded corners, but keep the shell edge so light
-    // mode still has separation when the app overlaps white content.
+    // The dashboard supplies the window chrome and outer edge. The native
+    // WebContentsView is inset by 1px on the right/bottom so the shell edge
+    // remains visible without page-local borders.
     view.webContents.insertCSS(`
+      body::before { display: none !important; }
       .titlebar { display: none !important; }
       .app-window {
+        width: 100vw !important;
+        height: 100vh !important;
+        margin: 0 !important;
         border-radius: 0 0 14px 0 !important;
         overflow: hidden !important;
       }
-      .app-window::after {
-        inset: 0 !important;
-        border-radius: 0 0 13px 0 !important;
-        box-shadow: var(--window-edge) !important;
-      }
+      .app-window::after { display: none !important; }
     `);
   });
   workspaceViews[key] = view;
