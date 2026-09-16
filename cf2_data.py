@@ -14,6 +14,7 @@ class CF2Data:
     last_treatment: date
     total_sessions: int
     member_pin: str = ""
+    px_contact_no: str = ""
     admission_time: time | None = None
     discharge_time: time | None = None
     session_dates: List[date] = field(default_factory=list)

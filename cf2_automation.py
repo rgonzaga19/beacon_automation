@@ -949,10 +949,14 @@ class CF2Automation:
         claim_id = ids["claim_id"]
 
 
-        member_mobile = None
+        uploaded_px_contact = str(getattr(data, "px_contact_no", "") or "").strip()
+        member_mobile = uploaded_px_contact or None
 
         def _get_member_mobile_from_api():
             nonlocal member_mobile
+            if member_mobile:
+                print(f"PX contact from uploaded template: {member_mobile}")
+                return
             cf1_summary = cf2_api.get_cf1_summary(claim_id)
             member_mobile = (cf1_summary or {}).get("memberMobileNumber")
             if not member_mobile:
@@ -964,7 +968,7 @@ class CF2Automation:
             print(f"Member mobile from CF1 API: {member_mobile}")
 
         self._step(
-            "Getting member mobile from CF1 API...",
+            "Resolving patient representative contact number...",
             _get_member_mobile_from_api,
             critical=True,
         )

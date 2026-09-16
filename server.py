@@ -346,6 +346,15 @@ def _analyze_workbook(workbook, claim_year, claim_month=None, mode="new_draft"):
         ),
         None,
     )
+    px_contact_column = next(
+        (
+            cell.column
+            for cell in sheet[1]
+            if str(cell.value or "").strip().casefold()
+            in ("px contact# (optional)", "px contact # (optional)", "px contact", "px contact#")
+        ),
+        None,
+    )
 
     for row in range(2, sheet.max_row + 1):
         # Column layout is the same in both templates — only what column A
@@ -362,6 +371,7 @@ def _analyze_workbook(workbook, claim_year, claim_month=None, mode="new_draft"):
         accreditation = sheet[f"D{row}"].value
         treatment_dates = sheet[f"E{row}"].value
         time_range = sheet.cell(row=row, column=time_column).value if time_column else None
+        px_contact = sheet.cell(row=row, column=px_contact_column).value if px_contact_column else None
         try:
             admission_time, discharge_time = parse_time_range(time_range)
         except ValueError as ex:
@@ -377,6 +387,7 @@ def _analyze_workbook(workbook, claim_year, claim_month=None, mode="new_draft"):
             treatment_dates_raw=str(treatment_dates),
             time_range_raw=str(time_range).strip() if time_range is not None else "",
             member_pin=identifier_str if mode == "new_draft" else "",
+            px_contact_no=str(px_contact).strip() if px_contact is not None else "",
             admission_time=admission_time,
             discharge_time=discharge_time,
             source_row=row,
@@ -410,6 +421,7 @@ def _record_to_dict(record, cf2, mode="new_draft"):
         "accreditation_no": record.accreditation_no,
         "treatment_dates_raw": record.treatment_dates_raw,
         "time_range_raw": record.time_range_raw,
+        "px_contact_no": record.px_contact_no,
         "admission_time": format_beacon_time(record.admission_time) if record.admission_time else None,
         "discharge_time": format_beacon_time(record.discharge_time) if record.discharge_time else None,
         "parsed_dates": [d.strftime("%m-%d-%Y") for d in record.treatment_dates],

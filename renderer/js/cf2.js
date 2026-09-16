@@ -423,6 +423,7 @@ uploadBtn.addEventListener("click", async () => {
     log(`Accred. No. : ${record.accreditation_no}`);
     log(`Dates       : ${record.treatment_dates_raw}`);
     log(`Time        : ${record.time_range_raw || "12:00 AM - 12:00 PM (default)"}`);
+    log(`PX Contact  : ${record.px_contact_no || "Member mobile from CF1 API"}`);
     log(`Parsed Dates:`);
     record.parsed_dates.forEach((d) => log(`   ${d}`));
 
