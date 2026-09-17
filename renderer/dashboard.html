@@ -9,20 +9,19 @@
   .dashboard-layout { flex:1; display:flex; min-height:0; }
   .sidebar-column { width:232px; flex:0 0 232px; display:flex; flex-direction:column; min-height:0; background:var(--bg-panel); border-right:1px solid var(--border); transition:width 180ms ease,flex-basis 180ms ease; }
   .sidebar-column.collapsed { width:68px; flex-basis:68px; }
-  .sidebar-topbar { height:86px; flex:0 0 86px; display:flex; align-items:center; gap:12px; padding:12px 10px 12px 13px; overflow:hidden; }
+  .sidebar-topbar { height:86px; flex:0 0 86px; display:flex; align-items:center; padding:12px 10px; overflow:hidden; }
   .content-column { flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; }
-  .menu-toggle { width:40px; height:38px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:0; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-md); cursor:pointer; transition:background 140ms ease,border-color 140ms ease; }
-  .menu-toggle:hover { background:var(--accent-soft); border-color:var(--accent); }
-  .menu-toggle span { width:17px; height:2px; border-radius:2px; background:var(--text-pri); transition:transform 160ms ease,opacity 120ms ease; }
-  .menu-toggle[aria-expanded="false"] span:first-child { transform:translateY(6px) rotate(45deg); }
-  .menu-toggle[aria-expanded="false"] span:nth-child(2) { opacity:0; }
-  .menu-toggle[aria-expanded="false"] span:last-child { transform:translateY(-6px) rotate(-45deg); }
+  .menu-toggle { width:44px; height:44px; flex:0 0 44px; display:flex; align-items:center; justify-content:center; padding:0 13px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:var(--radius-md); cursor:pointer; transition:color 140ms ease,background 140ms ease,border-color 140ms ease; }
+  .menu-toggle:hover { color:var(--text-pri); background:var(--accent-soft); border-color:var(--border); }
+  .menu-toggle .side-icon { width:20px; min-width:20px; height:20px; display:grid; place-items:center; color:var(--accent); font-size:17px; line-height:1; }
   .sidebar { flex:1; display:flex; flex-direction:column; min-height:0; padding:14px 10px; overflow:hidden; background:var(--bg-panel); }
-  .sidebar-brand { width:100%; padding:2px 3px 15px; margin-bottom:14px; color:inherit; text-align:left; background:transparent; border:0; border-bottom:1px solid var(--border); cursor:pointer; }
-  .sidebar-topbar .sidebar-brand { flex:1; min-width:0; padding:0; margin:0; border-bottom:0; }
-  .sidebar-brand:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-md); }
-  .brand-row { display:flex; align-items:center; min-width:200px; }
+  .sidebar-brand { width:100%; display:flex; align-items:flex-start; gap:8px; color:inherit; }
+  .brand-home { flex:0 1 auto; min-width:0; padding:0; color:inherit; text-align:left; background:transparent; border:0; cursor:pointer; }
+  .brand-home:focus-visible, .menu-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-md); }
+  .brand-row { display:flex; align-items:center; gap:9px; min-width:200px; }
   .sidebar-topbar .brand-row { min-width:0; }
+  .brand-icon { width:28px; height:28px; flex:0 0 28px; display:grid; place-items:center; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--accent-soft); }
+  .brand-icon img { width:20px; height:20px; object-fit:contain; display:block; }
   .brand-copy { min-width:0; line-height:1.25; opacity:1; transition:opacity 100ms ease; }
   .brand-name { display:block; color:var(--text-pri); font:800 14px var(--font-ui); letter-spacing:.7px; }
   .brand-meta { display:flex; align-items:center; gap:5px; margin-top:3px; white-space:nowrap; }
@@ -34,7 +33,8 @@
   .sidebar-topbar .sidebar-status { margin:4px 0 0; }
   .sidebar-column.collapsed .brand-copy, .sidebar-column.collapsed .status-label { opacity:0; pointer-events:none; }
   .sidebar-column.collapsed .sidebar-status { margin-left:15px; }
-  .sidebar-column.collapsed .sidebar-topbar .sidebar-brand { width:0; flex:0 0 0; opacity:0; pointer-events:none; }
+  .sidebar-column.collapsed .sidebar-brand { align-items:center; justify-content:center; }
+  .sidebar-column.collapsed .brand-home { width:0; flex:0 0 0; opacity:0; pointer-events:none; }
   .sidebar-nav { display:flex; flex-direction:column; gap:7px; }
   .sidebar-bottom { margin-top:auto; padding-top:12px; }
   .side-link { width:100%; height:44px; display:flex; align-items:center; gap:12px; padding:0 13px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:var(--radius-md); font:700 11px var(--font-ui); letter-spacing:.25px; white-space:nowrap; cursor:pointer; transition:color 140ms ease,background 140ms ease,border-color 140ms ease; }
@@ -84,16 +84,19 @@
     <div class="dashboard-layout">
       <div class="sidebar-column" id="dashboardSidebar">
         <div class="sidebar-topbar">
-          <button class="menu-toggle" id="btnSidebarToggle" type="button" aria-label="Collapse sidebar" aria-controls="dashboardSidebar" aria-expanded="true"><span></span><span></span><span></span></button>
-          <button class="sidebar-brand" id="btnDashboardHome" type="button" title="Dashboard Home" aria-label="Return to dashboard home">
-            <div class="brand-row">
-              <div class="brand-copy">
-                <span class="brand-name">BEABOTS</span>
-                <div class="brand-meta"><span class="version" id="appVersion">v...</span><span class="version" id="updateStatus"></span></div>
+          <div class="sidebar-brand">
+            <button class="brand-home" id="btnDashboardHome" type="button" title="Dashboard Home" aria-label="Return to dashboard home">
+              <div class="brand-row">
+                <span class="brand-icon" aria-hidden="true"><img src="../bot.ico" alt=""></span>
+                <div class="brand-copy">
+                  <span class="brand-name">BEABOTS</span>
+                  <div class="brand-meta"><span class="version" id="appVersion">v...</span><span class="version" id="updateStatus"></span></div>
+                </div>
               </div>
-            </div>
-            <div class="sidebar-status"><span class="status-dot" id="statusDot"></span><span class="status-label" id="statusLabel">READY</span></div>
-          </button>
+              <div class="sidebar-status"><span class="status-dot" id="statusDot"></span><span class="status-label" id="statusLabel">READY</span></div>
+            </button>
+            <button class="menu-toggle" id="btnSidebarToggle" type="button" aria-label="Collapse sidebar" aria-controls="dashboardSidebar" aria-expanded="true"><span class="side-icon" aria-hidden="true">&lsaquo;</span></button>
+          </div>
         </div>
         <aside class="sidebar" aria-label="Main navigation">
           <nav class="sidebar-nav">

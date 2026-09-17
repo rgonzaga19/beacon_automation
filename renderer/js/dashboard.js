@@ -22,11 +22,13 @@ document.getElementById("btnClose").addEventListener("click", () => {
 // ---------------------------------------------------------------------------
 const sidebar = document.getElementById("dashboardSidebar");
 const sidebarToggle = document.getElementById("btnSidebarToggle");
+const sidebarToggleIcon = sidebarToggle.querySelector(".side-icon");
 
 sidebarToggle.addEventListener("click", () => {
   const collapsed = sidebar.classList.toggle("collapsed");
   sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
   sidebarToggle.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+  sidebarToggleIcon.textContent = collapsed ? "\u203a" : "\u2039";
   window.beabots?.setWorkspaceSidebarWidth(collapsed ? 68 : 232);
 });
 
