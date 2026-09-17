@@ -32,13 +32,30 @@ document.getElementById("btnClose").addEventListener("click", () => window.beabo
 // ---------------------------------------------------------------------------
 const soaFolderInput = document.getElementById("soaFolderInput");
 const browseBtn = document.getElementById("browseBtn");
+const webSoaInput = document.createElement("input");
+webSoaInput.type = "file";
+webSoaInput.accept = ".xlsx,.xls";
+webSoaInput.multiple = true;
+webSoaInput.hidden = true;
+document.body.appendChild(webSoaInput);
+let selectedSoaFiles = [];
 
 (async function initFolder() {
+  if (!window.beabots?.selectSoaFolder) {
+    soaFolderInput.placeholder = "No SOA Excel files selected";
+    browseBtn.lastChild.textContent = " UPLOAD FILES";
+    return;
+  }
   const settings = await fetchJSON("/api/settings");
   soaFolderInput.value = settings.soa_folder || window.beabots?.defaultSoaFolder || "";
 })();
 
 browseBtn.addEventListener("click", async () => {
+  if (!window.beabots?.selectSoaFolder) {
+    webSoaInput.value = "";
+    webSoaInput.click();
+    return;
+  }
   const chosen = await window.beabots?.selectSoaFolder(soaFolderInput.value);
   if (!chosen) return;
 
@@ -50,6 +67,13 @@ browseBtn.addEventListener("click", async () => {
     method: "POST",
     body: JSON.stringify({ soa_folder: chosen }),
   });
+});
+
+webSoaInput.addEventListener("change", () => {
+  selectedSoaFiles = [...(webSoaInput.files || [])];
+  soaFolderInput.value = selectedSoaFiles.length
+    ? `${selectedSoaFiles.length} SOA Excel file${selectedSoaFiles.length === 1 ? "" : "s"} selected`
+    : "";
 });
 
 // ---------------------------------------------------------------------------
@@ -302,7 +326,12 @@ automateBtn.addEventListener("click", async () => {
   }
 
   const soaFolder = soaFolderInput.value.trim();
-  if (!soaFolder) {
+  const isWebUpload = !window.beabots?.selectSoaFolder;
+  if (isWebUpload && selectedSoaFiles.length === 0) {
+    showModal("No SOA Files", "Please upload the SOA Excel files for this batch.");
+    return;
+  }
+  if (!isWebUpload && !soaFolder) {
     showModal("No SOA Folder", "Please select the folder where your SOA files are located.");
     return;
   }
@@ -317,10 +346,22 @@ automateBtn.addEventListener("click", async () => {
   renderSummary();
   writeLog(`Starting SOA upload for ${transmittals.length} transmittal(s)...`);
 
-  const result = await fetchJSON("/api/soa/start", {
-    method: "POST",
-    body: JSON.stringify({ transmittals, soa_folder: soaFolder }),
-  });
+  let result;
+  if (isWebUpload) {
+    const formData = new FormData();
+    formData.append("transmittals", transmittals.join("\n"));
+    selectedSoaFiles.forEach((file) => formData.append("soa_files", file));
+    const res = await fetch(`${API_BASE}/api/soa/start`, {
+      method: "POST",
+      body: formData,
+    });
+    result = await res.json();
+  } else {
+    result = await fetchJSON("/api/soa/start", {
+      method: "POST",
+      body: JSON.stringify({ transmittals, soa_folder: soaFolder }),
+    });
+  }
 
   if (result.error) {
     showModal("Error", result.error);
@@ -336,6 +377,8 @@ clearBtn.addEventListener("click", () => {
   if (soaRunActive) return;
   transmittalsInput.value = "";
   soaFolderInput.value = "";
+  selectedSoaFiles = [];
+  webSoaInput.value = "";
   setSoaRows([]);
   clearLog();
   updateCount();

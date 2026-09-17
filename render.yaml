@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: beabots-web
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: BEABOTS_DATA_DIR
+        value: /tmp
+      - key: BEABOTS_UPLOAD_DIR
+        value: /tmp/beabots_uploads

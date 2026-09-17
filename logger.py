@@ -6,7 +6,12 @@ import os
 APP_NAME = "Beabots"
 
 # User-writable application folder
-APP_DATA = Path(os.getenv("LOCALAPPDATA")) / APP_NAME
+APP_DATA = Path(
+    os.getenv("BEABOTS_DATA_DIR")
+    or os.getenv("LOCALAPPDATA")
+    or os.getenv("XDG_DATA_HOME")
+    or Path.home() / ".local" / "share"
+) / APP_NAME
 LOG_DIR = APP_DATA / "logs"
 
 LOG_DIR.mkdir(parents=True, exist_ok=True)

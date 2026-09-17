@@ -22,11 +22,14 @@ exe) as a child process on app launch.
 import os
 import sys
 import threading
+import tempfile
+import uuid
 from pathlib import Path
 
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_socketio import SocketIO
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 from openpyxl import load_workbook
 
@@ -43,9 +46,17 @@ from soa_automation import SOAAutomation
 from beacon import run as beacon_run
 from reports import report
 
-app = Flask(__name__)
+BASE_DIR = Path(__file__).resolve().parent
+UPLOAD_DIR = Path(
+    os.environ.get("BEABOTS_UPLOAD_DIR")
+    or Path(tempfile.gettempdir()) / "beabots_uploads"
+)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+app = Flask(__name__, static_folder=str(BASE_DIR / "renderer"), static_url_path="")
+app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("BEABOTS_MAX_UPLOAD_MB", "100")) * 1024 * 1024
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # Mirrors the old module-level globals (selected_file / patient_records)
 # that used to live in cf2_window.py.
@@ -235,6 +246,51 @@ def resource_path(relative_path):
     except AttributeError:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
+
+
+def _save_upload(file_storage, subdir, allowed_extensions):
+    filename = secure_filename(file_storage.filename or "")
+    suffix = Path(filename).suffix.lower()
+    if not filename or suffix not in allowed_extensions:
+        allowed = ", ".join(sorted(allowed_extensions))
+        raise ValueError(f"Unsupported file type. Allowed: {allowed}")
+
+    target_dir = UPLOAD_DIR / subdir
+    target_dir.mkdir(parents=True, exist_ok=True)
+    path = target_dir / f"{uuid.uuid4().hex}_{filename}"
+    file_storage.save(path)
+    return path
+
+
+def _prepare_upload_folder(files, allowed_extensions):
+    folder = UPLOAD_DIR / uuid.uuid4().hex
+    folder.mkdir(parents=True, exist_ok=True)
+    saved = []
+    for file_storage in files:
+        if not file_storage or not file_storage.filename:
+            continue
+        filename = secure_filename(file_storage.filename)
+        suffix = Path(filename).suffix.lower()
+        if suffix not in allowed_extensions:
+            continue
+        target = folder / filename
+        if target.exists():
+            target = folder / f"{uuid.uuid4().hex}_{filename}"
+        file_storage.save(target)
+        saved.append(target)
+    return folder, saved
+
+
+@app.route("/")
+def web_index():
+    return send_from_directory(app.static_folder, "login.html")
+
+
+@app.route("/<path:filename>")
+def web_static(filename):
+    if filename == "bot.ico":
+        return send_file(BASE_DIR / "bot.ico")
+    return send_from_directory(app.static_folder, filename)
 
 
 # ---------------------------------------------------------------------------
@@ -448,8 +504,18 @@ def cf2_upload():
     Electron's native file-open dialog already resolved the path — this
     endpoint never receives raw file bytes, just the path on disk.
     """
-    data = request.get_json(force=True)
-    filename = data.get("path")
+    if request.content_type and request.content_type.startswith("multipart/form-data"):
+        data = request.form
+        uploaded = request.files.get("file")
+        if not uploaded:
+            return jsonify({"error": "No Excel file uploaded."}), 400
+        try:
+            filename = str(_save_upload(uploaded, "cf2", {".xlsx", ".xlsm", ".xls"}))
+        except ValueError as ex:
+            return jsonify({"error": str(ex)}), 400
+    else:
+        data = request.get_json(force=True)
+        filename = data.get("path")
     claim_year = int(data.get("claim_year"))
     claim_month_name = data.get("claim_month")
     claim_month = MONTH_NAMES.index(claim_month_name) + 1 if claim_month_name else None
@@ -665,9 +731,25 @@ def _run_soa_automation(soa_folder, transmittals):
 @app.route("/api/soa/start", methods=["POST"])
 def soa_start():
     global _soa_running
-    data = request.get_json(force=True)
-    transmittals = data.get("transmittals", [])
-    soa_folder = data.get("soa_folder", "").strip()
+    is_multipart = request.content_type and request.content_type.startswith("multipart/form-data")
+    if is_multipart:
+        data = request.form
+        transmittals = [
+            line.strip()
+            for line in data.get("transmittals", "").splitlines()
+            if line.strip()
+        ]
+        soa_folder_path, soa_files = _prepare_upload_folder(
+            request.files.getlist("soa_files"),
+            {".xlsx", ".xls"},
+        )
+        soa_folder = str(soa_folder_path)
+        if not soa_files:
+            return jsonify({"error": "Please upload at least one SOA Excel file."}), 400
+    else:
+        data = request.get_json(force=True)
+        transmittals = data.get("transmittals", [])
+        soa_folder = data.get("soa_folder", "").strip()
 
     if not transmittals:
         return jsonify({"error": "Please enter at least one transmittal number."}), 400
@@ -680,9 +762,10 @@ def soa_start():
 
     # Remember the folder choice for next time — same as the old
     # browse_soa_folder()'s settings["soa_folder"] = chosen; save_login_settings(settings)
-    settings = load_login_settings()
-    settings["soa_folder"] = soa_folder
-    save_login_settings(settings)
+    if not is_multipart:
+        settings = load_login_settings()
+        settings["soa_folder"] = soa_folder
+        save_login_settings(settings)
 
     _soa_stop_event.clear()
     _soa_running = True
@@ -772,5 +855,6 @@ def beacon_stop():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("BEABOTS_PORT", 5417))
-    socketio.run(app, host="127.0.0.1", port=port, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get("PORT") or os.environ.get("BEABOTS_PORT", 5417))
+    host = os.environ.get("HOST", "0.0.0.0")
+    socketio.run(app, host=host, port=port, allow_unsafe_werkzeug=True)

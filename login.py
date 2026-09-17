@@ -5,7 +5,12 @@ from pathlib import Path
 
 APP_NAME = "Beabots"
 
-APP_DATA = Path(os.getenv("LOCALAPPDATA")) / APP_NAME
+APP_DATA = Path(
+    os.getenv("BEABOTS_DATA_DIR")
+    or os.getenv("LOCALAPPDATA")
+    or os.getenv("XDG_DATA_HOME")
+    or Path.home() / ".local" / "share"
+) / APP_NAME
 APP_DATA.mkdir(parents=True, exist_ok=True)
 
 CONFIG_FILE = APP_DATA / "config.json"

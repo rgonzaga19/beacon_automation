@@ -372,14 +372,20 @@ const uploadBtn = document.getElementById("uploadBtn");
 const fileLabel = document.getElementById("fileLabel");
 const sheetsLine = document.getElementById("sheetsLine");
 const patientsLine = document.getElementById("patientsLine");
+const webExcelInput = document.createElement("input");
+webExcelInput.type = "file";
+webExcelInput.accept = ".xlsx,.xls,.xlsm";
+webExcelInput.hidden = true;
+document.body.appendChild(webExcelInput);
 
 let hasPatientRecords = false;
 
-uploadBtn.addEventListener("click", async () => {
-  const path = await window.beabots?.selectExcelFile();
-  if (!path) return;
+async function handleWorkbookUpload(fileOrPath) {
+  if (!fileOrPath) return;
 
-  const filename = path.split(/[\\/]/).pop();
+  const isWebFile = fileOrPath instanceof File;
+  const path = isWebFile ? fileOrPath.name : fileOrPath;
+  const filename = isWebFile ? fileOrPath.name : path.split(/[\\/]/).pop();
   fileLabel.textContent = `📄 ${filename}`;
 
   clearLog();
@@ -388,18 +394,32 @@ uploadBtn.addEventListener("click", async () => {
   log("=========================================");
   log("");
   log(`Selected File:`);
-  log(path);
+  log(filename);
   log("");
 
-  const result = await fetchJSON("/api/cf2/upload", {
-    method: "POST",
-    body: JSON.stringify({
-      path,
-      claim_year: claimYearSelect.value,
-      claim_month: claimMonthSelect.value,
-      mode: currentMode,
-    }),
-  });
+  let result;
+  if (isWebFile) {
+    const formData = new FormData();
+    formData.append("file", fileOrPath);
+    formData.append("claim_year", claimYearSelect.value);
+    formData.append("claim_month", claimMonthSelect.value);
+    formData.append("mode", currentMode);
+    const res = await fetch(`${API_BASE}/api/cf2/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    result = await res.json();
+  } else {
+    result = await fetchJSON("/api/cf2/upload", {
+      method: "POST",
+      body: JSON.stringify({
+        path,
+        claim_year: claimYearSelect.value,
+        claim_month: claimMonthSelect.value,
+        mode: currentMode,
+      }),
+    });
+  }
 
   if (result.error) {
     log("");
@@ -459,12 +479,29 @@ uploadBtn.addEventListener("click", async () => {
 
   // Bring the window back to front, same as cf2_window.after(10, lift)/focus_force
   window.beabots?.focusSelf?.();
+}
+
+uploadBtn.addEventListener("click", async () => {
+  if (window.beabots?.selectExcelFile) {
+    await handleWorkbookUpload(await window.beabots.selectExcelFile());
+    return;
+  }
+  webExcelInput.value = "";
+  webExcelInput.click();
+});
+
+webExcelInput.addEventListener("change", async () => {
+  await handleWorkbookUpload(webExcelInput.files?.[0]);
 });
 
 // ---------------------------------------------------------------------------
 // Download Excel Template
 // ---------------------------------------------------------------------------
 document.getElementById("downloadTemplateLink").addEventListener("click", async () => {
+  if (!window.beabots?.saveExcelTemplate) {
+    window.location.href = `${API_BASE}/api/cf2/download-template?mode=${encodeURIComponent(currentMode)}`;
+    return;
+  }
   const result = await window.beabots?.saveExcelTemplate(currentMode);
   if (!result) return;
   if (result.saved) {

@@ -4,7 +4,40 @@
  * place instead of copy-pasted per window.
  */
 
-const API_BASE = (window.beabots && window.beabots.apiBase) || "http://127.0.0.1:5417";
+if (!window.beabots) {
+  window.beabots = {
+    apiBase: window.location.origin,
+    minimize: () => {},
+    maximize: () => {},
+    close: () => { window.location.href = "/dashboard.html"; },
+    goHome: () => { window.location.href = "/dashboard.html"; },
+    goToDashboard: () => { window.location.href = "/dashboard.html"; },
+    showWorkspaceHome: () => { window.location.href = "/dashboard.html"; },
+    openCf2Window: () => { window.location.href = "/cf2.html"; },
+    openUploadSoaWindow: () => { window.location.href = "/upload-soa.html"; },
+    openCf4Window: () => { window.location.href = "/cf4.html"; },
+    openSettingsWindow: () => { window.location.href = "/settings.html"; },
+    openAboutWindow: () => { window.location.href = "/about.html"; },
+    logout: () => { window.location.href = "/"; },
+    setWorkspaceSidebarWidth: () => {},
+    focusSelf: () => window.focus(),
+    onDashboardEnter: () => {},
+    onWorkspaceActive: () => {},
+    onServerLog: () => {},
+    onUpdateProgress: () => {},
+    getVersion: async () => "web",
+    checkForUpdates: async () => ({ version: "web" }),
+    getSettings: async () => fetchJSON("/api/settings"),
+    downloadUpdate: async () => ({ ok: false, error: "Updates are managed by the hosted deployment." }),
+    installUpdate: async () => false,
+    releaseForceLock: () => {},
+    getTheme: async () => localStorage.getItem("beabotsTheme") || "dark",
+    setTheme: async (theme) => localStorage.setItem("beabotsTheme", theme),
+    onThemeChanged: () => {},
+  };
+}
+
+const API_BASE = window.beabots.apiBase || window.location.origin;
 
 async function fetchJSON(path, options) {
   const res = await fetch(`${API_BASE}${path}`, {
