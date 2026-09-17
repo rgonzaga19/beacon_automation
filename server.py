@@ -1,26 +1,14 @@
 """
-Local backend server for the Beabots Electron front end.
+Flask and Socket.IO server for the Beabots web application.
 
-This wraps the EXISTING business/automation logic — license.py,
-login.py's load_login_settings/save_login_settings, cf2_automation.py, cf2_mapper.py,
-soa_automation.py, patient_record.py, date_parser.py, logger.py — behind a
-small HTTP + WebSocket API. No automation/business logic was changed here;
-only *how results reach the UI* changed: structured JSON responses and
-socket events instead of directly writing into tkinter widgets.
-
-Native OS things (file-open dialogs, folder pickers, save-as dialogs) are
-NOT handled here — those stay in Electron's main process, which already
-has better native dialog support than a browser does. This server only
-ever receives paths that Electron has already resolved.
+It serves browser pages, app accounts, per-user Beacon credentials,
+workbook uploads, automation API endpoints, and live progress events.
 
 Run directly for local testing:
     python server.py
-Electron's main process spawns this exact script (or its PyInstaller-built
-exe) as a child process on app launch.
 """
 
 import os
-import sys
 import threading
 import tempfile
 import uuid
@@ -68,8 +56,7 @@ db.init_app(app)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
-# Mirrors the old module-level globals (selected_file / patient_records)
-# that used to live in cf2_window.py.
+# In-memory fallback state for parsed workbook data and active automation runs.
 _state = {
     "selected_file": None,
     "patient_records": [],
@@ -244,9 +231,8 @@ def _load_cf4_settings():
 
 
 # ---------------------------------------------------------------------------
-# Logging bridge — every automation run still calls logger.<level>(...)
-# exactly as before (inside cf2_automation.py / soa_automation.py). We just
-# point the callback at a socket emit instead of a tkinter Text widget.
+# Logging bridge. Automation modules still call logger.<level>(...); the web
+# server emits those messages to the current user's Socket.IO room.
 # ---------------------------------------------------------------------------
 def _emit_log(message, level=None):
     emit_to_current_room("log", {"message": message, "level": level or "INFO"})
@@ -366,12 +352,7 @@ def require_beacon_connection():
 
 
 def resource_path(relative_path):
-    """Same PyInstaller-aware path resolution as cf2_window.py's version."""
-    try:
-        base_path = sys._MEIPASS
-    except AttributeError:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
+    return str(BASE_DIR / relative_path)
 
 
 def _save_upload(file_storage, subdir, allowed_extensions):
@@ -501,10 +482,8 @@ def auth_logout():
 
 
 # ---------------------------------------------------------------------------
-# License & Settings
-# (open_settings()'s tkinter dialog is gone — the renderer calls these
-# instead. The show/hide-password and view-access-key toggles are pure UI
-# state and don't need a backend call at all.)
+# Settings
+# Auth tokens are invalidated when Beacon credentials or server change.
 # ---------------------------------------------------------------------------
 @app.route("/api/settings", methods=["GET"])
 def get_settings():
@@ -646,9 +625,7 @@ def post_cf4_settings():
 
 # ---------------------------------------------------------------------------
 # CF2 workbook analysis
-# Same computation as cf2_window.py's analyze_workbook() (parse_dates,
-# build_cf2_data, member-pin handling) — only the *output* changed, from
-# Text-widget inserts to a structured JSON payload.
+# Analyze the uploaded workbook and return a structured JSON payload.
 # ---------------------------------------------------------------------------
 def _analyze_workbook(workbook, claim_year, claim_month=None, mode="new_draft"):
     sheet = workbook["Sheet1"]
@@ -762,8 +739,8 @@ def cf2_upload():
     """
     Body: {"path": "<file path>", "claim_year": 2026, "claim_month": "June",
            "mode": "new_draft" | "existing_draft"}
-    Electron's native file-open dialog already resolved the path — this
-    endpoint never receives raw file bytes, just the path on disk.
+    Browser clients upload the workbook as multipart form data. The path
+    fallback is kept for trusted local deployments.
     """
     if request.content_type and request.content_type.startswith("multipart/form-data"):
         data = request.form
@@ -815,10 +792,7 @@ def cf2_upload():
 def cf2_download_template():
     """
     Returns the template bytes for the requested mode (?mode=new_draft,
-    the default, or ?mode=existing_draft). Electron's renderer triggers
-    this, then the main process's native save-as dialog decides where to
-    write it — same end result as the old shutil.copyfile() +
-    asksaveasfilename() flow.
+    the default, or ?mode=existing_draft).
     """
     mode = request.args.get("mode") if request.args.get("mode") in ("new_draft", "existing_draft") else "new_draft"
 
@@ -976,9 +950,8 @@ def cf2_stop():
 
 
 # ---------------------------------------------------------------------------
-# SOA upload automation — identical to upload_soa_window.py's
-# start_soa_automation()/run_automation() worker, minus the tkinter widget
-# disabling (the renderer handles disabling its own controls).
+# SOA upload automation worker. The browser handles its own controls while
+# this runs.
 # ---------------------------------------------------------------------------
 def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop_event):
     soa_automation = None

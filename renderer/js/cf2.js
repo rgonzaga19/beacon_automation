@@ -1,8 +1,6 @@
 /*
- * CF2 window renderer logic.
- * Depends on common.js (fetchJSON, showModal, showError, API_BASE) being
- * loaded first, and on window.beabots (see preload.js) for window chrome,
- * the Excel file dialog, and the template save-as dialog.
+ * CF2 browser UI logic.
+ * Depends on common.js for shared fetch, modal, clipboard, and navigation helpers.
  */
 
 const MONTH_NAMES = [
@@ -11,17 +9,12 @@ const MONTH_NAMES = [
 ];
 
 // ---------------------------------------------------------------------------
-// Title bar
+// Browser fallback controls
 // ---------------------------------------------------------------------------
 document.getElementById("btnMinimize").addEventListener("click", () => window.beabots?.minimize());
 document.getElementById("btnMaximize").addEventListener("click", () => window.beabots?.maximize?.());
 document.getElementById("btnClose").addEventListener("click", () => window.beabots?.close());
 
-// ---------------------------------------------------------------------------
-// License check — same as open_cf2_window()'s check before the Toplevel
-// was ever created. If invalid, show the error and close this window.
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
 // Claim Year / Claim Month selects (years 2024-2035, defaults to now)
 // ---------------------------------------------------------------------------
 const claimYearSelect = document.getElementById("claimYear");
@@ -81,8 +74,7 @@ modeNewDraftBtn.addEventListener("click", () => setMode("new_draft"));
 modeExistingDraftBtn.addEventListener("click", () => setMode("existing_draft"));
 
 // ---------------------------------------------------------------------------
-// Log box (plain single-color box — cf2_window.py's txt_log has no
-// per-level color tags, unlike the dashboard/Upload SOA logs)
+// Log panels
 // ---------------------------------------------------------------------------
 const summaryLogBox = document.getElementById("summaryLogPanel");
 const detailsLogBox = document.getElementById("detailsLogPanel");
@@ -340,14 +332,7 @@ document.querySelectorAll(".log-tab").forEach((tab) => {
 });
 
 // ---------------------------------------------------------------------------
-// Raw server/automation stdout+stderr (see preload.js's onServerLog /
-// main.js's makeLineForwarder). This is separate from — and a superset
-// of — the socket.io "log" events further below: socket.io only carries
-// whatever server.py deliberately emits, while this carries every raw
-// print() / traceback from the Python process, including the WARNING
-// lines cf2_automation.py prints when an API-first step falls back to
-// UI automation (previously visible only in Electron's own,
-// invisible-once-packaged main-process console).
+// Optional raw server log hook for compatibility with older shells.
 // ---------------------------------------------------------------------------
 window.beabots?.onServerLog?.(({ level, line }) => {
   if (!cf2RunActive) return;
@@ -466,7 +451,6 @@ async function handleWorkbookUpload(fileOrPath) {
   patientsLine.textContent = `Patients Found : ${result.patient_count}`;
   hasPatientRecords = result.patient_count > 0;
 
-  // Bring the window back to front, same as cf2_window.after(10, lift)/focus_force
   window.beabots?.focusSelf?.();
 }
 
@@ -501,7 +485,7 @@ document.getElementById("downloadTemplateLink").addEventListener("click", async 
 });
 
 // ---------------------------------------------------------------------------
-// User Guide modal — verbatim steps from cf2_window.py's guide_steps list
+// User Guide modal
 // ---------------------------------------------------------------------------
 const GUIDE_STEP_3 = {
   new_draft:

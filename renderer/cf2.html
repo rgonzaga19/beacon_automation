@@ -372,10 +372,6 @@
   .log-tab.active { color:var(--bg-dark); background:var(--accent); }
   .log-panel { flex:1; min-height:0; display:none; }
   .log-panel.active { display:block; }
-  /* Raw stdout/stderr forwarded from main.js (see cf2.js's onServerLog) —
-     level="ERROR" lines get a distinct color so a failure/WARNING print
-     from cf2_automation.py actually stands out in the log instead of
-     blending into the plain INFO stream. */
   .log-line.ERROR { color: var(--error, #ff6b6b); }
   .batch-board {
     height: 100%;

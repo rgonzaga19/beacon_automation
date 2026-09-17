@@ -15,8 +15,7 @@ from draft_title import build_draft_title
 from logger import logger
 
 # Guard against print() crashing an otherwise-successful patient run.
-# When this runs under a packaged .exe, stdout/stderr can be attached to a
-# legacy Windows console codepage (cp1252, cp437, etc.) instead of UTF-8.
+# Some Windows terminals use legacy codepages instead of UTF-8.
 # Any print() containing a character outside that codepage (e.g. "✓", "—")
 # raises UnicodeEncodeError ('charmap' codec can't encode character ...),
 # which — since it's unhandled at the point of the print() call itself —
@@ -33,11 +32,9 @@ for _stream in (sys.stdout, sys.stderr):
 def print(message="", *args, **kwargs):
     """Send CF2 progress through the application's live logging channel.
 
-    CF2 historically used ``print`` for every step.  A piped child-process
-    stdout stream can be buffered or unavailable in packaged Electron builds,
-    leaving the Step-by-Step Log empty.  Keeping the existing call sites but
-    routing them through ``logger`` makes each line reach both the dated log
-    file and server.py's Socket.IO callback immediately.
+    CF2 historically used ``print`` for every step. Keeping the existing call
+    sites but routing them through ``logger`` sends each line to the log file
+    and server.py's Socket.IO callback immediately.
 
     The optional arguments are accepted for compatibility with the built-in;
     current CF2 call sites only pass a single message.
@@ -60,16 +57,7 @@ def print(message="", *args, **kwargs):
 
 
 def resource_path(relative_path):
-    """
-    Returns the correct path both for development
-    and for the packaged PyInstaller executable.
-    """
-    try:
-        base_path = sys._MEIPASS
-    except AttributeError:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 
 CF2_TEMPLATE_PATH = resource_path(

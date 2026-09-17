@@ -129,35 +129,14 @@ body::before {
   background: var(--bg-dark);
 }
 
-/* The edge/elevation is drawn on a separate absolutely-positioned
-   overlay rather than directly on .app-window, so a solid box-shadow
-   isn't sharing paint duties with anything else that clips children.
-
-   Fix for a resize bug (only the top/left edge of the border was
-   visible until the window was manually resized): .app-window's width
-   used to be implicit (auto), unlike its explicit `height: 100vh`, and
-   the overlay sat flush at `inset: 0`. On an Electron frameless-window
-   resize, the right/bottom edges — which depend on the measured
-   width/height — could repaint a sub-pixel late/short relative to the
-   top/left edges (which don't), and `overflow: hidden` clipped the
-   difference away. Giving .app-window an explicit width, pulling the
-   overlay in by 1px (`inset: 1px`), and forcing it onto its own
-   compositor layer with `will-change: box-shadow` gives the repaint a
-   1px buffer and keeps it in sync with .app-window's size. */
 .app-window::after {
   display: none;
 }
 
-/* Suppresses the edge/elevation overlay for windows that shouldn't show
-   it (e.g. the main dashboard, which stays visually flush with the
-   desktop). Use this class instead of an inline `style="border: none"`
-   — the edge is drawn with box-shadow, not the border property, so a
-   plain `border: none` override has no effect on it. */
 .app-window.no-glow::after {
   box-shadow: none;
 }
 
-/* ---------- Custom title bar (replaces the native OS frame) ---------- */
 .titlebar {
   display: none;
 }
@@ -481,19 +460,3 @@ textarea:focus, input:focus {
   gap: 8px;
 }
 
-/* ---------- Update dialog ---------- */
-
-.update-info {
-  white-space: pre-wrap;
-  line-height: 1.6;
-  margin-bottom: 18px;
-}
-
-.update-notes {
-  margin-top: 10px;
-  padding-left: 18px;
-}
-
-.update-notes li {
-  margin-bottom: 4px;
-}

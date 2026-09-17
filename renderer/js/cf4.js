@@ -21,10 +21,6 @@
  * general_survey_awake_alert, course_in_ward_order) stay snake_case,
  * since they're settings-only concepts, not 1:1 with a single checkbox
  * name.
- *
- * Assumes the same `window.beabots` preload bridge as dashboard.js
- * (minimize/maximize/close window chrome) — see dashboard.js's header
- * comment for what that bridge needs to expose.
  */
 
 // API_BASE, fetchJSON, showModal, showError all live in common.js (loaded before this file).

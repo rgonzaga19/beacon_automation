@@ -1,15 +1,11 @@
 /*
- * Shared light/dark theme handling for every Beabots window
- * (dashboard, CF2, Upload SOA, Settings, About).
+ * Shared light/dark theme handling for Beabots pages.
  *
  * Load this <script> first in <head>, before theme.css's stylesheet
  * link if possible, so data-theme is set on <html> before first paint.
  *
- * Depends on nothing else. If window.beabots exposes a setTheme()
- * method (via preload.js/main.js) it will be called too, so the main
- * process can broadcast the change to any other open windows — but
- * this file works fine without it, using localStorage + the
- * `storage` event as the sync mechanism between windows.
+ * Depends on nothing else and uses localStorage plus the `storage` event
+ * as the sync mechanism between browser tabs.
  */
 
 (function () {
@@ -88,13 +84,10 @@
     if (e.key === STORAGE_KEY && e.newValue) applyTheme(e.newValue);
   });
 
-  // If main.js broadcasts a theme change via preload (optional; only
-  // fires if window.beabots.onThemeChanged exists).
+  // Optional compatibility hook for hosts that broadcast theme changes.
   window.beabots?.onThemeChanged?.((theme) => applyTheme(theme));
 
-  // Optional richer control on the Settings page: a DARK/LIGHT toggle-track,
-  // built the same way as the existing S2/S4 server toggle. Only wires up
-  // if that markup exists on the current page.
+  // Optional Settings-page DARK/LIGHT toggle-track.
   function updateAppearanceRow(theme) {
     const track = document.getElementById("appearanceToggleTrack");
     if (!track) return;

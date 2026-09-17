@@ -1,23 +1,17 @@
 /*
- * Upload SOA window renderer logic.
- * Depends on common.js (fetchJSON, showModal, API_BASE) and window.beabots
- * (preload.js) for window chrome, folder dialog, and defaultSoaFolder.
+ * Upload SOA browser UI logic.
+ * Depends on common.js for shared fetch, modal, and navigation helpers.
  */
 
 // ---------------------------------------------------------------------------
-// Title bar
+// Browser fallback controls
 // ---------------------------------------------------------------------------
 document.getElementById("btnMinimize").addEventListener("click", () => window.beabots?.minimize());
 document.getElementById("btnMaximize").addEventListener("click", () => window.beabots?.maximize());
 document.getElementById("btnClose").addEventListener("click", () => window.beabots?.close());
 
 // ---------------------------------------------------------------------------
-// License check — same as open_upload_soa_window()'s check before the
-// Toplevel was ever created.
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// SOA folder — last used folder remembered in settings, same as
-// soa_folder_var = tk.StringVar(value=settings.get("soa_folder", DEFAULT_SOA_FOLDER))
+// SOA folder
 // ---------------------------------------------------------------------------
 const soaFolderInput = document.getElementById("soaFolderInput");
 const browseBtn = document.getElementById("browseBtn");

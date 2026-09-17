@@ -115,35 +115,16 @@ document.getElementById("btnAbout").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Initial state and version check
+// Initial state
 // ---------------------------------------------------------------------------
 const appVersionLabel = document.getElementById("appVersion");
-const updateStatusLabel = document.getElementById("updateStatus");
 
-async function checkForUpdates() {
+async function loadVersion() {
   const currentVersion = await window.beabots.getVersion();
   appVersionLabel.textContent = `v${currentVersion}`;
-
-  updateStatusLabel.textContent = "Checking...";
-  updateStatusLabel.className = "version checking";
-
-  try {
-    const latest = await window.beabots.checkForUpdates();
-
-    if (latest.version !== currentVersion) {
-      updateStatusLabel.textContent = "⬇ Update Available";
-      updateStatusLabel.className = "version update-available";
-    } else {
-      updateStatusLabel.textContent = "✓ Up To Date";
-      updateStatusLabel.className = "version up-to-date";
-    }
-  } catch {
-    updateStatusLabel.textContent = "⚠ Offline";
-    updateStatusLabel.className = "version offline";
-  }
 }
 
-checkForUpdates();
+loadVersion();
 
 const initialWorkspace = window.location.hash.replace("#", "");
 if (workspaceRoutes[initialWorkspace]) {

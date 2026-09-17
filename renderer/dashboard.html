@@ -26,9 +26,6 @@
   .brand-name { display:block; color:var(--text-pri); font:800 14px var(--font-ui); letter-spacing:.7px; }
   .brand-meta { display:flex; align-items:center; gap:5px; margin-top:3px; white-space:nowrap; }
   .brand-meta .version { color:var(--text-sec); font-size:9.5px; letter-spacing:.2px; }
-  .brand-meta .version.update-available { color:var(--warning); }
-  .brand-meta .version.up-to-date { color:var(--success); }
-  .brand-meta .version.offline { color:var(--error); }
   .sidebar-status { display:flex; align-items:center; gap:7px; margin:11px 2px 0; color:var(--text-sec); font-size:9px; font-weight:700; letter-spacing:.6px; white-space:nowrap; transition:margin 180ms ease; }
   .sidebar-topbar .sidebar-status { margin:4px 0 0; }
   .sidebar-column.collapsed .brand-copy, .sidebar-column.collapsed .status-label { opacity:0; pointer-events:none; }
@@ -93,7 +90,7 @@
                 <span class="brand-icon" aria-hidden="true"><img src="../bot.ico" alt=""></span>
                 <div class="brand-copy">
                   <span class="brand-name">BEABOTS</span>
-                  <div class="brand-meta"><span class="version" id="appVersion">v...</span><span class="version" id="updateStatus"></span></div>
+                  <div class="brand-meta"><span class="version" id="appVersion">v...</span></div>
                 </div>
               </div>
               <div class="sidebar-status"><span class="status-dot" id="statusDot"></span><span class="status-label" id="statusLabel">READY</span></div>
