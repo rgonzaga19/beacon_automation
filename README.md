@@ -1,5 +1,26 @@
 # Beabots
 
+## Web deployment
+
+The Flask application can run as a hosted web service with `python server.py`.
+For production-style deployments, use a persistent database and stable secrets:
+
+```text
+DATABASE_URL=postgresql://...
+SECRET_KEY=<long random secret>
+FIELD_ENCRYPTION_KEY=<long random secret or Fernet key>
+BEABOTS_UPLOAD_DIR=/tmp/beabots_uploads
+```
+
+`DATABASE_URL` stores app users, per-user Beacon credentials, and validation
+state. `SECRET_KEY` signs browser sessions. `FIELD_ENCRYPTION_KEY` encrypts
+saved Beacon passwords. Do not rotate either secret unless you intentionally
+want to invalidate sessions or re-enter saved Beacon credentials.
+
+The included `render.yaml` provisions a web service plus Postgres database and
+generates the required secrets. Uploaded Excel files are kept in `/tmp` because
+they are per-run inputs, not long-term records.
+
 Beabots is a Windows desktop application for API-driven automation and automated encoding of PhilHealth Beacon claims. It combines an Electron user interface with a local Python service that handles authentication, licensing, Excel processing, CF2/CF4 workflows, SOA uploads, reports, and live automation logs.
 
 ## What the application contains

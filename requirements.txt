@@ -20,6 +20,7 @@ MarkupSafe==3.0.3
 openpyxl==3.1.5
 packaging==26.2
 pefile==2024.8.26
+psycopg2-binary==2.9.10
 pyinstaller==6.21.0
 pyinstaller-hooks-contrib==2026.6
 python-engineio==4.13.3

@@ -10,7 +10,14 @@ from app_config import AppConfig
 def _fernet_key():
     configured = os.getenv("FIELD_ENCRYPTION_KEY")
     if configured:
-        return configured.encode("utf-8")
+        try:
+            decoded = base64.urlsafe_b64decode(configured.encode("utf-8"))
+            if len(decoded) == 32:
+                return configured.encode("utf-8")
+        except Exception:
+            pass
+        digest = hashlib.sha256(configured.encode("utf-8")).digest()
+        return base64.urlsafe_b64encode(digest)
 
     digest = hashlib.sha256(AppConfig.SECRET_KEY.encode("utf-8")).digest()
     return base64.urlsafe_b64encode(digest)
