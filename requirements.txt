@@ -6,8 +6,10 @@ certifi==2026.6.17
 charset-normalizer==3.4.7
 click==8.4.2
 colorama==0.4.6
+cryptography==46.0.3
 et_xmlfile==2.0.0
 Flask==3.1.2
+Flask-SQLAlchemy==3.1.1
 flask-cors==6.0.1
 Flask-SocketIO==5.6.0
 h11==0.16.0

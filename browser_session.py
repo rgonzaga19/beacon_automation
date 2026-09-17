@@ -7,10 +7,12 @@ performed directly against Beacon's OAuth2 token endpoint.
 
 import sys
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 import requests
 
-from login import load_login_settings
+from login import load_login_settings as _load_legacy_login_settings
 from logger import logger
 
 
@@ -19,20 +21,50 @@ BEACON_URLS = {
     "s4": "https://beacon-s4.bizbox.ph/",
 }
 
-_auth_token = None
+_auth_context = ContextVar("beabots_auth_context", default=None)
+_auth_tokens = {}
 
 
-def _get_beacon_url():
+def load_login_settings():
+    """Return per-job Beacon settings when present, else legacy settings."""
+    context = _auth_context.get()
+    if context is not None:
+        return dict(context.get("settings", {}))
+    return _load_legacy_login_settings()
+
+
+def _context_key():
+    context = _auth_context.get()
+    if context is None:
+        return "legacy"
+    return context.get("key") or "legacy"
+
+
+@contextmanager
+def use_auth_context(settings, key=None):
+    """Bind Beacon credentials to the current thread/context."""
+    token = _auth_context.set({
+        "key": key or f"{settings.get('server', 's4')}:{settings.get('username', '')}",
+        "settings": dict(settings),
+    })
+    try:
+        yield
+    finally:
+        _auth_context.reset(token)
+
+
+def _get_beacon_url(server=None):
     """Return the Beacon URL selected in the user's settings."""
-    settings = load_login_settings()
-    server = settings.get("server", "s4")
+    if server is None:
+        settings = load_login_settings()
+        server = settings.get("server", "s4")
     return BEACON_URLS.get(server, BEACON_URLS["s4"])
 
 
-def login_via_api(username, password):
+def login_via_api(username, password, server=None):
     """Authenticate against Beacon's OAuth2 password-token endpoint."""
     response = requests.post(
-        _get_beacon_url().rstrip("/") + "/token",
+        _get_beacon_url(server).rstrip("/") + "/token",
         data={
             "grant_type": "password",
             "username": username,
@@ -47,8 +79,7 @@ def login_via_api(username, password):
 
 def _store_auth_token(token_data):
     """Cache an API token and the user ID returned with it."""
-    global _auth_token
-    _auth_token = {
+    _auth_tokens[_context_key()] = {
         "access_token": token_data.get("access_token"),
         "refresh_token": token_data.get("refresh_token"),
         "token_type": token_data.get("token_type", "bearer"),
@@ -60,8 +91,7 @@ def _store_auth_token(token_data):
 
 def invalidate_auth_token():
     """Discard cached authentication after credentials or server change."""
-    global _auth_token
-    _auth_token = None
+    _auth_tokens.pop(_context_key(), None)
     for module_name, cache_names in {
         "cf2_api": ("_client_id_cache",),
         "beacon_api": ("_client_id_cache",),
@@ -72,25 +102,33 @@ def invalidate_auth_token():
             continue
         for cache_name in cache_names:
             if hasattr(module, cache_name):
-                setattr(module, cache_name, None)
+                cache = getattr(module, cache_name)
+                if isinstance(cache, dict):
+                    cache.pop(_context_key(), None)
+                    for key in list(cache):
+                        if isinstance(key, tuple) and key and key[0] == _context_key():
+                            cache.pop(key, None)
+                else:
+                    setattr(module, cache_name, None)
 
 
 def _ensure_auth_token(username=None, password=None):
     """Return a valid cached token or obtain a fresh one from Beacon."""
-    if _auth_token is not None:
-        issued_at = _auth_token.get("issued_at", 0)
-        expires_in = _auth_token.get("expires_in") or 0
+    auth_token = _auth_tokens.get(_context_key())
+    if auth_token is not None:
+        issued_at = auth_token.get("issued_at", 0)
+        expires_in = auth_token.get("expires_in") or 0
         if time.time() < issued_at + max(expires_in - 60, 0):
-            return _auth_token.get("access_token")
+            return auth_token.get("access_token")
 
     if username is None or password is None:
         settings = load_login_settings()
         username = settings.get("username", "")
         password = settings.get("password", "")
 
-    token_data = login_via_api(username, password)
+    token_data = login_via_api(username, password, server=load_login_settings().get("server", "s4"))
     _store_auth_token(token_data)
-    return _auth_token.get("access_token")
+    return _auth_tokens[_context_key()].get("access_token")
 
 
 def get_auth_token():
@@ -109,4 +147,5 @@ def get_user_id():
     except Exception as exc:
         logger.warning(f"get_user_id(): could not obtain a token ({exc}).")
         return None
-    return _auth_token.get("user_id") if _auth_token else None
+    auth_token = _auth_tokens.get(_context_key())
+    return auth_token.get("user_id") if auth_token else None

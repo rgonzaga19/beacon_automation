@@ -106,11 +106,11 @@
       <section class="form-panel">
         <form class="login-card" id="loginForm">
           <h1>Welcome back</h1>
-          <p class="intro">Enter your Beacon credentials to continue.</p>
+          <p class="intro">Sign in to your Beabots account. Beacon credentials are connected separately in settings.</p>
 
           <div class="login-field">
-            <label for="username">USERNAME</label>
-            <div class="input-shell"><span class="input-icon">@</span><input type="text" id="username" autocomplete="username" placeholder="Enter your username" /></div>
+            <label for="username">EMAIL</label>
+            <div class="input-shell"><span class="input-icon">@</span><input type="email" id="username" autocomplete="email" placeholder="you@example.com" /></div>
           </div>
 
           <div class="login-field">
@@ -118,8 +118,9 @@
             <div class="input-shell"><span class="input-icon">●</span><input type="password" id="password" autocomplete="current-password" placeholder="Enter your password" /><button class="password-toggle" id="showPassword" type="button">Show</button></div>
           </div>
 
-          <div class="login-meta"><span class="session-note">A new login refreshes the active Beacon session.</span></div>
+          <div class="login-meta"><span class="session-note" id="sessionNote">Use your Beabots account. This is not your Beacon login.</span></div>
           <button class="solid-btn" id="loginBtn" type="submit">LOG IN</button>
+          <button class="cyber-btn" id="toggleAuthMode" type="button" style="width:100%; height:38px; margin-top:10px;">Create Account</button>
           <div class="login-status" id="loginStatus" role="status" aria-live="polite"></div>
         </form>
       </section>

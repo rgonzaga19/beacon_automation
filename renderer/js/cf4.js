@@ -748,13 +748,6 @@ startBtn.addEventListener("click", async () => {
     return;
   }
 
-  // License check
-  const license = await fetchJSON("/api/license/validate", { method: "POST" });
-  if (!license.valid) {
-    showError(license.error && license.error.includes("license") ? "License Error" : "Access Denied", license.error || "Invalid or expired license.");
-    return;
-  }
-
   const transmittals = transmittalsInput.value
     .split("\n")
     .map((l) => l.trim())
@@ -784,6 +777,9 @@ startBtn.addEventListener("click", async () => {
 
   if (result.error) {
     writeLog(`ERROR: ${result.error}`, "ERROR");
+    if (result.requires_beacon) {
+      showBeaconRequired(result.error);
+    }
     cf4Running = false;
     cf4StopRequested = false;
     showReport();

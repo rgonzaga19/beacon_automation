@@ -375,7 +375,7 @@ def update_esoa_signatories(payload):
     )
 
 
-_client_id_cache = None
+_client_id_cache = {}
 
 
 def get_client_id():
@@ -389,10 +389,9 @@ def get_client_id():
     Cached in-process after the first successful call, since this is
     account-level and doesn't change mid-run.
     """
-    global _client_id_cache
-
-    if _client_id_cache is not None:
-        return _client_id_cache
+    cache_key = browser_session._context_key()
+    if cache_key in _client_id_cache:
+        return _client_id_cache[cache_key]
 
     user_id = browser_session.get_user_id()
     if not user_id:
@@ -404,8 +403,8 @@ def get_client_id():
     if not clients:
         raise Cf2ApiError(f"GetAllClientsByUserId returned no clients for userId={user_id}.")
 
-    _client_id_cache = clients[0]["id"]
-    return _client_id_cache
+    _client_id_cache[cache_key] = clients[0]["id"]
+    return _client_id_cache[cache_key]
 
 
 # ---------------------------------------------------------------------

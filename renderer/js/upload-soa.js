@@ -15,17 +15,6 @@ document.getElementById("btnClose").addEventListener("click", () => window.beabo
 // License check — same as open_upload_soa_window()'s check before the
 // Toplevel was ever created.
 // ---------------------------------------------------------------------------
-(async function checkLicense() {
-  const license = await fetchJSON("/api/license/validate", { method: "POST" });
-  if (!license.valid) {
-    showModal(
-      license.error && license.error.toLowerCase().includes("unable") ? "License Error" : "Access Denied",
-      license.error || "Invalid or expired license.",
-      { onOk: () => window.beabots?.close() }
-    );
-  }
-})();
-
 // ---------------------------------------------------------------------------
 // SOA folder — last used folder remembered in settings, same as
 // soa_folder_var = tk.StringVar(value=settings.get("soa_folder", DEFAULT_SOA_FOLDER))
@@ -364,7 +353,11 @@ automateBtn.addEventListener("click", async () => {
   }
 
   if (result.error) {
-    showModal("Error", result.error);
+    if (result.requires_beacon) {
+      showBeaconRequired(result.error);
+    } else {
+      showModal("Error", result.error);
+    }
     soaRunActive = false;
     soaStopRequested = false;
     soaSummary.running = false;

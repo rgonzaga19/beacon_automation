@@ -1,7 +1,4 @@
 const versionEl = document.getElementById("version");
-const ownerEl = document.getElementById("owner");
-const planEl = document.getElementById("plan");
-const expiresEl = document.getElementById("expires");
 
 const latestVersionEl = document.getElementById("latestVersion");
 const updateStatusEl = document.getElementById("updateStatus");
@@ -67,20 +64,6 @@ async function loadAbout() {
     // ----------------------------
     const version = await window.beabots.getVersion();
     versionEl.textContent = "Version " + version;
-
-    // ----------------------------
-    // License information
-    // ----------------------------
-    const settings = await window.beabots.getSettings();
-
-    ownerEl.textContent =
-        settings.license_owner || "Unknown";
-
-    planEl.textContent =
-        settings.license_plan || "Unknown";
-
-    expiresEl.textContent =
-        settings.license_expiry || "Unknown";
 
     // ----------------------------
     // Check for updates

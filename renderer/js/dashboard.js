@@ -4,6 +4,10 @@
 
 // API_BASE, fetchJSON, showModal, and showError all live in common.js (loaded before this file).
 
+if (window.parent && window.parent !== window) {
+  window.parent.location.href = window.location.href;
+}
+
 // ---------------------------------------------------------------------------
 // Title bar controls
 // ---------------------------------------------------------------------------
@@ -50,34 +54,64 @@ const workspaceButtons = {
   about: document.getElementById("btnAbout"),
 };
 
-window.beabots?.onWorkspaceActive((activeKey) => {
+const workspaceColumn = document.getElementById("workspaceColumn");
+const workspaceFrame = document.getElementById("workspaceFrame");
+const workspaceRoutes = {
+  cf2: "cf2.html",
+  uploadSoa: "upload-soa.html",
+  cf4: "cf4.html",
+  settings: "settings.html",
+  about: "about.html",
+};
+
+function setWorkspaceActive(activeKey) {
   Object.entries(workspaceButtons).forEach(([key, button]) => {
     button.classList.toggle("active", key === activeKey);
     button.setAttribute("aria-current", key === activeKey ? "page" : "false");
   });
-});
+}
+
+function showWorkspaceHome() {
+  workspaceColumn.classList.remove("workspace-active");
+  workspaceFrame.removeAttribute("src");
+  setWorkspaceActive(null);
+  history.replaceState(null, "", "dashboard.html");
+}
+
+function openWorkspace(activeKey) {
+  const route = workspaceRoutes[activeKey];
+  if (!route) return;
+  workspaceColumn.classList.add("workspace-active");
+  workspaceFrame.src = route;
+  setWorkspaceActive(activeKey);
+  history.replaceState(null, "", `dashboard.html#${activeKey}`);
+}
+
+window.openBeabotsWorkspace = openWorkspace;
+
+window.beabots?.onWorkspaceActive(setWorkspaceActive);
 
 document.getElementById("btnDashboardHome").addEventListener("click", () => {
-  window.beabots?.showWorkspaceHome();
+  showWorkspaceHome();
 });
 
 document.getElementById("btnCf2").addEventListener("click", () => {
-  window.beabots?.openCf2Window();
+  openWorkspace("cf2");
 });
 document.getElementById("btnUploadSoa").addEventListener("click", () => {
-  window.beabots?.openUploadSoaWindow();
+  openWorkspace("uploadSoa");
 });
 document.getElementById("btnCf4").addEventListener("click", () => {
-  window.beabots?.openCf4Window();
+  openWorkspace("cf4");
 });
 document.getElementById("btnSettings").addEventListener("click", () => {
-  window.beabots?.openSettingsWindow();
+  openWorkspace("settings");
 });
 document.getElementById("btnLogout").addEventListener("click", () => {
   window.beabots?.logout();
 });
 document.getElementById("btnAbout").addEventListener("click", () => {
-  window.beabots?.openAboutWindow();
+  openWorkspace("about");
 });
 
 // ---------------------------------------------------------------------------
@@ -110,3 +144,8 @@ async function checkForUpdates() {
 }
 
 checkForUpdates();
+
+const initialWorkspace = window.location.hash.replace("#", "");
+if (workspaceRoutes[initialWorkspace]) {
+  openWorkspace(initialWorkspace);
+}

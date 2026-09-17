@@ -24,17 +24,24 @@ import sys
 import threading
 import tempfile
 import uuid
+from contextvars import ContextVar
 from pathlib import Path
 
-from flask import Flask, request, jsonify, send_file, send_from_directory
-from flask_socketio import SocketIO
+from functools import wraps
+
+from flask import Flask, request, jsonify, send_file, send_from_directory, session
+from flask_socketio import SocketIO, join_room
 from flask_cors import CORS
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 from openpyxl import load_workbook
 
+from app_config import AppConfig
+from database import db
+import models  # noqa: F401 - imported so SQLAlchemy registers the tables
+from models import User, UserSetting, utc_now
 import browser_session
-from license import validate_license, LicenseError
 from login import load_login_settings, save_login_settings
 from logger import logger
 from patient_record import PatientRecord
@@ -45,6 +52,7 @@ from cf2_automation import CF2Automation
 from soa_automation import SOAAutomation
 from beacon import run as beacon_run
 from reports import report
+from security import decrypt_field, encrypt_field
 
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = Path(
@@ -54,7 +62,9 @@ UPLOAD_DIR = Path(
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__, static_folder=str(BASE_DIR / "renderer"), static_url_path="")
+app.config.from_object(AppConfig)
 app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("BEABOTS_MAX_UPLOAD_MB", "100")) * 1024 * 1024
+db.init_app(app)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
@@ -69,6 +79,12 @@ _state = {
     # that already exists. See cf2_automation.py's CF2Automation.mode.
     "cf2_mode": "new_draft",
 }
+
+_emit_room = ContextVar("beabots_emit_room", default=None)
+_cf2_states = {}
+_cf2_runs = {}
+_soa_runs = {}
+_beacon_runs = {}
 
 MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
@@ -233,10 +249,120 @@ def _load_cf4_settings():
 # point the callback at a socket emit instead of a tkinter Text widget.
 # ---------------------------------------------------------------------------
 def _emit_log(message, level=None):
-    socketio.emit("log", {"message": message, "level": level or "INFO"})
+    emit_to_current_room("log", {"message": message, "level": level or "INFO"})
 
 
 logger.set_callback(_emit_log)
+
+
+def user_room(user_id):
+    return f"user:{user_id}"
+
+
+def emit_to_current_room(event, payload):
+    room = _emit_room.get()
+    if room:
+        socketio.emit(event, payload, room=room)
+    else:
+        socketio.emit(event, payload)
+
+
+@socketio.on("connect")
+def socket_connected():
+    user_id = session.get("user_id")
+    if user_id:
+        join_room(user_room(user_id))
+
+
+def init_database():
+    with app.app_context():
+        db.create_all()
+
+
+def current_user():
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+    return db.session.get(User, user_id)
+
+
+def user_payload(user):
+    return {
+        "id": user.id,
+        "email": user.email,
+        "display_name": user.display_name,
+        "is_admin": user.is_admin,
+    }
+
+
+def login_required(handler):
+    @wraps(handler)
+    def wrapper(*args, **kwargs):
+        user = current_user()
+        if not user or not user.is_active:
+            return jsonify({"error": "Authentication required."}), 401
+        return handler(*args, **kwargs)
+
+    return wrapper
+
+
+def get_or_create_user_settings(user):
+    settings = user.settings
+    if settings is None:
+        settings = UserSetting(user_id=user.id)
+        db.session.add(settings)
+        db.session.commit()
+    return settings
+
+
+def user_settings_payload(settings, include_secret_placeholders=True):
+    payload = {
+        "username": settings.beacon_username or "",
+        "password": "********" if include_secret_placeholders and settings.beacon_password_encrypted else "",
+        "server": settings.server or "s4",
+        "soa_folder": settings.soa_folder or "",
+        "cf4": settings.cf4_settings or {},
+        "beacon_connected": bool(settings.beacon_validated_at),
+        "beacon_user_id": settings.beacon_user_id,
+        "beacon_validated_at": settings.beacon_validated_at.isoformat() if settings.beacon_validated_at else None,
+    }
+    return payload
+
+
+def decrypt_user_settings(settings):
+    return {
+        "username": settings.beacon_username or "",
+        "password": decrypt_field(settings.beacon_password_encrypted),
+        "server": settings.server or "s4",
+        "soa_folder": settings.soa_folder or "",
+        "cf4": settings.cf4_settings or {},
+    }
+
+
+def sync_legacy_settings_for_user(user):
+    settings = get_or_create_user_settings(user)
+    decrypted = decrypt_user_settings(settings)
+    legacy = load_login_settings()
+    legacy.update(decrypted)
+    save_login_settings(legacy)
+    browser_session.invalidate_auth_token()
+    return decrypted
+
+
+def require_beacon_connection():
+    user = current_user()
+    if not user or not user.is_active:
+        return None, None, (jsonify({"error": "Authentication required."}), 401)
+
+    settings = get_or_create_user_settings(user)
+    decrypted = decrypt_user_settings(settings)
+    if not decrypted["username"] or not decrypted["password"] or not settings.beacon_validated_at:
+        return None, None, (jsonify({
+            "error": "Please connect and validate your Beacon account in Settings before running automation.",
+            "requires_beacon": True,
+        }), 403)
+
+    return user, decrypted, None
 
 
 def resource_path(relative_path):
@@ -286,11 +412,92 @@ def web_index():
     return send_from_directory(app.static_folder, "login.html")
 
 
+@app.route("/bot.ico")
+@app.route("/favicon.ico")
+def web_icon():
+    return send_file(BASE_DIR / "bot.ico", mimetype="image/x-icon")
+
+
+@app.route("/api/health", methods=["GET"])
+def health_check():
+    try:
+        with db.engine.connect() as connection:
+            connection.exec_driver_sql("SELECT 1")
+        database_ok = True
+    except Exception:
+        database_ok = False
+
+    return jsonify({
+        "ok": database_ok,
+        "database": "ok" if database_ok else "unavailable",
+    }), 200 if database_ok else 503
+
+
 @app.route("/<path:filename>")
 def web_static(filename):
     if filename == "bot.ico":
         return send_file(BASE_DIR / "bot.ico")
     return send_from_directory(app.static_folder, filename)
+
+
+@app.route("/api/auth/me", methods=["GET"])
+def auth_me():
+    user = current_user()
+    if not user or not user.is_active:
+        return jsonify({"authenticated": False})
+    return jsonify({"authenticated": True, "user": user_payload(user)})
+
+
+@app.route("/api/auth/register", methods=["POST"])
+def auth_register():
+    data = request.get_json(force=True)
+    email = str(data.get("email", "")).strip().lower()
+    password = str(data.get("password", ""))
+    display_name = str(data.get("display_name", "")).strip() or None
+
+    if not email or "@" not in email:
+        return jsonify({"error": "Please enter a valid email address."}), 400
+    if len(password) < 8:
+        return jsonify({"error": "Password must be at least 8 characters."}), 400
+    if User.query.filter_by(email=email).first():
+        return jsonify({"error": "An account with this email already exists."}), 409
+
+    user = User(
+        email=email,
+        password_hash=generate_password_hash(password),
+        display_name=display_name,
+    )
+    db.session.add(user)
+    db.session.flush()
+    db.session.add(UserSetting(user_id=user.id))
+    db.session.commit()
+
+    session.clear()
+    session["user_id"] = user.id
+    session.permanent = True
+    return jsonify({"user": user_payload(user)}), 201
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def auth_login():
+    data = request.get_json(force=True)
+    email = str(data.get("email", "")).strip().lower()
+    password = str(data.get("password", ""))
+    user = User.query.filter_by(email=email).first()
+
+    if not user or not user.is_active or not check_password_hash(user.password_hash, password):
+        return jsonify({"error": "Invalid email or password."}), 401
+
+    session.clear()
+    session["user_id"] = user.id
+    session.permanent = True
+    return jsonify({"user": user_payload(user)})
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def auth_logout():
+    session.clear()
+    return jsonify({"logged_out": True})
 
 
 # ---------------------------------------------------------------------------
@@ -301,6 +508,10 @@ def web_static(filename):
 # ---------------------------------------------------------------------------
 @app.route("/api/settings", methods=["GET"])
 def get_settings():
+    user = current_user()
+    if user:
+        settings = get_or_create_user_settings(user)
+        return jsonify(user_settings_payload(settings))
     return jsonify(load_login_settings())
 
 
@@ -312,6 +523,37 @@ def post_settings():
     or selected Beacon environment changes.
     """
     data = request.get_json(force=True)
+    user = current_user()
+    if user:
+        settings = get_or_create_user_settings(user)
+        auth_changed = False
+
+        if "username" in data:
+            username = str(data.get("username") or "").strip()
+            auth_changed = auth_changed or username != (settings.beacon_username or "")
+            settings.beacon_username = username
+
+        if "password" in data and data.get("password") != "********":
+            password = str(data.get("password") or "")
+            auth_changed = True
+            settings.beacon_password_encrypted = encrypt_field(password)
+
+        if "server" in data:
+            server = "s2" if data.get("server") == "s2" else "s4"
+            auth_changed = auth_changed or server != settings.server
+            settings.server = server
+
+        if "soa_folder" in data:
+            settings.soa_folder = str(data.get("soa_folder") or "").strip()
+
+        if auth_changed:
+            settings.beacon_user_id = None
+            settings.beacon_validated_at = None
+            browser_session.invalidate_auth_token()
+
+        db.session.commit()
+        return jsonify(user_settings_payload(settings))
+
     settings = load_login_settings()
     auth_changed = any(
         key in data and data[key] != settings.get(key)
@@ -324,10 +566,58 @@ def post_settings():
     return jsonify(settings)
 
 
+@app.route("/api/beacon/validate", methods=["POST"])
+@login_required
+def beacon_validate():
+    user = current_user()
+    settings = get_or_create_user_settings(user)
+    data = request.get_json(silent=True) or {}
+
+    username = str(data.get("username") or settings.beacon_username or "").strip()
+    password = str(data.get("password") or decrypt_field(settings.beacon_password_encrypted))
+    server = "s2" if (data.get("server") or settings.server) == "s2" else "s4"
+
+    if not username or not password:
+        return jsonify({
+            "valid": False,
+            "error": "Beacon username and password are required.",
+        }), 400
+
+    try:
+        token_data = browser_session.login_via_api(username, password, server=server)
+    except Exception as ex:
+        settings.beacon_user_id = None
+        settings.beacon_validated_at = None
+        db.session.commit()
+        return jsonify({
+            "valid": False,
+            "error": f"Beacon login failed. Please check the username, password, and server. ({ex})",
+        }), 401
+
+    settings.beacon_username = username
+    settings.beacon_password_encrypted = encrypt_field(password)
+    settings.server = server
+    settings.beacon_user_id = str(token_data.get("Id") or "")
+    settings.beacon_validated_at = utc_now()
+    db.session.commit()
+    sync_legacy_settings_for_user(user)
+
+    return jsonify({
+        "valid": True,
+        "beacon_connected": True,
+        "beacon_user_id": settings.beacon_user_id,
+        "beacon_validated_at": settings.beacon_validated_at.isoformat(),
+    })
+
+
 @app.route("/api/cf4/settings", methods=["GET"])
 def get_cf4_settings():
     """Backs the CF4 screen's initial load — same values beacon.py's
     Auto Encode CF4 step will use on the next run."""
+    user = current_user()
+    if user:
+        settings = get_or_create_user_settings(user)
+        return jsonify({**DEFAULT_CF4_SETTINGS, **(settings.cf4_settings or {})})
     return jsonify(_load_cf4_settings())
 
 
@@ -339,49 +629,19 @@ def post_cf4_settings():
     settings.json under "cf4" via the existing save_login_settings().
     """
     data = request.get_json(force=True)
+    user = current_user()
+    if user:
+        settings = get_or_create_user_settings(user)
+        cf4 = {**DEFAULT_CF4_SETTINGS, **(settings.cf4_settings or {}), **data}
+        settings.cf4_settings = cf4
+        db.session.commit()
+        return jsonify(cf4)
+
     settings = load_login_settings()
     cf4 = {**DEFAULT_CF4_SETTINGS, **settings.get("cf4", {}), **data}
     settings["cf4"] = cf4
     save_login_settings(settings)
     return jsonify(cf4)
-
-
-@app.route("/api/license/validate", methods=["POST"])
-def license_validate():
-    """
-    Re-runs the exact license check every window (CF2, Upload SOA) used to
-    run for itself before opening. The renderer calls this once before
-    showing the CF2 or Upload SOA screen, same as before.
-    """
-    try:
-        settings = load_login_settings()
-        entered_key = settings.get("access_key", "").strip()
-        license_info = validate_license(entered_key)
-
-        if not license_info.get("valid"):
-            if license_info.get("code") == "UPDATE_REQUIRED":
-                minimum_version = license_info.get("minimum_version")
-                error = "A newer version of Beabots is required to use this license."
-                if minimum_version:
-                    error += f"\n\nPlease install version {minimum_version} or newer."
-            else:
-                error = license_info.get("reason", "Invalid or expired license.")
-
-            # Preserve the Worker's structured fields so the renderer can use
-            # the required version and download URL in a future update prompt.
-            return jsonify({**license_info, "valid": False, "error": error})
-
-        settings["license_owner"] = license_info["owner"]
-        settings["license_plan"] = license_info["plan"]
-        settings["license_expiry"] = license_info["expires"]
-        save_login_settings(settings)
-
-        return jsonify({"valid": True, **license_info})
-
-    except LicenseError as e:
-        return jsonify({"valid": False, "error": str(e)})
-    except Exception as e:
-        return jsonify({"valid": False, "error": f"Unable to verify the license.\n\n{e}"})
 
 
 # ---------------------------------------------------------------------------
@@ -497,6 +757,7 @@ def _record_to_dict(record, cf2, mode="new_draft"):
 
 
 @app.route("/api/cf2/upload", methods=["POST"])
+@login_required
 def cf2_upload():
     """
     Body: {"path": "<file path>", "claim_year": 2026, "claim_month": "June",
@@ -534,9 +795,12 @@ def cf2_upload():
     except ValueError as ex:
         workbook.close()
         return jsonify({"error": str(ex)}), 400
-    _state["selected_file"] = filename
-    _state["patient_records"] = records
-    _state["cf2_mode"] = mode
+    user = current_user()
+    _cf2_states[user.id] = {
+        "selected_file": filename,
+        "patient_records": records,
+        "cf2_mode": mode,
+    }
 
     payload_records = [_record_to_dict(r, build_cf2_data(r), mode) for r in records]
 
@@ -574,23 +838,19 @@ def cf2_download_template():
 # button's command=, and reporting back over the "cf2_done" socket event
 # instead of log_box.after(...).
 # ---------------------------------------------------------------------------
-_cf2_running = False
-_cf2_stop_event = threading.Event()
-
-
-def _run_cf2_automation():
-    global _cf2_running
+def _run_cf2_automation(user_id, beacon_settings, state, stop_event):
     automation = None
     stopped = False
+    room_token = _emit_room.set(user_room(user_id))
     try:
-        records = _state["patient_records"]
+        records = state["patient_records"]
         total = len(records)
-        mode = _state["cf2_mode"]
+        mode = state["cf2_mode"]
 
         def emit_progress(record, current, status, phase="", message="", result=None):
             identifier_label = "Transmittal No." if mode == "existing_draft" else "Member PIN"
             identifier = record.transmittal if mode == "existing_draft" else record.member_pin
-            socketio.emit("cf2_progress", {
+            emit_to_current_room("cf2_progress", {
                 "mode": mode,
                 "current": current,
                 "total": total,
@@ -604,101 +864,114 @@ def _run_cf2_automation():
                 "result": result,
             })
 
-        automation = CF2Automation(
-            uploaded_excel_path=_state["selected_file"],
-            mode=mode,
-            progress_callback=lambda phase, message="": emit_progress(
-                automation._progress_record,
-                automation._progress_current,
-                "running",
-                phase,
-                message,
-            ) if automation and automation._progress_record is not None else None,
-        )
-        for current, record in enumerate(records, start=1):
-            if _cf2_stop_event.is_set():
-                stopped = True
-                socketio.emit("log", {
-                    "message": "STOP REQUESTED: CF2 automation stopped before the next patient.",
-                    "level": "WARNING",
-                })
-                break
-            try:
-                emit_progress(record, current, "running", "Starting", "Preparing patient row.")
-                result = automation.process_patient(record, current=current, total=total)
-                final_status = result.get("status", "failed")
-                emit_progress(
-                    record,
-                    current,
-                    final_status,
-                    "Completed" if final_status == "success" else result.get("message", ""),
-                    result.get("message", ""),
-                    result=result,
-                )
-            except Exception as ex:
-                failed_result = {
-                    "transmittal": getattr(record, "transmittal", "?"),
-                    "patient_name": getattr(record, "patient_name", "?"),
-                    "status": "failed",
-                    "message": f"Unhandled error: {ex}",
-                }
-                automation.results.append(failed_result)
-                emit_progress(
-                    record,
-                    current,
-                    "failed",
-                    "Failed",
-                    failed_result["message"],
-                    result=failed_result,
-                )
-            if _cf2_stop_event.is_set():
-                stopped = True
-                socketio.emit("log", {
-                    "message": "STOP REQUESTED: CF2 automation stopped after the current patient.",
-                    "level": "WARNING",
-                })
-                break
+        with browser_session.use_auth_context(beacon_settings, key=f"user:{user_id}"):
+            browser_session.invalidate_auth_token()
+            automation = CF2Automation(
+                uploaded_excel_path=state["selected_file"],
+                mode=mode,
+                progress_callback=lambda phase, message="": emit_progress(
+                    automation._progress_record,
+                    automation._progress_current,
+                    "running",
+                    phase,
+                    message,
+                ) if automation and automation._progress_record is not None else None,
+            )
+            for current, record in enumerate(records, start=1):
+                if stop_event.is_set():
+                    stopped = True
+                    emit_to_current_room("log", {
+                        "message": "STOP REQUESTED: CF2 automation stopped before the next patient.",
+                        "level": "WARNING",
+                    })
+                    break
+                try:
+                    emit_progress(record, current, "running", "Starting", "Preparing patient row.")
+                    result = automation.process_patient(record, current=current, total=total)
+                    final_status = result.get("status", "failed")
+                    emit_progress(
+                        record,
+                        current,
+                        final_status,
+                        "Completed" if final_status == "success" else result.get("message", ""),
+                        result.get("message", ""),
+                        result=result,
+                    )
+                except Exception as ex:
+                    failed_result = {
+                        "transmittal": getattr(record, "transmittal", "?"),
+                        "patient_name": getattr(record, "patient_name", "?"),
+                        "status": "failed",
+                        "message": f"Unhandled error: {ex}",
+                    }
+                    automation.results.append(failed_result)
+                    emit_progress(
+                        record,
+                        current,
+                        "failed",
+                        "Failed",
+                        failed_result["message"],
+                        result=failed_result,
+                    )
+                if stop_event.is_set():
+                    stopped = True
+                    emit_to_current_room("log", {
+                        "message": "STOP REQUESTED: CF2 automation stopped after the current patient.",
+                        "level": "WARNING",
+                    })
+                    break
     except Exception as ex:
-        socketio.emit("log", {"message": f"ERROR: {ex}", "level": "ERROR"})
+        emit_to_current_room("log", {"message": f"ERROR: {ex}", "level": "ERROR"})
     finally:
         if automation is not None:
             try:
                 automation.close()
             except Exception as ex:
-                socketio.emit("log", {
+                emit_to_current_room("log", {
                     "message": f"WARNING: Could not close automation session: {ex}",
                     "level": "WARNING",
                 })
 
         results = automation.get_summary() if automation is not None else []
-        _cf2_running = False
-        _cf2_stop_event.clear()
-        socketio.emit("cf2_done", {"results": results, "stopped": stopped})
+        _cf2_runs.pop(user_id, None)
+        emit_to_current_room("cf2_done", {"results": results, "stopped": stopped})
+        _emit_room.reset(room_token)
 
 
 @app.route("/api/cf2/start", methods=["POST"])
+@login_required
 def cf2_start():
-    global _cf2_running
-    if not _state["patient_records"]:
+    user, beacon_settings, error_response = require_beacon_connection()
+    if error_response:
+        return error_response
+    state = _cf2_states.get(user.id)
+    if not state or not state["patient_records"]:
         return jsonify({"error": "No patients loaded."}), 400
-    if _cf2_running:
+    if user.id in _cf2_runs:
         return jsonify({"error": "Automation already running."}), 409
 
-    _cf2_stop_event.clear()
-    _cf2_running = True
-    threading.Thread(target=_run_cf2_automation, daemon=True).start()
+    stop_event = threading.Event()
+    _cf2_runs[user.id] = {"stop_event": stop_event}
+    threading.Thread(
+        target=_run_cf2_automation,
+        args=(user.id, beacon_settings, state, stop_event),
+        daemon=True,
+    ).start()
     return jsonify({"started": True})
 
 
 @app.route("/api/cf2/stop", methods=["POST"])
+@login_required
 def cf2_stop():
-    if not _cf2_running:
+    user = current_user()
+    run = _cf2_runs.get(user.id)
+    if not run:
         return jsonify({"stopped": False, "running": False})
-    _cf2_stop_event.set()
+    run["stop_event"].set()
     socketio.emit("log", {
         "message": "Stop requested. CF2 automation will end after the current safe step.",
         "level": "WARNING",
-    })
+    }, room=user_room(user.id))
     return jsonify({"stopped": True, "running": True})
 
 
@@ -707,30 +980,31 @@ def cf2_stop():
 # start_soa_automation()/run_automation() worker, minus the tkinter widget
 # disabling (the renderer handles disabling its own controls).
 # ---------------------------------------------------------------------------
-_soa_running = False
-_soa_stop_event = threading.Event()
-
-
-def _run_soa_automation(soa_folder, transmittals):
-    global _soa_running
+def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop_event):
     soa_automation = None
     stopped = False
+    room_token = _emit_room.set(user_room(user_id))
     try:
-        soa_automation = SOAAutomation(soa_folder=soa_folder)
-        soa_automation.run(transmittals, should_stop=_soa_stop_event.is_set)
-        stopped = _soa_stop_event.is_set()
+        with browser_session.use_auth_context(beacon_settings, key=f"user:{user_id}"):
+            browser_session.invalidate_auth_token()
+            soa_automation = SOAAutomation(soa_folder=soa_folder)
+            soa_automation.run(transmittals, should_stop=stop_event.is_set)
+            stopped = stop_event.is_set()
     except Exception as ex:
-        socketio.emit("log", {"message": f"FATAL ERROR: {ex}", "level": "ERROR"})
+        emit_to_current_room("log", {"message": f"FATAL ERROR: {ex}", "level": "ERROR"})
     finally:
         results = soa_automation.get_results() if soa_automation is not None else []
-        _soa_running = False
-        _soa_stop_event.clear()
-        socketio.emit("soa_done", {"results": results, "stopped": stopped})
+        _soa_runs.pop(user_id, None)
+        emit_to_current_room("soa_done", {"results": results, "stopped": stopped})
+        _emit_room.reset(room_token)
 
 
 @app.route("/api/soa/start", methods=["POST"])
+@login_required
 def soa_start():
-    global _soa_running
+    user, beacon_settings, error_response = require_beacon_connection()
+    if error_response:
+        return error_response
     is_multipart = request.content_type and request.content_type.startswith("multipart/form-data")
     if is_multipart:
         data = request.form
@@ -757,31 +1031,38 @@ def soa_start():
         return jsonify({"error": "Please select the folder where your SOA files are located."}), 400
     if not Path(soa_folder).is_dir():
         return jsonify({"error": f"The selected SOA folder does not exist:\n\n{soa_folder}"}), 400
-    if _soa_running:
+    if user.id in _soa_runs:
         return jsonify({"error": "Automation already running."}), 409
 
     # Remember the folder choice for next time — same as the old
     # browse_soa_folder()'s settings["soa_folder"] = chosen; save_login_settings(settings)
     if not is_multipart:
-        settings = load_login_settings()
-        settings["soa_folder"] = soa_folder
-        save_login_settings(settings)
+        user_settings = get_or_create_user_settings(user)
+        user_settings.soa_folder = soa_folder
+        db.session.commit()
 
-    _soa_stop_event.clear()
-    _soa_running = True
-    threading.Thread(target=_run_soa_automation, args=(soa_folder, transmittals), daemon=True).start()
+    stop_event = threading.Event()
+    _soa_runs[user.id] = {"stop_event": stop_event}
+    threading.Thread(
+        target=_run_soa_automation,
+        args=(user.id, beacon_settings, soa_folder, transmittals, stop_event),
+        daemon=True,
+    ).start()
     return jsonify({"started": True})
 
 
 @app.route("/api/soa/stop", methods=["POST"])
+@login_required
 def soa_stop():
-    if not _soa_running:
+    user = current_user()
+    run = _soa_runs.get(user.id)
+    if not run:
         return jsonify({"stopped": False, "running": False})
-    _soa_stop_event.set()
+    run["stop_event"].set()
     socketio.emit("log", {
         "message": "Stop requested. SOA automation will end after the current safe step.",
         "level": "WARNING",
-    })
+    }, room=user_room(user.id))
     return jsonify({"stopped": True, "running": True})
 
 
@@ -791,70 +1072,76 @@ def soa_stop():
 # and SOA automations above: this is the original "Move to CF2" precursor
 # run against a plain list of transmittals.
 # ---------------------------------------------------------------------------
-_beacon_running = False
-_beacon_stop_event = threading.Event()
-
-
-def _run_beacon_automation(transmittals, auto_encode_cf4, cf4_settings):
-    global _beacon_running
+def _run_beacon_automation(user_id, beacon_settings, transmittals, auto_encode_cf4, cf4_settings, stop_event):
     stopped = False
+    room_token = _emit_room.set(user_room(user_id))
     try:
-        beacon_run(
-            transmittals,
-            auto_encode_cf4=auto_encode_cf4,
-            cf4_data=cf4_settings,
-            should_stop=_beacon_stop_event.is_set,
-        )
-        stopped = _beacon_stop_event.is_set()
+        with browser_session.use_auth_context(beacon_settings, key=f"user:{user_id}"):
+            browser_session.invalidate_auth_token()
+            beacon_run(
+                transmittals,
+                auto_encode_cf4=auto_encode_cf4,
+                cf4_data=cf4_settings,
+                should_stop=stop_event.is_set,
+            )
+            stopped = stop_event.is_set()
     except Exception as ex:
-        socketio.emit("log", {"message": f"ERROR: {ex}", "level": "ERROR"})
+        emit_to_current_room("log", {"message": f"ERROR: {ex}", "level": "ERROR"})
     finally:
-        _beacon_running = False
-        _beacon_stop_event.clear()
-        socketio.emit("beacon_done", {"results": report.results, "stopped": stopped})
+        _beacon_runs.pop(user_id, None)
+        emit_to_current_room("beacon_done", {"results": report.results, "stopped": stopped})
+        _emit_room.reset(room_token)
 
 
 @app.route("/api/beacon/start", methods=["POST"])
+@login_required
 def beacon_start():
-    global _beacon_running
+    user, beacon_settings, error_response = require_beacon_connection()
+    if error_response:
+        return error_response
     data = request.get_json(force=True)
     transmittals = data.get("transmittals", [])
     auto_encode_cf4 = bool(data.get("auto_encode_cf4", False))
 
     if not transmittals:
         return jsonify({"error": "Please paste at least one transmittal number."}), 400
-    if _beacon_running:
+    if user.id in _beacon_runs:
         return jsonify({"error": "Automation already running."}), 409
 
     # Read whatever was last saved on the CF4 screen (falls back to
     # DEFAULT_CF4_SETTINGS for anything never saved) — this is what makes
     # the checkbox on the dashboard use the *current* CF4 defaults rather
     # than whatever was hardcoded in beacon.py at build time.
-    cf4_settings = _load_cf4_settings()
+    user_settings = get_or_create_user_settings(user)
+    cf4_settings = {**DEFAULT_CF4_SETTINGS, **(user_settings.cf4_settings or {})}
 
-    _beacon_stop_event.clear()
-    _beacon_running = True
+    stop_event = threading.Event()
+    _beacon_runs[user.id] = {"stop_event": stop_event}
     threading.Thread(
         target=_run_beacon_automation,
-        args=(transmittals, auto_encode_cf4, cf4_settings),
+        args=(user.id, beacon_settings, transmittals, auto_encode_cf4, cf4_settings, stop_event),
         daemon=True,
     ).start()
     return jsonify({"started": True})
 
 
 @app.route("/api/beacon/stop", methods=["POST"])
+@login_required
 def beacon_stop():
-    if not _beacon_running:
+    user = current_user()
+    run = _beacon_runs.get(user.id)
+    if not run:
         return jsonify({"stopped": False, "running": False})
-    _beacon_stop_event.set()
+    run["stop_event"].set()
     socketio.emit("log", {
         "message": "Stop requested. CF4 automation will end after the current safe step.",
         "level": "WARNING",
-    })
+    }, room=user_room(user.id))
     return jsonify({"stopped": True, "running": True})
 
 
 if __name__ == "__main__":
+    init_database()
     port = int(os.environ.get("PORT") or os.environ.get("BEABOTS_PORT", 5417))
     host = os.environ.get("HOST", "0.0.0.0")
     socketio.run(app, host=host, port=port, allow_unsafe_werkzeug=True)

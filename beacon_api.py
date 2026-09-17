@@ -15,7 +15,7 @@ class BeaconApiError(RuntimeError):
     pass
 
 
-_client_id_cache = None
+_client_id_cache = {}
 
 
 def _base_url():
@@ -85,10 +85,9 @@ def _post(path, json_body=None, params=None):
 
 def get_client_id():
     """Resolve the current Beacon client/facility ID dynamically."""
-    global _client_id_cache
-
-    if _client_id_cache is not None:
-        return _client_id_cache
+    cache_key = browser_session._context_key()
+    if cache_key in _client_id_cache:
+        return _client_id_cache[cache_key]
 
     user_id = browser_session.get_user_id()
     if not user_id:
@@ -104,8 +103,8 @@ def get_client_id():
             f"GetAllClientsByUserId returned no clients for userId={user_id}"
         )
 
-    _client_id_cache = int(clients[0]["id"])
-    return _client_id_cache
+    _client_id_cache[cache_key] = int(clients[0]["id"])
+    return _client_id_cache[cache_key]
 
 
 def get_transmittal(transmittal_no, client_id=None):

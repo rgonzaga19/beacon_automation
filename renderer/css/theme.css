@@ -29,11 +29,8 @@
      black page. */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
   --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.32);
-  --window-edge:
-    inset 0 0 0 1px rgba(226, 232, 240, 0.46),
-    inset 0 0 0 2px rgba(15, 23, 42, 0.82),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  --window-frame: rgba(226, 232, 240, 0.52);
+  --window-edge: none;
+  --window-frame: transparent;
 
   --font-ui: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
 
@@ -65,11 +62,8 @@ html[data-theme="light"] {
 
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.06);
   --shadow-md: 0 8px 20px rgba(16, 24, 40, 0.08), 0 2px 6px rgba(16, 24, 40, 0.05);
-  --window-edge:
-    inset 0 0 0 1px #64748b,
-    inset 0 0 0 2px rgba(255, 255, 255, 0.82),
-    inset 0 10px 24px rgba(15, 23, 42, 0.12);
-  --window-frame: #64748b;
+  --window-edge: none;
+  --window-frame: transparent;
 }
 
 * {
@@ -99,12 +93,7 @@ textarea {
 }
 
 body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  border-radius: 14px;
-  background: var(--window-frame);
-  pointer-events: none;
+  display: none;
 }
 
 /* ---------- Scrollbars (styled to match the theme instead of the
@@ -131,12 +120,12 @@ body::before {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: calc(100vw - 2px);
-  height: calc(100vh - 2px);
-  margin: 1px;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
   overflow: hidden;
   box-sizing: border-box;
-  border-radius: 13px;
+  border-radius: 0;
   background: var(--bg-dark);
 }
 
@@ -156,13 +145,7 @@ body::before {
    compositor layer with `will-change: box-shadow` gives the repaint a
    1px buffer and keeps it in sync with .app-window's size. */
 .app-window::after {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: 12px;
-  box-shadow: var(--window-edge);
-  pointer-events: none;
-  will-change: box-shadow;
+  display: none;
 }
 
 /* Suppresses the edge/elevation overlay for windows that shouldn't show
@@ -176,13 +159,7 @@ body::before {
 
 /* ---------- Custom title bar (replaces the native OS frame) ---------- */
 .titlebar {
-  height: 34px;
-  min-height: 34px;
-  background: var(--bg-panel);
-  display: flex;
-  align-items: center;
-  -webkit-app-region: drag;
-  border-bottom: 1px solid var(--border);
+  display: none;
 }
 
 .titlebar .icon {
@@ -215,6 +192,12 @@ body::before {
 
 .titlebar .spacer {
   flex: 1;
+}
+
+#btnMinimize,
+#btnMaximize,
+#btnClose {
+  display: none !important;
 }
 
 .titlebar-btn {

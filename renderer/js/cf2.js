@@ -21,17 +21,6 @@ document.getElementById("btnClose").addEventListener("click", () => window.beabo
 // License check — same as open_cf2_window()'s check before the Toplevel
 // was ever created. If invalid, show the error and close this window.
 // ---------------------------------------------------------------------------
-(async function checkLicense() {
-  const license = await fetchJSON("/api/license/validate", { method: "POST" });
-  if (!license.valid) {
-    showModal(
-      license.error && license.error.toLowerCase().includes("unable") ? "License Error" : "Access Denied",
-      license.error || "Invalid or expired license.",
-      { onOk: () => window.beabots?.close() }
-    );
-  }
-})();
-
 // ---------------------------------------------------------------------------
 // Claim Year / Claim Month selects (years 2024-2035, defaults to now)
 // ---------------------------------------------------------------------------
@@ -629,7 +618,7 @@ copyTransmittalsBtn.addEventListener("click", async () => {
   if (!transmittals.length) return;
 
   try {
-    await navigator.clipboard.writeText(transmittals.join("\n"));
+    await copyTextToClipboard(transmittals.join("\n"));
     if (copyFeedbackTimer) clearTimeout(copyFeedbackTimer);
     copyTransmittalsBtn.classList.remove("copied");
     void copyTransmittalsBtn.offsetWidth;
@@ -688,6 +677,9 @@ startBtn.addEventListener("click", async () => {
   if (result.error) {
     log("");
     log(`ERROR: ${result.error}`);
+    if (result.requires_beacon) {
+      showBeaconRequired(result.error);
+    }
     scrollLogToEnd();
     setControlsRunning(false);
     cf2RunActive = false;

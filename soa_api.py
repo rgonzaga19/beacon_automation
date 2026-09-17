@@ -48,31 +48,29 @@ def _get(path, params=None):
     return _json(requests.get(_base_url() + path, headers=_headers(), params=params, timeout=30))
 
 
-_client_ids_cache = None
-_client_ids_cache_user_id = None
+_client_ids_cache = {}
 
 
 def get_client_ids():
     """Return all Beacon clientIds assigned to the currently logged-in account."""
-    global _client_ids_cache, _client_ids_cache_user_id
-
     user_id = browser_session.get_user_id()
     if not user_id:
         raise SoaApiError("No userId available from Beacon auth token.")
 
-    if _client_ids_cache is not None and _client_ids_cache_user_id == user_id:
-        return _client_ids_cache
+    cache_key = (browser_session._context_key(), user_id)
+    if cache_key in _client_ids_cache:
+        return _client_ids_cache[cache_key]
 
     clients = _get("/api/Account/GetAllClientsByUserId", params={"userId": user_id})
     if not clients:
         raise SoaApiError(f"GetAllClientsByUserId returned no clients for userId={user_id}.")
 
-    _client_ids_cache = [int(client["id"]) for client in clients if client.get("id")]
-    if not _client_ids_cache:
+    client_ids = [int(client["id"]) for client in clients if client.get("id")]
+    if not client_ids:
         raise SoaApiError(f"GetAllClientsByUserId returned clients without ids for userId={user_id}.")
 
-    _client_ids_cache_user_id = user_id
-    return _client_ids_cache
+    _client_ids_cache[cache_key] = client_ids
+    return _client_ids_cache[cache_key]
 
 
 def get_client_id():
