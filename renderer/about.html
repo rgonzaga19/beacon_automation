@@ -11,56 +11,6 @@
 <script src="js/theme.js"></script>
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/about.css">
-<style>
-  .page-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px 24px 14px;
-    border-bottom: 1px solid var(--border);
-  }
-  .page-header .glyph {
-    width: 34px;
-    height: 34px;
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--accent);
-    border: 1px solid var(--border);
-    background: var(--bg-panel);
-    border-radius: var(--radius-md);
-  }
-  .page-header .glyph img { width: 20px; height: 20px; object-fit: contain; display: block; }
-  .page-header .title-block { line-height: 1.35; }
-  .page-header .title {
-    color: var(--text-pri);
-    font: 800 16px var(--font-ui);
-    letter-spacing: 0.6px;
-  }
-  .page-header .subtitle {
-    color: var(--text-sec);
-    font-size: 11px;
-    margin-top: 3px;
-  }
-  .page-header .btn-home {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--bg-panel);
-    color: var(--accent);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-md);
-    font: 700 11.5px var(--font-ui);
-    padding: 8px 14px;
-    cursor: pointer;
-  }
-  .page-header .btn-home:hover {
-    background: var(--accent-soft);
-    color: var(--text-pri);
-  }
-</style>
 </head>
 <body>
 <div class="app-window">
@@ -72,17 +22,11 @@
         <div class="titlebar-btn" id="btnTitlebarClose">X</div>
     </div>
 
-    <div class="page-header">
-        <div class="glyph"><img src="../bot.ico" alt=""></div>
-        <div class="title-block">
-            <div class="title">About Beabots</div>
-            <div class="subtitle" id="version">Version web</div>
-        </div>
-        <button class="btn-home" id="btnHome" type="button">Back</button>
-    </div>
-
     <div class="about-content">
         <div class="about-grid">
+            <nav class="about-navigation" aria-label="Page navigation">
+                <button class="btn-home" id="btnHome" type="button">Back</button>
+            </nav>
             <div class="about-main">
                 <section class="panel product-card">
                     <div class="product-lockup">
@@ -91,7 +35,7 @@
                             <span class="eyebrow">Beacon automation suite</span>
                             <div class="product-title-row">
                                 <h1>Beabots</h1>
-                                <span class="version-badge">Web</span>
+                                <span class="version-badge" id="version">Version web</span>
                             </div>
                             <p>Beabots is an API-driven automation platform built to streamline data encoding and deliver faster, more consistent PhilHealth Beacon claim processing in one focused web workspace.</p>
                         </div>
@@ -107,6 +51,34 @@
                             <div><span>Works with</span><strong>SOA Excel Generator</strong></div>
                         </div>
                     </div>
+                </section>
+                <section class="panel about-section" aria-labelledby="features-heading">
+                    <h2 id="features-heading">What you can do with Beabots</h2>
+                    <div class="feature-grid">
+                        <article class="feature-card">
+                            <span class="eyebrow">CF2</span>
+                            <h3>Claim Form 2</h3>
+                            <p>Prepare CF2 entries from Excel templates and automate encoding in Beacon.</p>
+                        </article>
+                        <article class="feature-card">
+                            <span class="eyebrow">SOA</span>
+                            <h3>SOA Upload</h3>
+                            <p>Upload SOA documents to Beacon using the dedicated upload workflow.</p>
+                        </article>
+                        <article class="feature-card">
+                            <span class="eyebrow">CF4</span>
+                            <h3>Claim Form 4</h3>
+                            <p>Automate CF4 encoding using configured clinical details.</p>
+                        </article>
+                    </div>
+                </section>
+                <section class="panel about-section" aria-labelledby="getting-started-heading">
+                    <h2 id="getting-started-heading">Before you begin</h2>
+                    <ol class="getting-started-list">
+                        <li>Configure your Beacon credentials in <strong>Settings</strong>.</li>
+                        <li>Review source files and patient details before starting.</li>
+                        <li>Follow progress messages and review completed entries in Beacon.</li>
+                    </ol>
                 </section>
             </div>
         </div>
