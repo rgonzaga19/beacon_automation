@@ -12,11 +12,14 @@ __pycache__/
 .coverage
 htmlcov/
 .pyre/
+.ruff_cache/
+*.egg-info/
 
 ###############################################################################
 # Virtual Environment
 ###############################################################################
 venv/
+.venv/
 env/
 ENV/
 .python-version
@@ -26,6 +29,19 @@ ENV/
 ###############################################################################
 .vscode/
 .history/
+.kilo/
+
+###############################################################################
+# Dependencies / Build Output
+###############################################################################
+node_modules/
+/build/
+/dist/
+/python-build/
+/release/
+/Output/
+# Empty npm lockfile generated locally; this project has no package.json.
+/package-lock.json
 
 ###############################################################################
 # Operating System
@@ -61,6 +77,8 @@ reports/
 ###############################################################################
 .env
 .env.*
+!.env.example
+!.env.sample
 config.local.json
 settings.local.json
 
@@ -68,4 +86,6 @@ settings.local.json
 # Local App Data
 ###############################################################################
 beabots.sqlite3
+beabots.sqlite3-*
 secret.key
+/Beabots/
