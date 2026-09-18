@@ -55,7 +55,6 @@ const workspaceButtons = {
 };
 
 const workspaceColumn = document.getElementById("workspaceColumn");
-const workspaceFrame = document.getElementById("workspaceFrame");
 const workspaceRoutes = {
   cf2: "cf2.html",
   uploadSoa: "upload-soa.html",
@@ -63,6 +62,10 @@ const workspaceRoutes = {
   settings: "settings.html",
   about: "about.html",
 };
+const workspaceFrames = Object.fromEntries(
+  [...document.querySelectorAll("[data-workspace-frame]")]
+    .map((frame) => [frame.dataset.workspaceFrame, frame])
+);
 
 function setWorkspaceActive(activeKey) {
   Object.entries(workspaceButtons).forEach(([key, button]) => {
@@ -73,16 +76,22 @@ function setWorkspaceActive(activeKey) {
 
 function showWorkspaceHome() {
   workspaceColumn.classList.remove("workspace-active");
-  workspaceFrame.removeAttribute("src");
+  Object.values(workspaceFrames).forEach((frame) => frame.classList.remove("active"));
   setWorkspaceActive(null);
   history.replaceState(null, "", "dashboard.html");
 }
 
 function openWorkspace(activeKey) {
   const route = workspaceRoutes[activeKey];
-  if (!route) return;
+  const frame = workspaceFrames[activeKey];
+  if (!route || !frame) return;
   workspaceColumn.classList.add("workspace-active");
-  workspaceFrame.src = route;
+  Object.entries(workspaceFrames).forEach(([key, item]) => {
+    item.classList.toggle("active", key === activeKey);
+  });
+  if (!frame.getAttribute("src")) {
+    frame.src = route;
+  }
   setWorkspaceActive(activeKey);
   history.replaceState(null, "", `dashboard.html#${activeKey}`);
 }

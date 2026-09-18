@@ -45,7 +45,7 @@
   .body { flex:1; display:flex; align-items:center; justify-content:center; padding:40px 24px; min-width:0; min-height:0; text-align:center; }
   .workspace-frame { flex:1; width:100%; min-width:0; min-height:0; border:0; background:var(--bg-dark); display:none; }
   .content-column.workspace-active .body { display:none; }
-  .content-column.workspace-active .workspace-frame { display:block; }
+  .content-column.workspace-active .workspace-frame.active { display:block; }
   .welcome-content { display:flex; flex-direction:column; align-items:center; gap:20px; }
   .welcome-icon { font-size:48px; color:var(--accent); }
   .welcome-text h2 { font-size:24px; color:var(--text-pri); margin:0; font-weight:800; letter-spacing:.5px; }
@@ -113,7 +113,11 @@
         <main class="body" id="workspaceHome">
           <div class="welcome-content"><div class="welcome-icon">◆</div><div class="welcome-text"><h2>Welcome to Beabots</h2><p>Automate your Beacon PhilHealth E-Claims workflow</p></div></div>
         </main>
-        <iframe class="workspace-frame" id="workspaceFrame" title="Workspace"></iframe>
+        <iframe class="workspace-frame" data-workspace-frame="cf2" title="Claim Form 2"></iframe>
+        <iframe class="workspace-frame" data-workspace-frame="uploadSoa" title="Auto Upload SOA"></iframe>
+        <iframe class="workspace-frame" data-workspace-frame="cf4" title="Claim Form 4"></iframe>
+        <iframe class="workspace-frame" data-workspace-frame="settings" title="Settings"></iframe>
+        <iframe class="workspace-frame" data-workspace-frame="about" title="About"></iframe>
       </div>
     </div>
   </div>
