@@ -8,7 +8,9 @@ uploads, CF2/SOA/CF4 automation endpoints, and live progress logs.
 
 - `server.py` hosts the app and API.
 - `renderer/` contains the browser UI.
+- `renderer/assets/` contains frontend images and icons.
 - `templates/` contains the CF2 Excel templates.
+- `docs/` contains project notes, including the current structure map.
 - Local user/account data defaults to `%LOCALAPPDATA%\Beabots\beabots.sqlite3`.
 - Uploaded workbooks default to the system temp directory unless
   `BEABOTS_UPLOAD_DIR` is set.
@@ -54,6 +56,10 @@ Open:
 http://127.0.0.1:5417
 ```
 
+On Windows, you can also double-click `start_beabots.bat`. It starts the
+server, waits until the health check responds, then opens Beabots in your
+default browser.
+
 ## Environment Variables
 
 ```text
@@ -93,18 +99,13 @@ Set `DATABASE_URL`, `SECRET_KEY`, `FIELD_ENCRYPTION_KEY`, and
 
 ```text
 server.py                 Flask/Socket.IO entry point
-app_config.py             database and secret configuration
-database.py               SQLAlchemy extension
-models.py                 users, settings, and automation job models
-security.py               encrypted field helpers
-browser_session.py        per-user Beacon API token handling
-beacon.py                 CF4 automation runner
-beacon_api.py             Beacon API helpers
-cf2_api.py                CF2 Beacon API helpers
-cf2_automation.py         CF2 automation runner
-cf2_mapper.py             CF2 payload mapping
-soa_api.py                SOA API helpers
-soa_automation.py         SOA upload runner
+app/core/                 configuration, database, security, settings, logging
+app/api/                  Beacon, CF2, SOA, and draft API clients
+app/automation/           CF2, SOA, CF4, and draft automation runners
+app/domain/               parsers, mappers, data objects, and reports
+app/models.py             users, settings, and automation job models
 renderer/                 browser pages, CSS, and JavaScript
+renderer/assets/          browser images and icons
 templates/                Excel templates
+docs/                     project notes
 ```

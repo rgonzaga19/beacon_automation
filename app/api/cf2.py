@@ -43,7 +43,7 @@ from datetime import datetime, timedelta
 
 import requests
 
-import browser_session
+from app.core import browser_session
 
 
 ECLAIMS_API_BASES = {

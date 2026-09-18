@@ -25,24 +25,25 @@ from werkzeug.utils import secure_filename
 
 from openpyxl import load_workbook
 
-from app_config import AppConfig
-from database import db
-import models  # noqa: F401 - imported so SQLAlchemy registers the tables
-from models import User, UserSetting, utc_now
-import browser_session
-from login import load_login_settings, save_login_settings
-from logger import logger
-from patient_record import PatientRecord
-from date_parser import parse_dates
-from time_parser import parse_time_range, format_beacon_time
-from cf2_mapper import build_cf2_data
-from cf2_automation import CF2Automation
-from soa_automation import SOAAutomation
-from beacon import run as beacon_run
-from reports import report
-from security import decrypt_field, encrypt_field
+from app.core.config import AppConfig
+from app.core.database import db
+import app.models  # noqa: F401 - imported so SQLAlchemy registers the tables
+from app.models import User, UserSetting, utc_now
+from app.core import browser_session
+from app.core.login import load_login_settings, save_login_settings
+from app.core.logger import logger
+from app.domain.patient_record import PatientRecord
+from app.domain.date_parser import parse_dates
+from app.domain.time_parser import parse_time_range, format_beacon_time
+from app.domain.cf2_mapper import build_cf2_data
+from app.automation.cf2 import CF2Automation
+from app.automation.soa import SOAAutomation
+from app.automation.beacon import run as beacon_run
+from app.domain.reports import report
+from app.core.security import decrypt_field, encrypt_field
 
 BASE_DIR = Path(__file__).resolve().parent
+APP_ICON_PATH = BASE_DIR / "renderer" / "assets" / "bot.ico"
 UPLOAD_DIR = Path(
     os.environ.get("BEABOTS_UPLOAD_DIR")
     or Path(tempfile.gettempdir()) / "beabots_uploads"
@@ -396,7 +397,7 @@ def web_index():
 @app.route("/bot.ico")
 @app.route("/favicon.ico")
 def web_icon():
-    return send_file(BASE_DIR / "bot.ico", mimetype="image/x-icon")
+    return send_file(APP_ICON_PATH, mimetype="image/x-icon")
 
 
 @app.route("/api/health", methods=["GET"])
@@ -417,7 +418,7 @@ def health_check():
 @app.route("/<path:filename>")
 def web_static(filename):
     if filename == "bot.ico":
-        return send_file(BASE_DIR / "bot.ico")
+        return send_file(APP_ICON_PATH)
     return send_from_directory(app.static_folder, filename)
 
 

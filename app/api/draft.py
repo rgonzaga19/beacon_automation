@@ -5,8 +5,8 @@ Endpoints and payloads are based on captured successful Member and Dependent HAR
 import re
 from datetime import datetime
 import requests
-import browser_session
-import cf2_api
+from app.core import browser_session
+from app.api import cf2 as cf2_api
 
 ECLAIMS_API_BASES = {
     "s2": "https://eclaimsapi-s2.azurewebsites.net/api/EClaims/v3",

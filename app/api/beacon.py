@@ -8,7 +8,7 @@ remain in beacon.py.
 from datetime import datetime, timedelta
 import requests
 
-import browser_session
+from app.core import browser_session
 
 
 class BeaconApiError(RuntimeError):

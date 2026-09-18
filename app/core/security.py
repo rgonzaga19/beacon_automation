@@ -4,7 +4,7 @@ import os
 
 from cryptography.fernet import Fernet, InvalidToken
 
-from app_config import AppConfig
+from app.core.config import AppConfig
 
 
 def _fernet_key():

@@ -6,7 +6,7 @@ HTTP calls observed in Beacon's successful SOA workflow.
 from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 import requests
-import browser_session
+from app.core import browser_session
 
 ECLAIMS_API_BASES = {
     "s2": "https://eclaimsapi-s2.azurewebsites.net/api/EClaims/v3",
@@ -145,7 +145,7 @@ def get_transmittal(transmittal_no, client_id=263, days_back=31, package_type=7)
     Raises:
         SoaApiError: If the API request fails (HTTP error, auth failure, etc.)
     """
-    from logger import logger
+    from app.core.logger import logger
 
     transmittal_no = str(transmittal_no).strip()
     date_from, date_to = transmittal_search_date_window(days_back)
@@ -215,7 +215,7 @@ def list_all_transmittals(client_id=263, days_back=31, package_type=7, limit=20)
     Returns:
         List of transmittal dicts
     """
-    from logger import logger
+    from app.core.logger import logger
 
     date_from, date_to = transmittal_search_date_window(days_back)
 

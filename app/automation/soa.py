@@ -2,10 +2,10 @@ from pathlib import Path
 import re
 from datetime import datetime
 
-from logger import logger
-from reports import report, summarize_error
-import soa_api
-from settings import load_settings
+from app.core.logger import logger
+from app.domain.reports import report, summarize_error
+from app.api import soa as soa_api
+from app.core.settings import load_settings
 
 
 DEFAULT_SOA_FOLDER = Path.home() / "Downloads" / "SOA"

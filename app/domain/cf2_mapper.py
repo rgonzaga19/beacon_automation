@@ -1,4 +1,4 @@
-from cf2_data import CF2Data
+from app.domain.cf2_data import CF2Data
 
 
 def build_cf2_data(record):

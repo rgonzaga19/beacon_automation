@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from database import db
+from app.core.database import db
 
 
 def utc_now():

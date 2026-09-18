@@ -2,17 +2,18 @@ import os
 import re
 import sys
 from datetime import datetime, time
+from pathlib import Path
 import openpyxl
-from cf2_mapper import build_cf2_data
-import cf2_api
-from time_parser import format_beacon_time
-from cf2_fees import get_fees
-from draft_automation import (
+from app.domain.cf2_mapper import build_cf2_data
+from app.api import cf2 as cf2_api
+from app.domain.time_parser import format_beacon_time
+from app.domain.cf2_fees import get_fees
+from app.automation.draft import (
     run_create_draft_flow,
     InvalidMemberPinError,
 )
-from draft_title import build_draft_title
-from logger import logger
+from app.automation.draft_title import build_draft_title
+from app.core.logger import logger
 
 # Guard against print() crashing an otherwise-successful patient run.
 # Some Windows terminals use legacy codepages instead of UTF-8.
@@ -57,7 +58,8 @@ def print(message="", *args, **kwargs):
 
 
 def resource_path(relative_path):
-    return os.path.join(os.path.abspath("."), relative_path)
+    project_root = Path(__file__).resolve().parents[2]
+    return str(project_root / relative_path)
 
 
 CF2_TEMPLATE_PATH = resource_path(

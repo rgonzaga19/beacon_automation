@@ -9,10 +9,10 @@ dependencies in this file.
 import copy
 from datetime import date as _date, datetime as _datetime
 
-import beacon_api
-import cf2_api
-from logger import logger
-from reports import report
+from app.api import beacon as beacon_api
+from app.api import cf2 as cf2_api
+from app.core.logger import logger
+from app.domain.reports import report
 
 
 # Keep these values in lockstep with DEFAULT_CF4_SETTINGS in server.py /

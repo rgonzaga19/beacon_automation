@@ -12,8 +12,8 @@ from contextvars import ContextVar
 
 import requests
 
-from login import load_login_settings as _load_legacy_login_settings
-from logger import logger
+from app.core.login import load_login_settings as _load_legacy_login_settings
+from app.core.logger import logger
 
 
 BEACON_URLS = {
