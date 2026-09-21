@@ -8,7 +8,11 @@ datas = [
     ("templates", "templates"),
 ]
 
-hiddenimports = collect_submodules("engineio") + collect_submodules("socketio")
+hiddenimports = (
+    collect_submodules("engineio")
+    + collect_submodules("socketio")
+    + collect_submodules("webview")
+)
 
 
 a = Analysis(

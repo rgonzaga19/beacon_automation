@@ -226,6 +226,7 @@
     min-height: 500px;
     display: flex;
     flex-direction: column;
+    container-type: inline-size;
   }
   #automation .form-card:nth-child(2) {
     grid-column: 2;
@@ -243,31 +244,67 @@
   .input-wrapper { flex: 1; display: flex; min-height: 0; margin: 10px 0 8px 0; }
 
   .bottom-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
+    gap: 8px;
     padding: 0 2px 10px 2px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 12px;
   }
-  .bottom-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-  .bottom-row .count { margin-left: auto; }
+  .bottom-row label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    cursor: pointer;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  .bottom-row .count {
+    justify-self: end;
+    min-width: max-content;
+    line-height: 1.35;
+    text-align: right;
+  }
 
   #startBtn {
     width: 100%;
-    padding: 12px;
-    font-size: 11pt;
+    min-width: 0;
+    padding: 11px 10px;
+    font-size: 10.5pt;
+    line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   .automation-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(72px, 88px);
     gap: 8px;
+    width: 100%;
+    min-width: 0;
   }
   .automation-actions #startBtn {
-    flex: 1;
+    min-width: 0;
   }
   #clearBtn {
-    flex: 0 0 auto;
-    min-width: 120px;
-    padding: 12px 16px;
+    width: 100%;
+    min-width: 0;
+    padding: 11px 10px;
+    overflow-wrap: anywhere;
+  }
+  @container (max-width: 260px) {
+    .bottom-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .bottom-row .count {
+      justify-self: start;
+      min-width: 0;
+      text-align: left;
+    }
+    .automation-actions {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
   @property --cf4-border-angle {
     syntax: "<angle>";

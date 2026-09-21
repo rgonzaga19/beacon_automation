@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 
 python -m pip install -r requirements.txt
 python -m pip install -r requirements-build.txt
-python -m PyInstaller --clean Beabots.spec
+python -m PyInstaller -y --clean Beabots.spec
 
 if (-not (Test-Path -LiteralPath $InnoCompiler)) {
     throw "Inno Setup compiler not found: $InnoCompiler"

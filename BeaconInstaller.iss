@@ -40,6 +40,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 RestartApplications=no
+AppMutex=Beabots-D2A91D2F-0B2F-4B8E-9B79-4B2B5A8D7F01
 
 UninstallDisplayIcon={app}\{#MyAppExeName}
 

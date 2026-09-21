@@ -88,14 +88,15 @@
      panel side by side, both stretched to the same full height. */
   .main-row {
     flex: 1;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(0, 1fr);
     gap: var(--gap-2);
     padding: var(--gap-2) var(--gap-3) var(--gap-3) var(--gap-3);
     min-height: 0;
   }
 
   .workspace {
-    flex: 1 1 0;
+    min-width: 0;
     padding: 0 10px 0 0;
     display: flex;
     flex-direction: column;
@@ -106,7 +107,13 @@
   }
 
   /* Flat panels: a single-weight border does the separating, no shadow. */
-  .section-block { padding: 4px 14px 12px 14px; border-radius: var(--radius-lg); box-shadow: none; }
+  .section-block {
+    min-width: 0;
+    padding: 4px 14px 12px 14px;
+    border-radius: var(--radius-lg);
+    box-shadow: none;
+    container-type: inline-size;
+  }
 
   /* Claim Period and Workbook panels keep their natural (compact)
      height; the Reminder panel below absorbs whatever vertical space
@@ -116,11 +123,12 @@
 
   /* ---------- Claim period ---------- */
   .field-row {
-    display: flex;
-    gap: var(--gap-3);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: var(--gap-2);
     padding: 10px 4px 4px 4px;
   }
-  .field-group { flex: none; }
+  .field-group { min-width: 0; }
   .field-group label {
     display: block;
     color: var(--text-sec);
@@ -131,6 +139,7 @@
     margin-bottom: 6px;
   }
   .field-group select {
+    width: 100%;
     background: var(--bg-card);
     color: var(--text-pri);
     border: 1px solid var(--border);
@@ -138,7 +147,7 @@
     font-family: var(--font-ui);
     font-size: 12px;
     padding: 8px 10px;
-    min-width: 140px;
+    min-width: 0;
   }
   .field-group select:focus {
     outline: none;
@@ -162,6 +171,7 @@
   }
   .mode-toggle { padding: 3px; gap: 3px; }
   .mode-btn {
+    min-width: 0;
     flex: 1;
     display: flex;
     align-items: center;
@@ -176,6 +186,9 @@
     font-weight: 600;
     letter-spacing: 0.2px;
     padding: 10px 12px;
+    line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: anywhere;
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
   }
@@ -195,14 +208,15 @@
 
   /* ---------- Workbook: upload + guide ---------- */
   .workbook-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(160px, 216px);
     gap: 8px;
     padding: 6px 4px 2px 4px;
     align-items: stretch;
   }
 
   .upload-col {
-    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -210,7 +224,18 @@
     padding: 2px 4px;
   }
 
-  #uploadBtn { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding-top: 9px; padding-bottom: 9px; }
+  #uploadBtn {
+    align-self: flex-start;
+    max-width: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+    line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 
   .file-status {
     display: flex;
@@ -223,9 +248,16 @@
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
+    min-width: 0;
   }
   .file-status .icon-flat { color: var(--text-sec); }
-  #fileLabel { color: var(--text-pri); }
+  #fileLabel {
+    min-width: 0;
+    color: var(--text-pri);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   #downloadTemplateLink {
     align-self: flex-start;
@@ -240,6 +272,10 @@
     font-weight: 600;
     letter-spacing: 0.2px;
     padding-bottom: 1px;
+    max-width: 100%;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   #downloadTemplateLink:hover { color: var(--text-pri); border-color: currentColor; }
 
@@ -247,7 +283,8 @@
      (including on hover — hover reads via a background fill change). */
   .guide-card {
     width: 216px;
-    flex: none;
+    max-width: 100%;
+    min-width: 0;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-left: 3px solid var(--accent);
@@ -292,13 +329,14 @@
 
   /* ---------- Workbook summary readout ---------- */
   .stat-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
     padding: 2px 4px 0 4px;
     margin-top: 6px;
   }
   .stat-card {
-    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -320,6 +358,10 @@
     color: var(--accent);
     background: var(--accent-soft);
     border-radius: var(--radius-sm);
+  }
+  .stat-card span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   /* ---------- Reminder ---------- */
@@ -360,12 +402,13 @@
 
   /* ---------- Logs + run control ---------- */
   .log-section {
-    flex: 1 1 0;
+    min-width: 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
     padding: 0;
     gap: var(--gap-1);
+    container-type: inline-size;
   }
   .log-tabs { display:flex; gap:4px; padding:3px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
   .log-tab { flex:1; padding:8px 10px; color:var(--text-sec); background:transparent; border:0; border-radius:var(--radius-sm); font:600 10.5px var(--font-ui); cursor:pointer; }
@@ -385,7 +428,7 @@
   }
   .batch-status-card {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 8px;
     align-items: center;
     min-height: 44px;
@@ -414,6 +457,7 @@
     color: var(--text-sec);
     font-size: 10px;
     line-height: 1.25;
+    overflow-wrap: anywhere;
   }
   .batch-count-pill {
     padding: 4px 8px;
@@ -555,47 +599,80 @@
   }
   #startBtn {
     width: 100%;
+    min-width: 0;
     margin-top: 4px;
-    padding: 13px;
-    font-size: 11pt;
+    padding: 12px 10px;
+    font-size: 10.5pt;
+    line-height: 1.25;
     flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 9px;
+    white-space: normal;
+    overflow-wrap: anywhere;
     box-shadow: none;
   }
   #startBtn:hover { box-shadow: none; }
   .automation-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(72px, 92px) minmax(118px, 176px);
     gap: 8px;
     margin-top: 4px;
     flex: none;
+    width: 100%;
+    min-width: 0;
   }
-  .automation-actions #startBtn { flex: 1; margin-top: 0; }
+  .automation-actions #startBtn { min-width: 0; margin-top: 0; }
   #clearBtn {
-    flex: 0 0 auto;
-    min-width: 120px;
-    padding: 13px 16px;
+    width: 100%;
+    min-width: 0;
+    padding: 12px 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   #copyTransmittalsBtn {
-    flex: 0 0 auto;
-    min-width: 176px;
-    padding: 13px 16px;
+    width: 100%;
+    min-width: 0;
+    padding: 12px 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: anywhere;
     transition: background-color .2s ease, color .2s ease, transform .2s ease;
   }
   #copyTransmittalsBtn.copied {
     color: var(--bg-dark);
     background: var(--success, #4ade80);
     animation: copied-pop .45s ease;
+  }
+  @container (max-width: 420px) {
+    .workbook-row,
+    .field-row,
+    .stat-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .guide-card,
+    #uploadBtn {
+      width: 100%;
+    }
+    .mode-toggle {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  @container (max-width: 560px) {
+    .automation-actions {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
   @keyframes copied-pop {
     0% { transform: scale(1); }
@@ -623,12 +700,14 @@
     .main-row { display:grid; grid-template-columns:1fr; overflow-y:auto; }
     .workspace { overflow:visible; padding-right:0; }
     .log-section { min-height:360px; }
-    .workbook-row { flex-direction:column; }
+    .workbook-row { grid-template-columns:1fr; }
     .guide-card { width:100%; }
   }
   @media (max-width: 620px) {
-    .field-row, .stat-row { flex-direction:column; gap:10px; }
+    .field-row, .stat-row { grid-template-columns:1fr; gap:10px; }
     .field-group, .field-group select { width:100%; }
+    .page-header { align-items:flex-start; }
+    .page-header .mode-flag { margin-left:0; }
   }
   .guide-modal h2 {
     font-family: var(--font-ui);

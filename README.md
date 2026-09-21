@@ -8,7 +8,7 @@ uploads, CF2/SOA/CF4 automation endpoints, and live progress logs.
 
 - `server.py` hosts the app and API.
 - `beabots_launcher.py` is the packaged Windows entry point. It starts the
-  local server and opens Beabots in the default browser.
+  local server and opens Beabots in a lightweight desktop webview window.
 - `renderer/` contains the browser UI.
 - `renderer/assets/` contains frontend images and icons.
 - `templates/` contains the CF2 Excel templates.
@@ -102,13 +102,13 @@ Build everything with:
 
 ```powershell
 .\venv\Scripts\Activate.ps1
-.\build_installer.ps1
+powershell -ExecutionPolicy Bypass -File .\build_installer.ps1
 ```
 
 If Inno Setup is installed somewhere else, pass the compiler path:
 
 ```powershell
-.\build_installer.ps1 -InnoCompiler "C:\Path\To\ISCC.exe"
+powershell -ExecutionPolicy Bypass -File .\build_installer.ps1 -InnoCompiler "C:\Path\To\ISCC.exe"
 ```
 
 To build only the packaged EXE folder:
@@ -124,7 +124,7 @@ To compile only the installer after `dist\Beabots` exists:
 & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "BeaconInstaller.iss"
 ```
 
-Test the packaged EXE directly:
+Test the packaged EXE directly. It should open a Beabots desktop window:
 
 ```powershell
 .\dist\Beabots\Beabots.exe
@@ -151,7 +151,7 @@ When preparing a release:
 3. Build the installer:
 
    ```powershell
-   .\build_installer.ps1
+   powershell -ExecutionPolicy Bypass -File .\build_installer.ps1
    ```
 
 4. Compute the installer checksum:
