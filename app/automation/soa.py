@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import unicodedata
 from datetime import datetime
 
 from app.core.logger import logger
@@ -123,6 +124,27 @@ NAME_SUFFIXES = {
 }
 
 
+def _normalize_name_text(text):
+    """Repair common mojibake and normalize Unicode for name matching."""
+    text = str(text or "")
+
+    try:
+        text = text.encode("cp1252").decode("utf-8")
+    except UnicodeError:
+        pass
+
+    return unicodedata.normalize("NFC", text).upper()
+
+
+def _comparison_text(text):
+    """Return a diacritic-insensitive name key for filename comparisons."""
+    normalized = unicodedata.normalize("NFD", _normalize_name_text(text))
+    return "".join(
+        char for char in normalized
+        if unicodedata.category(char) != "Mn"
+    )
+
+
 def _strip_name_suffixes(tokens):
     """Remove generational suffix tokens before surname/given-name matching."""
     return [token for token in tokens if token.rstrip(".") not in NAME_SUFFIXES]
@@ -138,7 +160,7 @@ def _split_surname_and_given(name):
     - a hyphenated final surname is treated as one compound surname;
     - generational suffixes are ignored.
     """
-    tokens = _strip_name_suffixes(name.upper().split())
+    tokens = _strip_name_suffixes(_normalize_name_text(name).split())
 
     if not tokens:
         return [], []
@@ -165,14 +187,14 @@ def _split_surname_and_given(name):
 
 
 def _normalize(text):
-    """Normalize a name while keeping Ñ as a valid letter."""
-    return re.sub(r"[^A-Z0-9Ñ]", "", text.upper())
+    """Normalize a name while keeping Unicode letters such as Ñ valid."""
+    return re.sub(r"[^\w]+|_", "", _comparison_text(text))
 
 
 def _filename_tokens(filename):
     """Return normalized filename tokens used by the existing match rules."""
-    stem = Path(filename).stem.upper()
-    return [token for token in re.split(r"[^A-Z0-9Ñ]+", stem) if token]
+    stem = _comparison_text(Path(filename).stem)
+    return [token for token in re.split(r"[^\w]+|_", stem) if token]
 
 
 def _find_soa_file(patient_name, soa_folder):
@@ -186,6 +208,7 @@ def _find_soa_file(patient_name, soa_folder):
     4. if ambiguous, narrow with given name / given-name initial;
     5. never guess when zero or multiple files remain.
     """
+    normalized_patient_name = _normalize_name_text(patient_name)
     surname_tokens, given_tokens = _split_surname_and_given(patient_name)
     surname_key = _normalize("".join(surname_tokens))
     bare_surname_key = _normalize(surname_tokens[-1]) if surname_tokens else ""
@@ -198,13 +221,19 @@ def _find_soa_file(patient_name, soa_folder):
     for pattern in ("*.xlsx", "*.xls"):
         all_files.extend(soa_folder.glob(pattern))
 
+    logger.info(
+        f"Searching SOA folder: {soa_folder} "
+        f"for patient '{normalized_patient_name}' "
+        f"(surname tokens={surname_tokens or 'none'})"
+    )
+
     def matching(tokens_to_match, require_exact_length=False):
         if not tokens_to_match:
             return []
 
-        tokens_to_match = [token.upper() for token in tokens_to_match]
+        tokens_to_match = [_comparison_text(token) for token in tokens_to_match]
         matches = []
-        allowed_after = set(given_tokens)
+        allowed_after = {_comparison_text(token) for token in given_tokens}
         if given_initial:
             allowed_after.add(given_initial)
 
@@ -241,7 +270,9 @@ def _find_soa_file(patient_name, soa_folder):
         tokens = _filename_tokens(filename)
 
         for i in range(len(tokens) - len(surname_tokens) + 1):
-            if tokens[i:i + len(surname_tokens)] != surname_tokens:
+            if tokens[i:i + len(surname_tokens)] != [
+                _comparison_text(token) for token in surname_tokens
+            ]:
                 continue
 
             before = tokens[i - 1] if i > 0 else None
@@ -249,7 +280,8 @@ def _find_soa_file(patient_name, soa_folder):
             after = tokens[j] if j < len(tokens) else None
 
             if given_tokens and (
-                before == given_tokens[0] or after == given_tokens[0]
+                before == _comparison_text(given_tokens[0])
+                or after == _comparison_text(given_tokens[0])
             ):
                 return True
 
@@ -269,6 +301,13 @@ def _find_soa_file(patient_name, soa_folder):
         )
 
     if not matches:
+        sample_files = ", ".join(file_path.name for file_path in all_files[:20])
+        if len(all_files) > 20:
+            sample_files += f", ... ({len(all_files)} total)"
+        logger.warning(
+            "No matching SOA workbook found. "
+            f"Excel files visible in selected folder: {sample_files or 'none'}"
+        )
         raise Exception(
             f"No SOA file found for patient '{patient_name}'. "
             "Skipping — will not guess."
