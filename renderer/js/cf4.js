@@ -775,6 +775,8 @@ startBtn.addEventListener("click", async () => {
     writeLog(`ERROR: ${result.error}`, "ERROR");
     if (result.requires_beacon) {
       showBeaconRequired(result.error);
+    } else if (result.requires_license) {
+      showLicenseRequired(result.error);
     }
     cf4Running = false;
     cf4StopRequested = false;

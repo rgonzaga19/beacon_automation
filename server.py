@@ -9,6 +9,7 @@ Run directly for local testing:
 """
 
 import os
+import sys
 import threading
 import tempfile
 import uuid
@@ -30,8 +31,22 @@ from app.core.database import db
 import app.models  # noqa: F401 - imported so SQLAlchemy registers the tables
 from app.models import User, UserSetting, utc_now
 from app.core import browser_session
+from app.core.license import (
+    clear_license,
+    get_license_status,
+    require_valid_license,
+    start_background_license_checker,
+    verify_license,
+)
 from app.core.login import load_login_settings, save_login_settings
 from app.core.logger import logger
+from app.core.updater import (
+    apply_downloaded_update,
+    check_for_update,
+    get_update_status,
+    start_background_updater,
+)
+from app.core.version import APP_VERSION
 from app.domain.patient_record import PatientRecord
 from app.domain.date_parser import parse_dates
 from app.domain.time_parser import parse_time_range, format_beacon_time
@@ -42,7 +57,7 @@ from app.automation.beacon import run as beacon_run
 from app.domain.reports import report
 from app.core.security import decrypt_field, encrypt_field
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 APP_ICON_PATH = BASE_DIR / "renderer" / "assets" / "bot.ico"
 UPLOAD_DIR = Path(
     os.environ.get("BEABOTS_UPLOAD_DIR")
@@ -352,6 +367,25 @@ def require_beacon_connection():
     return user, decrypted, None
 
 
+def license_error_response(status=None):
+    status = status or get_license_status()
+    message = status.get("reason") or "Please activate a valid Beabots license before running automation."
+    if status.get("code") == "UPDATE_REQUIRED":
+        message = "This Beabots version must be updated before automation can run."
+    return jsonify({
+        "error": message,
+        "requires_license": True,
+        "license": status,
+    }), 403
+
+
+def require_license_connection():
+    status = require_valid_license()
+    if status is None:
+        return None
+    return license_error_response(status)
+
+
 def resource_path(relative_path):
     return str(BASE_DIR / relative_path)
 
@@ -544,6 +578,61 @@ def post_settings():
     if auth_changed:
         browser_session.invalidate_auth_token()
     return jsonify(settings)
+
+
+@app.route("/api/license/status", methods=["GET"])
+@login_required
+def license_status_route():
+    return jsonify(get_license_status())
+
+
+@app.route("/api/license/activate", methods=["POST"])
+@login_required
+def license_activate_route():
+    data = request.get_json(force=True)
+    license_key = str(data.get("license_key", "")).strip()
+    if not license_key:
+        return jsonify({"error": "Please enter a license key."}), 400
+
+    status = verify_license(license_key=license_key, force=True)
+    if not status.get("valid"):
+        return jsonify({
+            "error": status.get("reason") or "Invalid license.",
+            "license": status,
+        }), 400
+    return jsonify(status)
+
+
+@app.route("/api/license/deactivate", methods=["POST"])
+@login_required
+def license_deactivate_route():
+    return jsonify(clear_license())
+
+
+@app.route("/api/app/version", methods=["GET"])
+def app_version_route():
+    return jsonify({"version": APP_VERSION})
+
+
+@app.route("/api/update/status", methods=["GET"])
+@login_required
+def update_status_route():
+    return jsonify(get_update_status())
+
+
+@app.route("/api/update/check", methods=["POST"])
+@login_required
+def update_check_route():
+    try:
+        return jsonify(check_for_update())
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
+@app.route("/api/update/apply", methods=["POST"])
+@login_required
+def update_apply_route():
+    return jsonify({"started": apply_downloaded_update()})
 
 
 @app.route("/api/beacon/validate", methods=["POST"])
@@ -919,6 +1008,9 @@ def cf2_start():
     user, beacon_settings, error_response = require_beacon_connection()
     if error_response:
         return error_response
+    license_response = require_license_connection()
+    if license_response:
+        return license_response
     state = _cf2_states.get(user.id)
     if not state or not state["patient_records"]:
         return jsonify({"error": "No patients loaded."}), 400
@@ -979,6 +1071,9 @@ def soa_start():
     user, beacon_settings, error_response = require_beacon_connection()
     if error_response:
         return error_response
+    license_response = require_license_connection()
+    if license_response:
+        return license_response
     is_multipart = request.content_type and request.content_type.startswith("multipart/form-data")
     if is_multipart:
         data = request.form
@@ -1073,6 +1168,9 @@ def beacon_start():
     user, beacon_settings, error_response = require_beacon_connection()
     if error_response:
         return error_response
+    license_response = require_license_connection()
+    if license_response:
+        return license_response
     data = request.get_json(force=True)
     transmittals = data.get("transmittals", [])
     auto_encode_cf4 = bool(data.get("auto_encode_cf4", False))
@@ -1116,6 +1214,8 @@ def beacon_stop():
 
 if __name__ == "__main__":
     init_database()
+    start_background_license_checker()
+    start_background_updater()
     port = int(os.environ.get("PORT") or os.environ.get("BEABOTS_PORT", 5417))
     host = os.environ.get("HOST", "0.0.0.0")
     socketio.run(app, host=host, port=port, allow_unsafe_werkzeug=True)

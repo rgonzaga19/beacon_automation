@@ -349,6 +349,8 @@ automateBtn.addEventListener("click", async () => {
   if (result.error) {
     if (result.requires_beacon) {
       showBeaconRequired(result.error);
+    } else if (result.requires_license) {
+      showLicenseRequired(result.error);
     } else {
       showModal("Error", result.error);
     }

@@ -663,6 +663,8 @@ startBtn.addEventListener("click", async () => {
     log(`ERROR: ${result.error}`);
     if (result.requires_beacon) {
       showBeaconRequired(result.error);
+    } else if (result.requires_license) {
+      showLicenseRequired(result.error);
     }
     scrollLogToEnd();
     setControlsRunning(false);

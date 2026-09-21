@@ -48,7 +48,10 @@ if (!window.beabots) {
     onDashboardEnter: () => {},
     onWorkspaceActive: () => {},
     onServerLog: () => {},
-    getVersion: async () => "web",
+    getVersion: async () => {
+      const result = await fetchJSON("/api/app/version");
+      return result.version || "web";
+    },
     getSettings: async () => fetchJSON("/api/settings"),
     getTheme: async () => localStorage.getItem("beabotsTheme") || "dark",
     setTheme: async (theme) => localStorage.setItem("beabotsTheme", theme),
@@ -130,6 +133,14 @@ function showBeaconRequired(message) {
   showModal(
     "Beacon Account Required",
     message || "Please connect and validate your Beacon account in Settings before running automation.",
+    { onOk: () => window.beabots?.openSettingsWindow?.() },
+  );
+}
+
+function showLicenseRequired(message) {
+  showModal(
+    "License Required",
+    message || "Please activate a valid Beabots license in Settings before running automation.",
     { onOk: () => window.beabots?.openSettingsWindow?.() },
   );
 }

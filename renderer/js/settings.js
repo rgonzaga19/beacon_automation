@@ -3,6 +3,10 @@
 const beaconUsernameInput = document.getElementById("beaconUsername");
 const beaconPasswordInput = document.getElementById("beaconPassword");
 const beaconStatus = document.getElementById("beaconStatus");
+const licenseKeyInput = document.getElementById("licenseKey");
+const licenseStatus = document.getElementById("licenseStatus");
+const activateLicenseBtn = document.getElementById("activateLicenseBtn");
+const deactivateLicenseBtn = document.getElementById("deactivateLicenseBtn");
 const validateBeaconBtn = document.getElementById("validateBeaconBtn");
 const saveBtn = document.getElementById("saveBtn");
 const saveStatus = document.getElementById("saveStatus");
@@ -53,11 +57,28 @@ function renderBeaconStatus(settings) {
   }
 }
 
+function renderLicenseStatus(status) {
+  if (status.valid) {
+    const owner = status.owner ? `${status.owner} - ` : "";
+    const plan = status.plan ? `${status.plan} - ` : "";
+    licenseStatus.textContent = `License active. ${owner}${plan}expires ${status.expires || "unknown"}.`;
+    licenseStatus.style.color = "var(--success)";
+    licenseKeyInput.value = "";
+    licenseKeyInput.placeholder = "License is active";
+    return;
+  }
+
+  licenseStatus.textContent = status.reason || "License must be activated before automation can run.";
+  licenseStatus.style.color = "var(--warning)";
+  licenseKeyInput.placeholder = status.configured ? "Saved license needs verification" : "XXXX-XXXX-XXXX-XXXX";
+}
+
 async function loadSettings() {
   try {
-    const [settings, theme] = await Promise.all([
+    const [settings, theme, license] = await Promise.all([
       fetchJSON("/api/settings"),
       window.beabots?.getTheme(),
+      fetchJSON("/api/license/status"),
     ]);
     beaconUsernameInput.value = settings.username || "";
     beaconPasswordInput.value = settings.password || "";
@@ -66,6 +87,7 @@ async function loadSettings() {
     selectChoice(serverButtons, "server", currentServer);
     selectChoice(themeButtons, "theme", currentTheme);
     renderBeaconStatus(settings);
+    renderLicenseStatus(license);
   } catch (error) {
     saveStatus.textContent = "Unable to load settings.";
     saveStatus.className = "save-status error";
@@ -94,6 +116,56 @@ saveBtn.addEventListener("click", async () => {
     saveStatus.className = "save-status error";
   } finally {
     saveBtn.disabled = false;
+  }
+});
+
+activateLicenseBtn.addEventListener("click", async () => {
+  const licenseKey = licenseKeyInput.value.trim();
+  if (!licenseKey) {
+    saveStatus.textContent = "Enter a license key first.";
+    saveStatus.className = "save-status error";
+    return;
+  }
+
+  activateLicenseBtn.disabled = true;
+  saveStatus.textContent = "Activating license...";
+  saveStatus.className = "save-status";
+  try {
+    const result = await fetchJSON("/api/license/activate", {
+      method: "POST",
+      body: JSON.stringify({ license_key: licenseKey }),
+    });
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    saveStatus.textContent = "License activated.";
+    saveStatus.className = "save-status success";
+    renderLicenseStatus(result);
+  } catch (error) {
+    saveStatus.textContent = error.message || "Unable to activate license.";
+    saveStatus.className = "save-status error";
+  } finally {
+    activateLicenseBtn.disabled = false;
+  }
+});
+
+deactivateLicenseBtn.addEventListener("click", async () => {
+  deactivateLicenseBtn.disabled = true;
+  saveStatus.textContent = "Removing license...";
+  saveStatus.className = "save-status";
+  try {
+    const result = await fetchJSON("/api/license/deactivate", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    saveStatus.textContent = "License removed.";
+    saveStatus.className = "save-status success";
+    renderLicenseStatus(result);
+  } catch (error) {
+    saveStatus.textContent = "Unable to remove license.";
+    saveStatus.className = "save-status error";
+  } finally {
+    deactivateLicenseBtn.disabled = false;
   }
 });
 
