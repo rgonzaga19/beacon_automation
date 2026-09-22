@@ -2,6 +2,8 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
+import re
 import threading
 import time
 from pathlib import Path
@@ -25,6 +27,10 @@ _UPDATE_DIR = get_data_dir() / "updates"
 _STATE_FILE = _UPDATE_DIR / "update.json"
 _lock = threading.Lock()
 _background_started = False
+_claim_install = None
+_release_install = None
+_close_for_update = None
+_apply_lock = threading.Lock()
 
 
 def _normalize_version(value):
@@ -79,7 +85,9 @@ def check_for_update():
 def get_update_status():
     with _lock:
         state = _state()
-    state.setdefault("current_version", APP_VERSION)
+    state["current_version"] = APP_VERSION
+    if not _is_newer(state.get("version")):
+        state.update(available=False, downloaded=False)
     state.setdefault("available", False)
     state.setdefault("downloaded", False)
     return state
@@ -93,8 +101,17 @@ def download_update(info=None):
 
     if not info.get("available") or not download_url or not latest_version:
         return get_update_status()
-    if not expected_sha256:
-        raise RuntimeError("Update manifest is missing sha256.")
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", str(latest_version)):
+        raise RuntimeError("Update version must use major.minor.patch format.")
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_sha256):
+        raise RuntimeError("Update manifest must include a valid sha256.")
+    if not str(download_url).startswith("https://"):
+        raise RuntimeError("Update downloads must use HTTPS.")
+    cached = get_update_status()
+    cached_path = Path(cached.get("installer_path") or "")
+    if (cached.get("version") == latest_version and cached.get("downloaded")
+            and cached_path.is_file() and _sha256(cached_path) == expected_sha256):
+        return cached
 
     _UPDATE_DIR.mkdir(parents=True, exist_ok=True)
     installer_path = _UPDATE_DIR / f"Beabots_Setup_v{latest_version}.exe"
@@ -127,41 +144,113 @@ def download_update(info=None):
     return state
 
 
-def apply_downloaded_update():
-    status = get_update_status()
-    installer_path = status.get("installer_path")
-    if not status.get("downloaded") or not installer_path or not Path(installer_path).exists():
-        return False
+def configure_desktop_updates(claim_install, release_install, close_for_update):
+    global _claim_install, _release_install, _close_for_update
+    _claim_install = claim_install
+    _release_install = release_install
+    _close_for_update = close_for_update
 
-    subprocess.Popen(
-        [
-            installer_path,
-            "/VERYSILENT",
-            "/SUPPRESSMSGBOXES",
-            "/NORESTART",
-        ],
-        close_fds=True,
-    )
-    return True
+
+# Runs outside the application so the installer can replace all packaged files.
+_UPDATE_HELPER = r'''param([string]$ConfigPath)
+$ErrorActionPreference = 'Stop'
+$config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+$owner = Get-Process -Id $config.pid -ErrorAction SilentlyContinue
+Set-Content -LiteralPath $config.ready -Value 'ready'
+if ($owner -and -not $owner.WaitForExit(120000)) { exit 1 }
+try {
+    $hash = (Get-FileHash -LiteralPath $config.installer -Algorithm SHA256).Hash
+    if ($hash -ne $config.sha256) { throw 'Installer checksum mismatch.' }
+    $installArgs = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /NOCLOSEAPPLICATIONS /NORESTARTAPPLICATIONS /DIR="' + $config.directory + '"'
+    $setup = Start-Process -FilePath $config.installer -ArgumentList $installArgs -Verb RunAs -WindowStyle Hidden -Wait -PassThru
+    if ($setup.ExitCode -ne 0) { throw "Installer exited with code $($setup.ExitCode)." }
+    Set-Content -LiteralPath $config.result -Value 'Update installed successfully.'
+} catch {
+    Set-Content -LiteralPath $config.result -Value $_.Exception.Message
+} finally {
+    # Relaunch as the original user, even if elevation or installation failed.
+    Start-Process -FilePath $config.executable -WindowStyle Normal
+}
+'''
+
+
+def apply_downloaded_update():
+    # Hosted servers and development runs must never execute desktop installers.
+    if os.name != "nt" or not getattr(sys, "frozen", False) or _close_for_update is None:
+        return False
+    with _apply_lock:
+        status = get_update_status()
+        installer = Path(status.get("installer_path") or "")
+        if not status.get("downloaded") or not installer.is_file():
+            return False
+        if time.time() - status.get("last_install_attempt", 0) < 6 * 60 * 60:
+            return False
+        if installer.resolve().parent != _UPDATE_DIR.resolve():
+            raise RuntimeError("Installer is outside the update directory.")
+        if _sha256(installer) != status.get("sha256", "").lower():
+            raise RuntimeError("Installer checksum mismatch before installation.")
+        if not _claim_install():
+            return False
+        helper = None
+        try:
+            status["last_install_attempt"] = time.time()
+            with _lock:
+                _save_state(status)
+            helper_path = _UPDATE_DIR / "install-update.ps1"
+            config_path = _UPDATE_DIR / "install-update.json"
+            ready_path = _UPDATE_DIR / "install-update.ready"
+            ready_path.unlink(missing_ok=True)
+            helper_path.write_text(_UPDATE_HELPER, encoding="utf-8")
+            config_path.write_text(json.dumps({
+                "pid": os.getpid(), "installer": str(installer.resolve()),
+                "sha256": status["sha256"], "executable": sys.executable,
+                "directory": str(Path(sys.executable).parent),
+                "ready": str(ready_path), "result": str(_UPDATE_DIR / "install-result.txt"),
+            }), encoding="utf-8")
+            powershell = Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"
+            helper = subprocess.Popen([
+                str(powershell), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                "-File", str(helper_path), "-ConfigPath", str(config_path),
+            ], creationflags=subprocess.CREATE_NO_WINDOW, close_fds=True)
+            deadline = time.monotonic() + 10
+            while not ready_path.exists():
+                if helper.poll() is not None or time.monotonic() >= deadline:
+                    raise RuntimeError("Update helper did not start.")
+                time.sleep(0.1)
+            _close_for_update()
+            return True
+        except Exception:
+            if helper is not None and helper.poll() is None:
+                helper.terminate()
+            _release_install()
+            raise
 
 
 def start_background_updater():
     global _background_started
-    if _background_started:
+    if _background_started or os.name != "nt" or not getattr(sys, "frozen", False):
         return
     _background_started = True
 
     def worker():
+        next_check = 0
         while True:
             try:
-                info = check_for_update()
-                with _lock:
-                    state = {**info, "downloaded": False}
-                    _save_state(state)
-                if info.get("available"):
-                    download_update(info)
+                if time.monotonic() >= next_check:
+                    next_check = time.monotonic() + max(60, UPDATE_CHECK_INTERVAL_SECONDS)
+                    info = check_for_update()
+                    if info.get("available"):
+                        download_update(info)
+                    else:
+                        with _lock:
+                            _save_state({**info, "downloaded": False})
             except Exception as exc:
                 logger.warning(f"Background update check failed: {exc}")
-            time.sleep(UPDATE_CHECK_INTERVAL_SECONDS)
+            try:
+                if apply_downloaded_update():
+                    return
+            except Exception as exc:
+                logger.warning(f"Automatic installation failed: {exc}")
+            time.sleep(15)
 
     threading.Thread(target=worker, name="beabots-updater", daemon=True).start()

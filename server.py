@@ -88,6 +88,34 @@ _cf2_states = {}
 _cf2_runs = {}
 _soa_runs = {}
 _beacon_runs = {}
+_job_start_lock = threading.RLock()
+_update_installing = False
+
+
+def claim_update_installation():
+    """Prevent new jobs only when every existing automation has finished."""
+    global _update_installing
+    with _job_start_lock:
+        if _update_installing or _cf2_runs or _soa_runs or _beacon_runs:
+            return False
+        _update_installing = True
+        return True
+
+
+def release_update_installation():
+    global _update_installing
+    with _job_start_lock:
+        _update_installing = False
+
+
+def serialize_job_start(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        with _job_start_lock:
+            if _update_installing:
+                return jsonify({"error": "Beabots is updating and will reopen automatically."}), 503
+            return fn(*args, **kwargs)
+    return wrapped
 
 MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
@@ -1004,6 +1032,7 @@ def _run_cf2_automation(user_id, beacon_settings, state, stop_event):
 
 @app.route("/api/cf2/start", methods=["POST"])
 @login_required
+@serialize_job_start
 def cf2_start():
     user, beacon_settings, error_response = require_beacon_connection()
     if error_response:
@@ -1067,6 +1096,7 @@ def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop
 
 @app.route("/api/soa/start", methods=["POST"])
 @login_required
+@serialize_job_start
 def soa_start():
     user, beacon_settings, error_response = require_beacon_connection()
     if error_response:
@@ -1164,6 +1194,7 @@ def _run_beacon_automation(user_id, beacon_settings, transmittals, auto_encode_c
 
 @app.route("/api/beacon/start", methods=["POST"])
 @login_required
+@serialize_job_start
 def beacon_start():
     user, beacon_settings, error_response = require_beacon_connection()
     if error_response:

@@ -7,12 +7,17 @@ import webbrowser
 import requests
 import webview
 
+from app.core.config import get_data_dir
+from app.core.updater import configure_desktop_updates
+
 from server import (
     app,
     init_database,
     socketio,
     start_background_license_checker,
     start_background_updater,
+    claim_update_installation,
+    release_update_installation,
 )
 
 
@@ -102,7 +107,6 @@ if __name__ == "__main__":
 
     init_database()
     start_background_license_checker()
-    start_background_updater()
 
     port = int(os.environ.get("PORT") or os.environ.get("BEABOTS_PORT", 5417))
     host = os.environ.get("HOST", "127.0.0.1")
@@ -123,7 +127,30 @@ if __name__ == "__main__":
             js_api=appearance,
         )
         appearance._window = window
-        webview.start()
+
+        def close_for_update():
+            try:
+                window.evaluate_js("""(() => {
+                    const notice = document.createElement('div');
+                    notice.setAttribute('role', 'alert');
+                    notice.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:grid;place-content:center;text-align:center;background:var(--bg-dark,#0a0e16);color:var(--text-pri,#eef2f6);font:16px Segoe UI;padding:32px';
+                    notice.textContent = 'Installing an update. Beabots will close and reopen automatically.';
+                    document.body.appendChild(notice);
+                })()""")
+                time.sleep(4)
+            except Exception:
+                pass
+            window.destroy()
+
+        configure_desktop_updates(
+            claim_update_installation, release_update_installation, close_for_update,
+        )
+        # Keep the persistent login cookie and theme across desktop restarts.
+        webview.start(
+            func=start_background_updater,
+            private_mode=False,
+            storage_path=str(get_data_dir() / "webview"),
+        )
     except Exception:
         _open_fallback_browser(url)
         while True:
