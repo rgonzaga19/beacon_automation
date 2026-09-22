@@ -90,6 +90,15 @@ function renderClaims() {
       }
       renderClaims();
     }));
+    row.querySelectorAll('input[type="date"]').forEach((input) => {
+      input.addEventListener("click", () => {
+        try {
+          input.showPicker?.();
+        } catch (error) {
+          input.focus();
+        }
+      });
+    });
     row.querySelector(".remove").addEventListener("click", () => {
       if (claimState.length <= 1) return;
       claimState.splice(index, 1);
@@ -126,7 +135,23 @@ function syncClaimCount() {
   renderClaims();
 }
 
-function download(blob, filename) {
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error("Unable to read generated file."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function download(blob, filename) {
+  const desktopApi = window.pywebview?.api;
+  if (desktopApi?.save_generated_file) {
+    const result = await desktopApi.save_generated_file(filename, await blobToDataUrl(blob));
+    if (!result?.ok) throw new Error(result?.error || "Unable to save generated file.");
+    return result.path || filename;
+  }
+
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -135,6 +160,7 @@ function download(blob, filename) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+  return filename;
 }
 
 async function generateIndividual() {
@@ -155,8 +181,8 @@ async function generateIndividual() {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.error || "Generation failed.");
     }
-    download(await response.blob(), "generated.xlsx");
-    setStatus("Excel generated successfully", "done");
+    const savedPath = await download(await response.blob(), "generated.xlsx");
+    setStatus(`Excel generated: ${savedPath}`, "done");
   } catch (error) {
     setStatus(error.message, "error");
     alert(error.message);
@@ -175,8 +201,8 @@ async function downloadBatchTemplate() {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.error || "Template download failed.");
     }
-    download(await response.blob(), "SOA_Batch_Template.xlsx");
-    batchStatus.textContent = "Template downloaded.";
+    const savedPath = await download(await response.blob(), "SOA_Batch_Template.xlsx");
+    batchStatus.textContent = `Template saved: ${savedPath}`;
   } catch (error) {
     batchStatus.className = "status-text error";
     batchStatus.textContent = error.message;
@@ -242,8 +268,8 @@ batchButton.addEventListener("click", async () => {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.error || "Batch generation failed.");
     }
-    download(await response.blob(), `SOA_Batch_${new Date().toISOString().slice(0, 10)}.zip`);
-    batchStatus.textContent = "Batch ZIP generated.";
+    const savedPath = await download(await response.blob(), `SOA_Batch_${new Date().toISOString().slice(0, 10)}.zip`);
+    batchStatus.textContent = `Batch ZIP saved: ${savedPath}`;
   } catch (error) {
     batchStatus.className = "status-text error";
     batchStatus.textContent = error.message;

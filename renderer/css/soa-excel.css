@@ -36,8 +36,21 @@ body { margin: 0; min-height: 100vh; overflow: auto; background: var(--soa-page)
 input, select { min-height: 39px; width: 100%; padding: 8px 12px; color: var(--text-pri); background: var(--soa-input); border: 1px solid var(--soa-border); border-radius: 8px; font: 13px var(--font-ui); outline: none; }
 input:focus, select:focus { border-color: var(--soa-accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 input:disabled, select:disabled { color: color-mix(in srgb, var(--text-sec) 70%, transparent); background: color-mix(in srgb, var(--bg-card) 78%, var(--bg-base)); cursor: not-allowed; }
-input[type="date"] { color-scheme: dark; }
-input[type="date"]::-webkit-calendar-picker-indicator { opacity: .95; cursor: pointer; filter: invert(1) brightness(1.8); }
+input[type="date"] {
+  color-scheme: dark;
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2335e0d0' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4'/%3E%3Cpath d='M16 2v4'/%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 17px 17px;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  width: 34px;
+  height: 100%;
+  margin-right: -8px;
+  opacity: .001;
+  cursor: pointer;
+}
 #claims { display: grid; gap: 14px; }
 .claim { display: grid; gap: 18px; padding: 26px 24px 24px; background: var(--soa-surface); border: 1px solid var(--soa-border); border-radius: 8px; }
 .claim-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--soa-border); }
@@ -143,10 +156,11 @@ html[data-theme="light"] .check-pill input:checked {
 
 html[data-theme="light"] input[type="date"] {
   color-scheme: light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23435068' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4'/%3E%3Cpath d='M16 2v4'/%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3C/svg%3E");
 }
 
 html[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: none;
+  opacity: .001;
 }
 
 html[data-theme="light"] input:disabled,

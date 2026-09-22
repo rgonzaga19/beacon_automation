@@ -1,8 +1,11 @@
 import os
 import sys
+import base64
+import re
 import threading
 import time
 import webbrowser
+from pathlib import Path
 
 import requests
 import webview
@@ -57,6 +60,36 @@ class WindowAppearance:
         except (AttributeError, OSError):
             # Other backends/older Windows versions keep their native appearance.
             return False
+
+    def save_generated_file(self, filename, data_url):
+        safe_name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", str(filename or "")).strip()
+        if not safe_name:
+            safe_name = "generated.xlsx"
+
+        suffix = Path(safe_name).suffix.lower()
+        if suffix not in {".xlsx", ".zip"}:
+            return {"ok": False, "error": "Unsupported generated file type."}
+
+        header, separator, encoded = str(data_url or "").partition(",")
+        if not separator or ";base64" not in header:
+            return {"ok": False, "error": "Generated file data is invalid."}
+
+        downloads = Path.home() / "Downloads"
+        target_dir = downloads if downloads.is_dir() else get_data_dir() / "Downloads"
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        target = target_dir / safe_name
+        stem = target.stem
+        for index in range(1, 1000):
+            if not target.exists():
+                break
+            target = target_dir / f"{stem} ({index}){suffix}"
+
+        try:
+            target.write_bytes(base64.b64decode(encoded))
+            return {"ok": True, "path": str(target)}
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
 
 
 def _claim_single_instance():
