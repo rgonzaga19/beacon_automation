@@ -38,23 +38,9 @@
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: var(--gap-2);
     padding: 18px var(--gap-3) 16px var(--gap-3);
     border-bottom: 1px solid var(--border);
   }
-  .page-header .glyph {
-    width: 36px;
-    height: 36px;
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--accent);
-    background: var(--accent-soft);
-    border: none;
-    border-radius: var(--radius-md);
-  }
-  .page-header .glyph img { width: 20px; height: 20px; object-fit: contain; display: block; }
   .page-header .title-block { line-height: 1.3; }
   .page-header .title {
     font-family: var(--font-ui);
@@ -62,6 +48,7 @@
     font-size: 15px;
     font-weight: 700;
     letter-spacing: 0.4px;
+    text-transform: uppercase;
   }
   .page-header .subtitle {
     font-family: var(--font-ui);
@@ -783,7 +770,6 @@
     </div>
 
     <div class="page-header">
-      <div class="glyph"><img src="assets/bot.ico" alt=""></div>
       <div class="title-block">
         <div class="title">CF2</div>
         <div class="subtitle">Claims transmittal automation</div>

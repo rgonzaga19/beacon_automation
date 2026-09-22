@@ -12,7 +12,7 @@
 
 body { margin: 0; min-height: 100vh; overflow: auto; background: var(--soa-page); color: var(--text-pri); font-family: var(--font-ui); font-size: 13px; }
 .soa-header { min-height: 78px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 12px 26px 16px 14px; border-bottom: 1px solid var(--soa-border); background: var(--bg-base); }
-.header-copy h1 { margin: 0; font-size: 21px; line-height: 1.15; font-weight: 800; letter-spacing: 0; }
+.header-copy h1 { margin: 0; font-family: var(--font-ui); color: var(--text-pri); font-size: 15px; line-height: 1.3; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
 .header-copy p { margin: 4px 0 0; color: var(--text-sec); font-size: 11.5px; }
 .page-body { padding: 24px 31px 36px 14px; }
 .subtabs { display: flex; gap: 8px; margin: -8px 0 18px; }
