@@ -155,3 +155,41 @@ function showLicenseRequired(message) {
 document.getElementById("btnHome")?.addEventListener("click", () => {
   window.beabots?.goHome();
 });
+
+// One persistent status strip for the desktop shell, including embedded pages.
+// Informational only: update scheduling and installation remain automatic.
+if (window.parent === window) {
+  let updateStrip;
+  async function refreshUpdateStatus() {
+    try {
+      const response = await fetch(`${API_BASE}/api/update/status`);
+      if (!response.ok) return;
+      const status = await response.json();
+      if (!status.desktop_updates_enabled) return;
+      if (!updateStrip) {
+        updateStrip = document.createElement("div");
+        updateStrip.className = "desktop-update-status";
+        updateStrip.setAttribute("role", "status");
+        updateStrip.setAttribute("aria-live", "polite");
+        const message = document.createElement("span");
+        const progress = document.createElement("progress");
+        progress.max = 100;
+        progress.setAttribute("aria-label", "Update download progress");
+        updateStrip.append(message, progress);
+        document.querySelector(".app-window")?.appendChild(updateStrip);
+      }
+      updateStrip.dataset.phase = status.phase;
+      const text = status.message + (status.phase === "downloading" && status.percent != null ? ` ${status.percent}%` : "");
+      if (updateStrip.firstChild.textContent !== text) updateStrip.firstChild.textContent = text;
+      const progress = updateStrip.lastChild;
+      progress.hidden = !["checking", "downloading", "verifying"].includes(status.phase);
+      if (status.percent == null) progress.removeAttribute("value");
+      else progress.value = status.percent;
+    } catch {
+      // Keep the last status visible while the desktop server restarts.
+    } finally {
+      window.setTimeout(refreshUpdateStatus, 1000);
+    }
+  }
+  refreshUpdateStatus();
+}

@@ -4,28 +4,26 @@
 license request/response format. Treat this file as private: it contains license
 keys. Deploy it to the existing Cloudflare Worker, not a new endpoint.
 
-Set these Worker variables in Cloudflare before publishing an update:
+Edit the `RELEASE` block near the top of `worker.js` for every release, then
+paste/deploy the updated Worker. Cloudflare release variables are no longer used.
 
-| Variable | Value |
-| --- | --- |
-| `UPDATE_VERSION` | Exact published installer version, such as `4.0.5` |
-| `UPDATE_DOWNLOAD_URL` | HTTPS URL of that version's published installer |
-| `UPDATE_SHA256` | SHA-256 of that exact installer; required |
-| `UPDATE_NOTES` | Optional release notes, one per line |
-| `MIN_SUPPORTED_VERSION` | Oldest version allowed to run automation; default `4.0.4` |
-| `ENFORCE_MINIMUM_VERSION` | `true` to reject older clients; default `false` |
+- `version`: the actual installer version.
+- `download`: HTTPS URL of that exact installer.
+- `sha256`: the actual installer's SHA-256 hash.
+- `minimum_version`: oldest version permitted to run automation.
+- `mandatory`: enable minimum-version enforcement when true.
+- `notes`: array of release notes.
 
-Compute the checksum on the actual installer you upload:
+The block is populated for the local `Output/Beabots_Setup_v4.0.6.exe`, including
+its computed checksum. Upload that exact file to the configured URL before
+publishing this Worker; the remote asset has not been verified.
 
 ```powershell
-Get-FileHash -LiteralPath 'Output\Beabots_Setup_v4.0.5.exe' -Algorithm SHA256
+Get-FileHash -LiteralPath 'Output\Beabots_Setup_v4.0.6.exe' -Algorithm SHA256
 ```
 
-Replace the example version/path with the release you built. The source currently
-reports version 4.0.5. For the new automatic-install changes, increment both
-`app/core/version.py` and `BeaconInstaller.iss`, build and publish that installer,
-then set matching Worker variables. Advertising 4.0.5 again will not update an
-existing 4.0.5 installation.
+Recompute the hash after every build. To update an installed 4.0.6 app, build and
+publish a higher version and update this block to match it.
 
 `GET /update` returns `version`, `minimum_version`, `mandatory`, `notes`, `download`,
 and `sha256`. An incomplete or invalid release configuration returns HTTP 503;

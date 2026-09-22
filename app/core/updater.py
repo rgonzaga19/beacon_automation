@@ -31,6 +31,12 @@ _claim_install = None
 _release_install = None
 _close_for_update = None
 _apply_lock = threading.Lock()
+_progress = {"phase": "idle", "message": "Waiting to check for updates.", "percent": None}
+
+
+def _set_progress(phase, message, percent=None):
+    with _lock:
+        _progress.update(phase=phase, message=message, percent=percent)
 
 
 def _normalize_version(value):
@@ -74,6 +80,7 @@ def _sha256(path):
 
 
 def check_for_update():
+    _set_progress("checking", "Checking for updates?")
     response = requests.get(UPDATE_URL, timeout=20)
     response.raise_for_status()
     info = response.json()
@@ -85,6 +92,8 @@ def check_for_update():
 def get_update_status():
     with _lock:
         state = _state()
+        state.update(_progress)
+        state["desktop_updates_enabled"] = _background_started
     state["current_version"] = APP_VERSION
     if not _is_newer(state.get("version")):
         state.update(available=False, downloaded=False)
@@ -111,20 +120,28 @@ def download_update(info=None):
     cached_path = Path(cached.get("installer_path") or "")
     if (cached.get("version") == latest_version and cached.get("downloaded")
             and cached_path.is_file() and _sha256(cached_path) == expected_sha256):
+        _set_progress("ready", f"Update {latest_version} downloaded and verified.", 100)
         return cached
 
     _UPDATE_DIR.mkdir(parents=True, exist_ok=True)
     installer_path = _UPDATE_DIR / f"Beabots_Setup_v{latest_version}.exe"
     partial_path = installer_path.with_suffix(".download")
 
+    _set_progress("downloading", f"Downloading update {latest_version}?", 0)
     logger.info(f"Downloading Beabots update {latest_version}.")
     with requests.get(download_url, stream=True, timeout=60) as response:
         response.raise_for_status()
+        total = int(response.headers.get("Content-Length") or 0)
+        received = 0
         with open(partial_path, "wb") as file:
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 if chunk:
                     file.write(chunk)
+                    received += len(chunk)
+                    percent = min(100, round(received * 100 / total)) if total else None
+                    _set_progress("downloading", f"Downloading update {latest_version}?", percent)
 
+    _set_progress("verifying", "Verifying the downloaded update?")
     if expected_sha256:
         actual_sha256 = _sha256(partial_path)
         if actual_sha256.lower() != expected_sha256:
@@ -141,6 +158,7 @@ def download_update(info=None):
     }
     with _lock:
         _save_state(state)
+    _set_progress("ready", f"Update {latest_version} downloaded and verified.", 100)
     return state
 
 
@@ -184,14 +202,17 @@ def apply_downloaded_update():
         if not status.get("downloaded") or not installer.is_file():
             return False
         if time.time() - status.get("last_install_attempt", 0) < 6 * 60 * 60:
+            _set_progress("error", "The previous installation did not complete. Beabots will retry automatically within six hours.")
             return False
         if installer.resolve().parent != _UPDATE_DIR.resolve():
             raise RuntimeError("Installer is outside the update directory.")
         if _sha256(installer) != status.get("sha256", "").lower():
             raise RuntimeError("Installer checksum mismatch before installation.")
         if not _claim_install():
+            _set_progress("waiting", "Update ready. Waiting for automation to finish before restarting.", 100)
             return False
         helper = None
+        _set_progress("installing", "Installing update. Beabots will close and reopen automatically.", 100)
         try:
             status["last_install_attempt"] = time.time()
             with _lock:
@@ -244,12 +265,15 @@ def start_background_updater():
                     else:
                         with _lock:
                             _save_state({**info, "downloaded": False})
+                        _set_progress("up_to_date", f"Beabots {APP_VERSION} is up to date. Latest offered: {info.get("version", "unknown")}.")
             except Exception as exc:
+                _set_progress("error", f"Update failed: {exc} Automatic retry at the next scheduled check.")
                 logger.warning(f"Background update check failed: {exc}")
             try:
                 if apply_downloaded_update():
                     return
             except Exception as exc:
+                _set_progress("error", f"Installation failed: {exc}")
                 logger.warning(f"Automatic installation failed: {exc}")
             time.sleep(15)
 

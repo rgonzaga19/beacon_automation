@@ -19,20 +19,30 @@ const LICENSES = [
   },
 ];
 
-// Release settings are Cloudflare Worker variables. Publish and verify the
-// installer before changing these values. No checksum is invented or inferred.
+// Edit this block for each release, then deploy the Worker.
+// Upload this exact installer before publishing these release details.
+// These values take precedence over any old Cloudflare release variables.
+const RELEASE = {
+  version: "4.0.7",
+  minimum_version: "4.0.5",
+  mandatory: true,
+  notes: [],
+  download: "https://github.com/rgonzaga19/beacon_automation/releases/download/Beabots/Beabots_Setup_v4.0.5.exe",
+  // SHA-256 of Output/Beabots_Setup_v4.0.6.exe. Replace after every rebuild.
+  sha256: "56ECFADAEE7C25E1E245B295FBC462A5C51B975575C26F9CEDBD1919EBA41CC9",
+};
+
 function releaseConfig(env) {
-  const version = env.UPDATE_VERSION || "4.0.5";
-  const minimumVersion = env.MIN_SUPPORTED_VERSION || "4.0.4";
-  const enforce = String(env.ENFORCE_MINIMUM_VERSION || "false") === "true";
+  const version = RELEASE.version;
+  const minimumVersion = RELEASE.minimum_version;
+  const enforce = RELEASE.mandatory;
   const info = {
     version,
     minimum_version: minimumVersion,
     mandatory: enforce,
-    notes: env.UPDATE_NOTES ? String(env.UPDATE_NOTES).split("\n").filter(Boolean) : [],
-    download: env.UPDATE_DOWNLOAD_URL ||
-      "https://github.com/rgonzaga19/beacon_automation/releases/download/Beabots/Beabots_Setup_v4.0.5.exe",
-    sha256: String(env.UPDATE_SHA256 || "").trim().toLowerCase(),
+    notes: RELEASE.notes,
+    download: RELEASE.download,
+    sha256: String(RELEASE.sha256 || "").trim().toLowerCase(),
   };
   let valid = /^\d+\.\d+\.\d+$/.test(version) &&
     /^\d+\.\d+\.\d+$/.test(minimumVersion) &&

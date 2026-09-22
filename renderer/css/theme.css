@@ -70,6 +70,27 @@ html[data-theme="light"] {
   box-sizing: border-box;
 }
 
+.desktop-update-status {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-sec);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.desktop-update-status span { flex: 1; min-width: 0; }
+.desktop-update-status progress { width: 120px; max-width: 100%; height: 8px; accent-color: var(--accent); }
+.desktop-update-status progress[hidden] { display: none; }
+.desktop-update-status[data-phase="error"] { color: var(--error); }
+.desktop-update-status[data-phase="installing"],
+.desktop-update-status[data-phase="waiting"] { color: var(--accent); }
+
 html, body {
   margin: 0;
   padding: 0;
