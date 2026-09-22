@@ -3,7 +3,7 @@
 ; -------------------------------
 
 #define MyAppName "Beabots"
-#define MyAppVersion "4.0.5"
+#define MyAppVersion "4.0.6"
 #define MyAppPublisher "Romel Gonzaga"
 #define MyAppURL "https://github.com/rgonzaga19/beacon_automation"
 #define MyAppUpdatesURL "https://beabot-license.gonzagaromel19.workers.dev/update"
