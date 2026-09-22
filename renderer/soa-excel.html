@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SOA Excel Generator</title>
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/soa-excel.css">
+</head>
+<body>
+  <header class="soa-header">
+    <div class="header-copy">
+      <h1 id="pageTitle">Individual Claims</h1>
+      <p>Prepare accurate statements with a simpler workflow.</p>
+    </div>
+  </header>
+
+  <main class="page-body">
+    <div class="subtabs" role="tablist" aria-label="SOA Excel generator type">
+      <button id="tabIndividual" class="subtab active" type="button" role="tab" aria-selected="true" aria-controls="individualPage">Individual</button>
+      <button id="tabBatch" class="subtab" type="button" role="tab" aria-selected="false" aria-controls="batchPage">Batch Generate</button>
+    </div>
+
+    <section class="tab-page active" id="individualPage" role="tabpanel" aria-labelledby="tabIndividual">
+      <div class="individual-layout">
+        <div class="left-stack">
+          <section class="card settings-card">
+            <h2>General Settings</h2>
+            <div class="divider"></div>
+            <div class="settings-grid">
+              <div class="field">
+                <label>Access Type</label>
+                <div class="choice-stack">
+                  <label class="choice-pill"><input type="radio" name="accessType" value="fistula" checked><span>Fistula</span></label>
+                  <label class="choice-pill"><input type="radio" name="accessType" value="subkit"><span>Subkit</span></label>
+                </div>
+              </div>
+              <div class="field">
+                <label>Dialyzer Type</label>
+                <div class="choice-stack">
+                  <label class="choice-pill"><input type="radio" name="fluxType" value="high" checked><span>High Flux</span></label>
+                  <label class="choice-pill"><input type="radio" name="fluxType" value="low"><span>Low Flux</span></label>
+                </div>
+              </div>
+              <div class="field">
+                <label for="claimCount">Number of Claims</label>
+                <input id="claimCount" type="number" min="1" max="7" value="1">
+              </div>
+            </div>
+          </section>
+
+          <div id="claims"></div>
+        </div>
+
+        <aside class="right-stack">
+          <div id="systemStatus" class="status-card ready"><span class="status-dot"></span><span>System Ready</span></div>
+          <section class="card summary-card">
+            <h2>Summary</h2>
+            <div class="divider"></div>
+            <div id="summary"></div>
+          </section>
+          <div class="side-actions">
+            <button id="clearBtn" class="quiet-btn" type="button">Clear Form</button>
+            <button id="generate" class="primary-btn" type="button">Generate Excel</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="tab-page" id="batchPage" role="tabpanel" aria-labelledby="tabBatch" hidden>
+      <section class="card batch-card">
+        <div class="batch-header">
+          <h2>Batch Generate</h2>
+          <button id="batchClearBtn" class="danger-btn" type="button"><span aria-hidden="true">x</span> Clear</button>
+        </div>
+        <div class="divider"></div>
+        <p class="batch-copy">Upload an Excel file with one row per person to generate multiple SOAs in one go, packaged into a single .zip.</p>
+
+        <div class="field">
+          <label>Default Claim Period</label>
+          <div class="batch-period-row">
+            <select id="batchMonth"></select>
+            <input id="batchYear" type="number" min="1900" max="2100">
+          </div>
+          <small>Fills in the month/year when a date in the file doesn't state one, such as a bare day list like "28,30", or any date missing its year.</small>
+        </div>
+
+        <div class="field">
+          <label for="batchFile">Batch Excel File</label>
+          <input id="batchFile" type="file" accept=".xlsx,.xlsm,.xls">
+        </div>
+
+        <div id="batchStatus" class="status-text" role="status"></div>
+        <div class="batch-actions">
+          <button id="downloadTemplate" class="quiet-btn" type="button">Download Template</button>
+          <button id="batchGenerate" class="primary-btn" type="button" disabled>Generate Batch (ZIP)</button>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="js/soa-excel.js"></script>
+</body>
+</html>

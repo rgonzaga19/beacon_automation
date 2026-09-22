@@ -16,6 +16,10 @@ uploads, CF2/SOA/CF4 automation endpoints, and live progress logs.
 - `BeaconInstaller.iss` defines the Inno Setup installer. Keep its `AppId`
   unchanged so new installers upgrade existing installs.
 - `docs/` contains project notes, including the current structure map.
+- The dashboard's `SOA Excel` workspace generates individual claim workbooks
+  and batch ZIP files from uploaded Excel sheets. Its workbook template is
+  `templates/soa_master.xlsx`; the standalone `nephro_soa_excelgenerator`
+  project is not required at runtime.
 - Local user/account data defaults to `%LOCALAPPDATA%\Beabots\beabots.sqlite3`.
 - Uploaded workbooks default to the system temp directory unless
   `BEABOTS_UPLOAD_DIR` is set.

@@ -55,6 +55,7 @@ from app.automation.cf2 import CF2Automation
 from app.automation.soa import SOAAutomation
 from app.automation.beacon import run as beacon_run
 from app.domain.reports import report
+from app.domain.soa_excel import batch_workbooks, build_batch_template, generate_workbook
 from app.core.security import decrypt_field, encrypt_field
 
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
@@ -475,6 +476,58 @@ def health_check():
         "ok": database_ok,
         "database": "ok" if database_ok else "unavailable",
     }), 200 if database_ok else 503
+
+
+@app.route("/api/soa-excel/generate", methods=["POST"])
+def soa_excel_generate():
+    try:
+        workbook = generate_workbook(request.get_json(force=True))
+        return send_file(
+            workbook,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name="generated.xlsx",
+        )
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        logger.exception("SOA Excel generation failed")
+        return jsonify({"error": "Unable to generate the SOA workbook."}), 500
+
+
+@app.route("/api/soa-excel/batch", methods=["POST"])
+def soa_excel_batch():
+    upload = request.files.get("file")
+    if not upload or not upload.filename:
+        return jsonify({"error": "Upload an Excel workbook to generate a batch."}), 400
+    try:
+        month = int(request.form.get("month", "1"))
+        year = int(request.form.get("year", "2026"))
+        if not 1 <= month <= 12 or not 1900 <= year <= 2100:
+            raise ValueError("Choose a valid claim month and year.")
+        upload.stream.seek(0)
+        archive = batch_workbooks(upload.stream, month, year)
+        return send_file(archive, mimetype="application/zip", as_attachment=True, download_name="SOA_Batch.zip")
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        logger.exception("SOA Excel batch generation failed")
+        return jsonify({"error": "Unable to generate the SOA batch."}), 500
+
+
+@app.route("/api/soa-excel/download-template", methods=["GET"])
+def soa_excel_download_template():
+    try:
+        workbook = build_batch_template()
+        return send_file(
+            workbook,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name="SOA_Batch_Template.xlsx",
+        )
+    except Exception:
+        logger.exception("SOA Excel template generation failed")
+        return jsonify({"error": "Unable to generate the SOA batch template."}), 500
 
 
 @app.route("/<path:filename>")
