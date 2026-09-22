@@ -74,18 +74,36 @@ class WindowAppearance:
         if not separator or ";base64" not in header:
             return {"ok": False, "error": "Generated file data is invalid."}
 
-        downloads = Path.home() / "Downloads"
-        target_dir = downloads if downloads.is_dir() else get_data_dir() / "Downloads"
-        target_dir.mkdir(parents=True, exist_ok=True)
-
-        target = target_dir / safe_name
-        stem = target.stem
-        for index in range(1, 1000):
-            if not target.exists():
-                break
-            target = target_dir / f"{stem} ({index}){suffix}"
-
         try:
+            target = None
+            if self._window is not None:
+                file_type = "Excel Workbook (*.xlsx)" if suffix == ".xlsx" else "ZIP Archive (*.zip)"
+                selected = self._window.create_file_dialog(
+                    webview.SAVE_DIALOG,
+                    directory=str(Path.home() / "Downloads"),
+                    save_filename=safe_name,
+                    file_types=(file_type,),
+                )
+                if selected:
+                    if isinstance(selected, (list, tuple)):
+                        selected = selected[0]
+                    target = Path(selected)
+                    if target.suffix.lower() != suffix:
+                        target = target.with_suffix(suffix)
+
+            if target is None:
+                downloads = Path.home() / "Downloads"
+                target_dir = downloads if downloads.is_dir() else get_data_dir() / "Downloads"
+                target_dir.mkdir(parents=True, exist_ok=True)
+
+                target = target_dir / safe_name
+                stem = target.stem
+                for index in range(1, 1000):
+                    if not target.exists():
+                        break
+                    target = target_dir / f"{stem} ({index}){suffix}"
+
+            target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(base64.b64decode(encoded))
             return {"ok": True, "path": str(target)}
         except Exception as exc:

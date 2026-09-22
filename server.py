@@ -10,6 +10,7 @@ Run directly for local testing:
 
 import os
 import sys
+import base64
 import threading
 import tempfile
 import uuid
@@ -452,6 +453,34 @@ def _prepare_upload_folder(files, allowed_extensions):
     return folder, saved
 
 
+def _save_generated_download(filename, data_url):
+    safe_name = secure_filename(str(filename or "").strip())
+    if not safe_name:
+        safe_name = "generated.xlsx"
+
+    suffix = Path(safe_name).suffix.lower()
+    if suffix not in {".xlsx", ".zip"}:
+        raise ValueError("Unsupported generated file type.")
+
+    header, separator, encoded = str(data_url or "").partition(",")
+    if not separator or ";base64" not in header:
+        raise ValueError("Generated file data is invalid.")
+
+    downloads = Path.home() / "Downloads"
+    target_dir = downloads if downloads.is_dir() else Path(tempfile.gettempdir()) / "beabots_downloads"
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    target = target_dir / safe_name
+    stem = target.stem
+    for index in range(1, 1000):
+        if not target.exists():
+            break
+        target = target_dir / f"{stem} ({index}){suffix}"
+
+    target.write_bytes(base64.b64decode(encoded))
+    return target
+
+
 @app.route("/")
 def web_index():
     return send_from_directory(app.static_folder, "login.html")
@@ -528,6 +557,19 @@ def soa_excel_download_template():
     except Exception:
         logger.exception("SOA Excel template generation failed")
         return jsonify({"error": "Unable to generate the SOA batch template."}), 500
+
+
+@app.route("/api/soa-excel/save-generated", methods=["POST"])
+def soa_excel_save_generated():
+    try:
+        data = request.get_json(force=True)
+        target = _save_generated_download(data.get("filename"), data.get("data_url"))
+        return jsonify({"ok": True, "path": str(target)})
+    except (TypeError, ValueError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception:
+        logger.exception("SOA Excel generated file save failed")
+        return jsonify({"ok": False, "error": "Unable to save generated file."}), 500
 
 
 @app.route("/<path:filename>")
