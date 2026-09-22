@@ -156,10 +156,18 @@ document.getElementById("btnHome")?.addEventListener("click", () => {
   window.beabots?.goHome();
 });
 
-// One persistent status strip for the desktop shell, including embedded pages.
+// Sidebar update status remains visible while switching embedded pages.
 // Informational only: update scheduling and installation remain automatic.
-if (window.parent === window) {
+if (window.parent === window && document.querySelector(".sidebar-bottom")) {
   let updateStrip;
+  function sizeUpdateMessage() {
+    const viewport = updateStrip.querySelector(".update-message-viewport");
+    const message = viewport.firstChild;
+    const distance = Math.max(0, message.scrollWidth - viewport.clientWidth);
+    message.style.setProperty("--update-scroll-distance", `-${distance}px`);
+    message.style.setProperty("--update-scroll-duration", `${Math.max(8, distance / 25 + 4)}s`);
+    message.classList.toggle("scrolling", distance > 0);
+  }
   async function refreshUpdateStatus() {
     try {
       const response = await fetch(`${API_BASE}/api/update/status`);
@@ -171,16 +179,25 @@ if (window.parent === window) {
         updateStrip.className = "desktop-update-status";
         updateStrip.setAttribute("role", "status");
         updateStrip.setAttribute("aria-live", "polite");
+        const viewport = document.createElement("div");
+        viewport.className = "update-message-viewport";
         const message = document.createElement("span");
+        viewport.appendChild(message);
         const progress = document.createElement("progress");
         progress.max = 100;
         progress.setAttribute("aria-label", "Update download progress");
-        updateStrip.append(message, progress);
-        document.querySelector(".app-window")?.appendChild(updateStrip);
+        updateStrip.append(viewport, progress);
+        document.querySelector(".sidebar-bottom").appendChild(updateStrip);
+        new ResizeObserver(sizeUpdateMessage).observe(viewport);
       }
       updateStrip.dataset.phase = status.phase;
       const text = status.message + (status.phase === "downloading" && status.percent != null ? ` ${status.percent}%` : "");
-      if (updateStrip.firstChild.textContent !== text) updateStrip.firstChild.textContent = text;
+      const message = updateStrip.querySelector(".update-message-viewport span");
+      if (message.textContent !== text) {
+        message.textContent = text;
+        updateStrip.title = text;
+        sizeUpdateMessage();
+      }
       const progress = updateStrip.lastChild;
       progress.hidden = !["checking", "downloading", "verifying"].includes(status.phase);
       if (status.percent == null) progress.removeAttribute("value");

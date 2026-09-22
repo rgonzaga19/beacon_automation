@@ -71,25 +71,32 @@ html[data-theme="light"] {
 }
 
 .desktop-update-status {
-  flex: none;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  padding: 8px 16px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-panel);
+  min-width: 0;
+  margin: 10px 3px 0;
+  padding: 8px 0;
   color: var(--text-sec);
   font-size: 11px;
   line-height: 1.4;
-  overflow-wrap: anywhere;
 }
-.desktop-update-status span { flex: 1; min-width: 0; }
-.desktop-update-status progress { width: 120px; max-width: 100%; height: 8px; accent-color: var(--accent); }
+.update-message-viewport { width: 100%; overflow: hidden; }
+.update-message-viewport span { display: block; width: max-content; white-space: nowrap; }
+.update-message-viewport span.scrolling {
+  animation: update-message-scroll var(--update-scroll-duration, 12s) linear infinite alternate;
+}
+.desktop-update-status:hover .scrolling { animation-play-state: paused; }
+@keyframes update-message-scroll {
+  0%, 15% { transform: translateX(0); }
+  85%, 100% { transform: translateX(var(--update-scroll-distance)); }
+}
+.desktop-update-status progress { display: block; width: 100%; height: 5px; margin-top: 7px; accent-color: var(--accent); }
 .desktop-update-status progress[hidden] { display: none; }
 .desktop-update-status[data-phase="error"] { color: var(--error); }
 .desktop-update-status[data-phase="installing"],
 .desktop-update-status[data-phase="waiting"] { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+  .update-message-viewport { overflow-x: auto; }
+  .update-message-viewport span.scrolling { animation: none; }
+}
 
 html, body {
   margin: 0;
