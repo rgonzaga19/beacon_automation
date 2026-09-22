@@ -35,6 +35,7 @@
 
   /* ---------- Page header ---------- */
   .page-header {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: var(--gap-2);
@@ -697,9 +698,10 @@
   /* ---------- User Guide modal (flat: border only, no elevation shadow) ---------- */
   .guide-modal .modal-box { max-width: 620px; max-height: 80vh; overflow-y: auto; padding: var(--gap-3) 26px; box-shadow: none; }
   @media (max-width: 900px) {
-    .main-row { display:grid; grid-template-columns:1fr; overflow-y:auto; }
-    .workspace { overflow:visible; padding-right:0; }
-    .log-section { min-height:360px; }
+    /* Size stacked rows from their contents instead of the remaining viewport. */
+    .main-row { grid-template-columns:minmax(0, 1fr); grid-template-rows:auto auto; align-content:start; overflow-y:auto; }
+    .workspace { min-height:auto; overflow:visible; padding-right:0; }
+    .log-section { height:480px; min-height:480px; }
     .workbook-row { grid-template-columns:1fr; }
     .guide-card { width:100%; }
   }

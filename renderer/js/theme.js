@@ -42,7 +42,21 @@
   function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
     updateToggleIcon(theme);
+    syncTitleBar(theme);
   }
+
+  function syncTitleBar(theme) {
+    // The top-level page owns the native window; iframe changes arrive via storage.
+    if (window.parent !== window) return;
+    const api = window.pywebview?.api;
+    if (api?.set_titlebar_theme) {
+      api.set_titlebar_theme(theme).catch(() => {});
+    }
+  }
+
+  window.addEventListener("pywebviewready", () => {
+    syncTitleBar(document.documentElement.getAttribute("data-theme") || DEFAULT_THEME);
+  });
 
   function setTheme(theme) {
     try {

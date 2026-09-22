@@ -20,6 +20,40 @@ APP_MUTEX_NAME = "Beabots-D2A91D2F-0B2F-4B8E-9B79-4B2B5A8D7F01"
 _mutex_handle = None
 
 
+class WindowAppearance:
+    """Expose only theme selection to the web UI."""
+
+    def __init__(self):
+        self._window = None
+
+    def set_titlebar_theme(self, theme):
+        if theme not in ("dark", "light") or os.name != "nt" or self._window is None:
+            return False
+
+        import ctypes
+        from ctypes import wintypes
+
+        try:
+            hwnd = wintypes.HWND(self._window.native.Handle.ToInt64())
+            set_attribute = ctypes.windll.dwmapi.DwmSetWindowAttribute
+            set_attribute.argtypes = [wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
+            set_attribute.restype = ctypes.c_long
+
+            dark = wintypes.BOOL(theme == "dark")
+            set_attribute(hwnd, 20, ctypes.byref(dark), ctypes.sizeof(dark))
+
+            # COLORREF is 0x00BBGGRR; match theme.css background and text.
+            colors = (0x160E0A, 0xF6F2EE) if theme == "dark" else (0xFBF7F5, 0x281810)
+            results = []
+            for attribute, color in zip((35, 36), colors):
+                value = wintypes.DWORD(color)
+                results.append(set_attribute(hwnd, attribute, ctypes.byref(value), ctypes.sizeof(value)))
+            return all(result == 0 for result in results)
+        except (AttributeError, OSError):
+            # Other backends/older Windows versions keep their native appearance.
+            return False
+
+
 def _claim_single_instance():
     """Allow only one packaged Beabots process at a time on Windows."""
     if os.name != "nt":
@@ -78,14 +112,17 @@ if __name__ == "__main__":
     _wait_for_server(url)
 
     try:
-        webview.create_window(
+        appearance = WindowAppearance()
+        window = webview.create_window(
             "Beabots",
             url,
             width=1280,
             height=820,
             min_size=(980, 640),
             confirm_close=False,
+            js_api=appearance,
         )
+        appearance._window = window
         webview.start()
     except Exception:
         _open_fallback_browser(url)
