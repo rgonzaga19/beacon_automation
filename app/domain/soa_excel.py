@@ -116,10 +116,12 @@ def _supply_rows(data, claim):
     return rows
 
 
-def generate_workbook(data, *, validate_epo_quantity=False):
+def generate_workbook(data, *, validate_epo_quantity=False, validate_laboratory=False):
     claims = data.get("claims") if isinstance(data, dict) else None
     if not claims or len(claims) > 7:
         raise ValueError("Provide between 1 and 7 claims.")
+    if validate_laboratory and sum(bool(claim.get("hasLab")) for claim in claims) > 1:
+        raise ValueError("Laboratory can only be included in one claim. Uncheck it in the other claims.")
     if validate_epo_quantity:
         for index, claim in enumerate(claims, 1):
             if not claim.get("hasEpo"):

@@ -96,6 +96,7 @@ function setStatus(message, type = "ready") {
 
 function renderClaims() {
   const today = new Date().toISOString().slice(0, 10);
+  const laboratorySelected = claimState.some((claim) => claim.hasLab);
   claims.innerHTML = claimState.map((claim, index) => `
     <section class="claim ${claimState.length > 1 ? "can-remove" : ""}" data-index="${index}">
       <div class="claim-head">
@@ -110,7 +111,8 @@ function renderClaims() {
           <span class="check-pill"><input data-field="hasEpo" type="checkbox" ${claim.hasEpo ? "checked" : ""}><span>${claim.hasEpo ? "Yes" : "No"}</span></span>
         </label>
         <label class="claim-field">Include Laboratory
-          <span class="check-pill"><input data-field="hasLab" type="checkbox" ${claim.hasLab ? "checked" : ""}><span>${claim.hasLab ? "Yes" : "No"}</span></span>
+          <span class="check-pill"><input data-field="hasLab" type="checkbox" ${claim.hasLab ? "checked" : ""} ${laboratorySelected && !claim.hasLab ? 'disabled title="Laboratory is already selected for another claim. Uncheck it there first."' : ""}><span>${claim.hasLab ? "Yes" : "No"}</span></span>
+          ${laboratorySelected && !claim.hasLab ? '<small>Laboratory is selected in another claim.</small>' : ""}
         </label>
         <label class="claim-field compact">EPO Type
           <select data-field="epoType" ${claim.hasEpo ? "" : "disabled"}>
