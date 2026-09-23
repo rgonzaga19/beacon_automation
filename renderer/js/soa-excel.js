@@ -181,6 +181,7 @@ async function download(blob, filename) {
 
   if (desktopApi) {
     const result = await desktopApi.save_generated_file(filename, dataUrl);
+    if (result?.cancelled) return null;
     if (!result?.ok) throw new Error(result?.error || "Unable to save generated file.");
     return result.path || filename;
   }
@@ -192,6 +193,7 @@ async function download(blob, filename) {
       body: JSON.stringify({ filename, data_url: dataUrl }),
     });
     const result = await response.json().catch(() => ({}));
+    if (result?.cancelled) return null;
     if (!response.ok || !result?.ok) {
       throw new Error(result.error || "Unable to save generated file.");
     }
@@ -228,6 +230,10 @@ async function generateIndividual() {
       throw new Error(error.error || "Generation failed.");
     }
     const savedPath = await download(await response.blob(), "generated.xlsx");
+    if (savedPath === null) {
+      setStatus("Save cancelled.");
+      return;
+    }
     setStatus(`Excel generated: ${savedPath}`, "done");
   } catch (error) {
     setStatus(error.message, "error");
@@ -248,7 +254,7 @@ async function downloadBatchTemplate() {
       throw new Error(error.error || "Template download failed.");
     }
     const savedPath = await download(await response.blob(), "SOA_Batch_Template.xlsx");
-    batchStatus.textContent = `Template saved: ${savedPath}`;
+    batchStatus.textContent = savedPath === null ? "Save cancelled." : `Template saved: ${savedPath}`;
   } catch (error) {
     batchStatus.className = "status-text error";
     batchStatus.textContent = error.message;
@@ -315,7 +321,7 @@ batchButton.addEventListener("click", async () => {
       throw new Error(error.error || "Batch generation failed.");
     }
     const savedPath = await download(await response.blob(), `SOA_Batch_${new Date().toISOString().slice(0, 10)}.zip`);
-    batchStatus.textContent = `Batch ZIP saved: ${savedPath}`;
+    batchStatus.textContent = savedPath === null ? "Save cancelled." : `Batch ZIP saved: ${savedPath}`;
   } catch (error) {
     batchStatus.className = "status-text error";
     batchStatus.textContent = error.message;

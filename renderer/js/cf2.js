@@ -470,19 +470,59 @@ webExcelInput.addEventListener("change", async () => {
 // ---------------------------------------------------------------------------
 // Download Excel Template
 // ---------------------------------------------------------------------------
-document.getElementById("downloadTemplateLink").addEventListener("click", async () => {
-  if (!window.beabots?.saveExcelTemplate) {
-    window.location.href = `${API_BASE}/api/cf2/download-template?mode=${encodeURIComponent(currentMode)}`;
-    return;
+let templateDownloadPending = false;
+
+async function downloadCf2Template() {
+  if (templateDownloadPending) return;
+  templateDownloadPending = true;
+  const mode = currentMode;
+  try {
+    let desktopApi = null;
+    for (const frame of [window, window.parent, window.top]) {
+      try {
+        if (frame?.pywebview?.api?.save_generated_file) {
+          desktopApi = frame.pywebview.api;
+          break;
+        }
+      } catch (error) {
+        // Browser frames may have a different origin.
+      }
+    }
+
+    const url = `${API_BASE}/api/cf2/download-template?mode=${encodeURIComponent(mode)}`;
+    if (desktopApi) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Unable to load the Excel template.");
+      const blob = await response.blob();
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error("Unable to read the Excel template."));
+        reader.readAsDataURL(blob);
+      });
+      const filename = mode === "existing_draft" ? "CF2_Template_ExistingDraft.xlsx" : "CF2_Template.xlsx";
+      const result = await desktopApi.save_generated_file(filename, dataUrl);
+      if (result?.cancelled) return;
+      if (!result?.ok) throw new Error(result?.error || "Unable to save the Excel template.");
+      showModal("Success", "Excel template saved successfully.");
+      return;
+    }
+
+    if (window.beabots?.saveExcelTemplate) {
+      const result = await window.beabots.saveExcelTemplate(mode);
+      if (result?.saved) showModal("Success", "Excel template downloaded successfully.");
+      else if (result?.error) throw new Error(result.error);
+      return;
+    }
+    window.location.href = url;
+  } catch (error) {
+    showModal("Error", `Unable to download template.\n\n${error.message}`);
+  } finally {
+    templateDownloadPending = false;
   }
-  const result = await window.beabots?.saveExcelTemplate(currentMode);
-  if (!result) return;
-  if (result.saved) {
-    showModal("Success", "Excel template downloaded successfully.");
-  } else if (result.error) {
-    showModal("Error", `Unable to download template.\n\n${result.error}`);
-  }
-});
+}
+
+document.getElementById("downloadTemplateLink").addEventListener("click", downloadCf2Template);
 
 // ---------------------------------------------------------------------------
 // User Guide modal

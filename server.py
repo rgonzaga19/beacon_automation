@@ -509,6 +509,10 @@ def health_check():
 
 @app.route("/api/soa-excel/generate", methods=["POST"])
 def soa_excel_generate():
+    license_response = require_license_connection()
+    if license_response:
+        return license_response
+
     try:
         workbook = generate_workbook(request.get_json(force=True))
         return send_file(
@@ -526,6 +530,10 @@ def soa_excel_generate():
 
 @app.route("/api/soa-excel/batch", methods=["POST"])
 def soa_excel_batch():
+    license_response = require_license_connection()
+    if license_response:
+        return license_response
+
     upload = request.files.get("file")
     if not upload or not upload.filename:
         return jsonify({"error": "Upload an Excel workbook to generate a batch."}), 400

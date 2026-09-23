@@ -84,12 +84,13 @@ class WindowAppearance:
                     save_filename=safe_name,
                     file_types=(file_type,),
                 )
-                if selected:
-                    if isinstance(selected, (list, tuple)):
-                        selected = selected[0]
-                    target = Path(selected)
-                    if target.suffix.lower() != suffix:
-                        target = target.with_suffix(suffix)
+                if isinstance(selected, (list, tuple)):
+                    selected = selected[0] if selected else None
+                if not selected:
+                    return {"ok": False, "cancelled": True}
+                target = Path(selected)
+                if target.suffix.lower() != suffix:
+                    target = target.with_suffix(suffix)
 
             if target is None:
                 downloads = Path.home() / "Downloads"
