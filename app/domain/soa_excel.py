@@ -174,18 +174,11 @@ def build_batch_template():
         cell.alignment = Alignment(vertical="center", horizontal="center", wrap_text=True)
 
     sample_rows = [
-        ["ABAO", "29-Jul", 1, "", 29, "FISTULA", "HIGH FLUX", 29],
-        ["ABOGADO", "Jul 28,30", 2, "28,30", "", "SUBKIT", "LOW FLUX", "28"],
-        ["ALARZAR", "Jul 27,29,31", 3, "27,31", "", "SUBKIT", "LOW FLUX", "NO"],
-        ["EXAMPLE 1 - dose qty (2)", "Jul 27,31", 2, "27(2),31", "", "SUBKIT", "LOW FLUX", "NO"],
+        ["ABOGADO", "Jul 28,30", 2, "28,30", "", "FISTULA", "HIGH FLUX", "28"],
+        ["ALARZAR", "Jul 27,29,31", 3, "27,31", "", "SUBKIT", "LOW FLUX", "27"],
+        ["EXAMPLE 1 - dose qty (2)", "Jul 27,31", 2, "27(2),31", "", "FISTULA", "HIGH FLUX", "NO"],
         ["EXAMPLE 2 - dose qty x2", "Jul 27,31", 2, "27x2,31", "", "SUBKIT", "LOW FLUX", "NO"],
-        ["EXAMPLE 3 - dose qty *2", "Jul 27,31", 2, "27*2,31", "", "SUBKIT", "LOW FLUX", "NO"],
-        ["EXAMPLE 4 - repeated day = qty 2", "Jul 27,31", 2, "27,27,31,31", "", "SUBKIT", "HIGH FLUX", "NO"],
-        ["EXAMPLE 5 - day range", "Jul 27-29", 3, "27-29", "", "SUBKIT", "LOW FLUX", "27"],
-        ["EXAMPLE 6 - ordinal days", "29th Jul", 1, "29th", "", "FISTULA", "HIGH FLUX", "NO"],
-        ["EXAMPLE 7 - explicit year", "Jul 28, 2027", 1, "28", "", "FISTULA", "LOW FLUX", "NO"],
-        ["EXAMPLE 8 - semicolon/slash separators", "Jul 5/7/9", 3, "5;7;9", "", "SUBKIT", "HIGH FLUX", "NO"],
-        ["EXAMPLE 9 - bare day list, no month", "28,30", 2, "28,30", "", "SUBKIT", "LOW FLUX", "NO"],
+        ["EXAMPLE 3 - repeated day = qty 2", "Jul 27,31", 2, "27,27,31,31", "", "SUBKIT", "HIGH FLUX", "NO"],
     ]
     for values in sample_rows:
         sheet.append(values)
@@ -201,6 +194,8 @@ def build_batch_template():
     notes.append([])
 
     note_lines = [
+        ["Non-blocking review", "Upload the workbook to see row-level warnings. Warnings do not block generation. Skipped rows, omitted dates, and adjusted values are listed in Validation_Report.txt inside the ZIP when warnings exist."],
+        ["Date separators", "Periods are also accepted as day separators: 5.7.9 means days 5, 7, and 9. This applies to treatment, EPO, Beta, and lab days. Use a named month or an Excel date for complete dates; dotted numeric dates are interpreted as day lists."],
         ["NAME OF PATIENT", "Used as the output file name."],
         ["TREATMENT DATES", "Accepts a real date, \"29-Jul\", \"Jul 28,30\", a day range (\"Jul 27-29\"), ordinal days (\"29th Jul\", \"1st,3rd\"), or an explicit year anywhere in the text (\"Jul 28, 2027\") to override the app's Default Claim Period year. Days can be separated with commas, semicolons, or slashes (\"5;7;9\", \"5/7/9\"). If you only type day numbers with no month (e.g. \"28,30\" or \"27-29\"), the app's Default Claim Period month/year fills the gap."],
         ["NO. OF CLAIMS", "Informational - the app counts claims from Treatment Dates directly. A mismatch just shows as a warning, it won't block generation."],
@@ -227,75 +222,144 @@ def _normalized_row(row):
     return {re.sub(r"[^A-Z0-9]+", " ", str(key).upper()).strip(): value for key, value in row.items() if key is not None}
 
 
-def _days(value):
+def _days(value, warn=None):
     if value is None or str(value).strip().lower() in ("", "no", "none", "n/a", "-"):
         return {}
+    if isinstance(value, (date, datetime)):
+        return {value.day: 1}
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
     result = {}
     text = re.sub(r"(\d)(st|nd|rd|th)", r"\1", str(value), flags=re.I).replace(" ", "")
-    for token in re.split(r"[,;/\n]+", text):
+    for token in re.split(r"[.,;/\n]+", text):
+        if not token:
+            continue
         token = token.strip("-")
         match = re.fullmatch(r"(\d{1,2})(?:-(\d{1,2}))?(?:[x*(](\d+)\)?)?", token)
         if not match:
+            if warn:
+                warn(f"Unrecognized entry '{token}' was ignored.")
             continue
         start, end, quantity = int(match.group(1)), int(match.group(2) or match.group(1)), int(match.group(3) or 1)
+        if not 1 <= start <= end <= 31 or quantity < 1:
+            if warn:
+                warn(f"Invalid day range or quantity '{token}' was ignored.")
+            continue
         for day in range(start, end + 1):
             if 1 <= day <= 31:
                 result[day] = result.get(day, 0) + quantity
     return result
 
 
-def _treatment(value, default_month, default_year):
+def _treatment(value, default_month, default_year, warn=None):
     if isinstance(value, (date, datetime)):
         return value.day, value.month, value.year
-    text = re.sub(r"(\d)(st|nd|rd|th)", r"\1", str(value or "").strip())
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    text = re.sub(r"(\d)(st|nd|rd|th)", r"\1", str(value or "").strip(), flags=re.I)
     months = {name[:3].lower(): index for index, name in enumerate(("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"), 1)}
     month_match = re.search(r"([A-Za-z]{3,9})", text)
     month = months.get(month_match.group(1)[:3].lower()) if month_match else default_month
     year_match = re.search(r"(?:^|\D)(20\d{2}|19\d{2})(?:\D|$)", text)
     year = int(year_match.group(1)) if year_match else default_year
+    text = re.sub(r"(?<!\d)(?:20\d{2}|19\d{2})(?!\d)", "", text)
+    if month is None:
+        if warn:
+            warn("Unrecognized month; the default claim month was used.")
+        month = default_month
     if month_match:
         day_text = text.replace(month_match.group(1), "")
-        days = _days(day_text)
+        days = _days(day_text, warn)
     else:
-        days = _days(text)
+        days = _days(text, warn)
     return (next(iter(days)), month, year) if len(days) == 1 else (days, month, year)
 
 
-def batch_workbooks(file_stream, month, year):
+def batch_workbooks(file_stream, month, year, *, preview=False):
     source = load_workbook(file_stream, data_only=True).active
     output = BytesIO()
     generated = 0
+    warnings = []
+    def warn(row, patient, column, message):
+        warnings.append({"row": row, "patient": patient, "column": column, "message": message})
     with ZipFile(output, "w", ZIP_DEFLATED) as archive:
         names = {}
         headers = [cell.value for cell in source[1]]
-        for values in source.iter_rows(min_row=2, values_only=True):
+        expected = ("NAME OF PATIENT", "TREATMENT DATES", "NO OF CLAIMS", "DATES OF ERYTHROPOIETIN GIVEN WEEKLY", "BETA RECORMON", "DIALYZER CATEGORY", "KIT CATEGORY", "W LAB")
+        normalized_headers = _normalized_row(dict.fromkeys(headers))
+        for column in expected:
+            if column not in normalized_headers:
+                warn(1, "", column, "Column is missing. Its values will be treated as blank.")
+        for row_number, values in enumerate(source.iter_rows(min_row=2, values_only=True), 2):
+            if all(value is None or str(value).strip() == "" for value in values):
+                continue
             row = _normalized_row(dict(zip(headers, values)))
             name = str(row.get("NAME OF PATIENT") or "Unnamed").strip() or "Unnamed"
-            treatment_result = _treatment(row.get("TREATMENT DATES"), month, year)
+            def issue(column, message):
+                warn(row_number, name, column, message)
+            if not str(row.get("NAME OF PATIENT") or "").strip():
+                issue("NAME OF PATIENT", "Missing patient name; Unnamed will be used.")
+            treatment_result = _treatment(row.get("TREATMENT DATES"), month, year, lambda message: issue("TREATMENT DATES", message))
             if not treatment_result:
                 continue
             treatment_days, claim_month, claim_year = treatment_result
             if isinstance(treatment_days, int):
                 treatment_days = {treatment_days: 1}
+            for day in list(treatment_days):
+                try:
+                    date(claim_year, claim_month, day)
+                except ValueError:
+                    issue("TREATMENT DATES", f"Invalid date {claim_year}-{claim_month:02d}-{day:02d} was omitted.")
+                    del treatment_days[day]
+            declared = row.get("NO OF CLAIMS")
+            if declared is not None and str(declared).strip() and str(declared).strip() != str(len(treatment_days)):
+                issue("NO. OF CLAIMS", f"Entered count {declared} differs from {len(treatment_days)} usable treatment dates; dates determine the count.")
+            if len(treatment_days) > 7:
+                issue("TREATMENT DATES", "Only the first 7 usable treatment dates will be included; remaining dates are omitted.")
             access = "subkit" if str(row.get("DIALYZER CATEGORY") or "").strip().lower() == "subkit" else "fistula"
             flux = "low" if "low" in str(row.get("KIT CATEGORY") or "").lower() else "high"
-            alfa = _days(row.get("DATES OF ERYTHROPOIETIN GIVEN WEEKLY"))
-            beta = _days(row.get("BETA RECORMON"))
-            labs = set(_days(row.get("W LAB")))
+            if str(row.get("DIALYZER CATEGORY") or "").strip().lower() not in ("subkit", "fistula"):
+                issue("DIALYZER CATEGORY", "Missing or unknown category; FISTULA will be used.")
+            if str(row.get("KIT CATEGORY") or "").strip().lower() not in ("high flux", "low flux"):
+                issue("KIT CATEGORY", f"Missing or unknown category; {flux.upper()} FLUX will be used.")
+            alfa = _days(row.get("DATES OF ERYTHROPOIETIN GIVEN WEEKLY"), lambda message: issue("EPO ALFA", message))
+            beta = _days(row.get("BETA RECORMON"), lambda message: issue("BETA RECORMON", message))
+            labs = set(_days(row.get("W LAB"), lambda message: issue("W/ LAB", message)))
+            included_days = set(list(treatment_days)[:7])
+            for column, days in (("EPO ALFA", alfa), ("BETA RECORMON", beta), ("W/ LAB", labs)):
+                unmatched = set(days) - included_days
+                if unmatched:
+                    issue(column, f"Days {', '.join(map(str, sorted(unmatched)))} have no included treatment date and will be ignored.")
+            for day, quantity in alfa.items():
+                if quantity > 2:
+                    issue("EPO ALFA", f"Day {day} has {quantity} doses (expected at most 2); the entered quantity is retained. Review before use.")
+            for day, quantity in beta.items():
+                if quantity > 1:
+                    issue("BETA RECORMON", f"Day {day} has {quantity} doses; generation limits this to 1.")
+            for day in alfa.keys() & beta.keys():
+                issue("EPO", f"Day {day} lists both Alfa and Beta; Beta will be used.")
             claims = []
             for day, _ in list(treatment_days.items())[:7]:
                 is_beta = day in beta
                 has_epo = is_beta or day in alfa
                 claims.append({"renderDate": f"{claim_year:04d}-{claim_month:02d}-{day:02d}", "hasEpo": has_epo, "epoQty": min(beta.get(day, 1), 1) if is_beta else alfa.get(day, 1), "epoType": "beta" if is_beta else "alfa", "hasLab": day in labs})
             if not claims:
+                issue("TREATMENT DATES", "No usable treatment dates; this patient row will be skipped.")
                 continue
             safe_name = re.sub(r"[\\/:*?\"<>|]", "_", name)[:100] or "Unnamed"
             count = names.get(safe_name, 0) + 1
             names[safe_name] = count
             filename = f"{safe_name}{f'_{count}' if count > 1 else ''}.xlsx"
-            workbook = generate_workbook({"accessType": access, "fluxType": flux, "claims": claims})
-            archive.writestr(filename, workbook.getvalue())
+            if not preview:
+                workbook = generate_workbook({"accessType": access, "fluxType": flux, "claims": claims})
+                archive.writestr(filename, workbook.getvalue())
             generated += 1
+        if warnings and not preview:
+            report = [f"Generated {generated} SOA files. Review warnings before use.", ""]
+            report.extend(f"Row {item['row']} | {item['patient']} | {item['column']}: {item['message']}" for item in warnings)
+            archive.writestr("Validation_Report.txt", "\n".join(report))
+    if preview:
+        return {"warnings": warnings, "generated": generated}
     if not generated:
         raise ValueError("No usable treatment dates were found in the workbook.")
     output.seek(0)

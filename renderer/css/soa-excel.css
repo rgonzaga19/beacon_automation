@@ -90,6 +90,10 @@ input[type="file"] { padding: 6px; color: var(--text-sec); }
 input[type="file"]::file-selector-button { min-height: 34px; margin-right: 12px; padding: 0 16px; color: var(--text-sec); background: var(--soa-input); border: 1px solid var(--soa-border); border-radius: 7px; font: 800 12px var(--font-ui); }
 .status-text { min-height: 22px; margin-top: 12px; color: var(--text-sec); font-size: 12px; }
 .status-text.error { color: var(--soa-danger); }
+#batchWarnings { margin-top: 12px; padding: 12px; border: 1px solid var(--text-sec); border-radius: 8px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+#batchWarnings ul { max-height: 260px; overflow-y: auto; padding-left: 22px; }
+#batchWarnings li + li { margin-top: 6px; }
+#batchWarnings:not([hidden]) + .batch-actions { margin-top: 16px; }
 
 html[data-theme="light"] body {
   --soa-page: var(--bg-base);

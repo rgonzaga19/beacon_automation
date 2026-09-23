@@ -5,6 +5,55 @@ const systemStatus = document.getElementById("systemStatus");
 const batchStatus = document.getElementById("batchStatus");
 const batchButton = document.getElementById("batchGenerate");
 const batchFile = document.getElementById("batchFile");
+const batchWarnings = document.getElementById("batchWarnings");
+let batchReviewVersion = 0;
+
+async function reviewBatch() {
+  const version = ++batchReviewVersion;
+  const file = batchFile.files[0];
+  batchWarnings.replaceChildren();
+  batchWarnings.hidden = !file;
+  if (!file) return;
+  batchWarnings.textContent = "Checking workbook for issues... You can still generate the batch.";
+  const form = new FormData();
+  form.append("file", file);
+  form.append("month", document.getElementById("batchMonth").value);
+  form.append("year", document.getElementById("batchYear").value);
+  try {
+    const response = await fetch("/api/soa-excel/batch/validate", { method: "POST", body: form });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Unable to check workbook.");
+    if (version !== batchReviewVersion) return;
+    batchWarnings.replaceChildren();
+    const heading = document.createElement("p");
+    heading.textContent = result.warnings.length
+      ? `${result.warnings.length} warning(s) found. Review recommended. You can still generate the batch. ${result.generated} SOA file(s) can be generated.`
+      : `No validation warnings found. ${result.generated} SOA file(s) can be generated.`;
+    batchWarnings.append(heading);
+    if (!result.generated) {
+      const notice = document.createElement("p");
+      notice.textContent = "No usable patient rows were found. Generation cannot produce a ZIP without usable treatment dates.";
+      batchWarnings.append(notice);
+    }
+    if (result.warnings.length) {
+      const details = document.createElement("details");
+      details.open = true;
+      const summary = document.createElement("summary");
+      summary.textContent = "Review Excel warnings (also included in the generated ZIP)";
+      const list = document.createElement("ul");
+      result.warnings.forEach((warning) => {
+        const item = document.createElement("li");
+        item.textContent = `Row ${warning.row}${warning.patient ? ` — ${warning.patient}` : ""} | ${warning.column}: ${warning.message}`;
+        list.append(item);
+      });
+      details.append(summary, list);
+      batchWarnings.append(details);
+    }
+  } catch (error) {
+    if (version !== batchReviewVersion) return;
+    batchWarnings.textContent = `Workbook review unavailable: ${error.message} You can still try generating the batch.`;
+  }
+}
 const downloadTemplateButton = document.getElementById("downloadTemplate");
 const claimCount = document.getElementById("claimCount");
 
@@ -284,6 +333,9 @@ function clearIndividual() {
 }
 
 function clearBatch() {
+  ++batchReviewVersion;
+  batchWarnings.replaceChildren();
+  batchWarnings.hidden = true;
   batchFile.value = "";
   batchButton.disabled = true;
   batchStatus.className = "status-text";
@@ -299,7 +351,10 @@ batchFile.addEventListener("change", (event) => {
   batchButton.disabled = !event.target.files.length;
   batchStatus.className = "status-text";
   batchStatus.textContent = event.target.files.length ? "Workbook ready." : "";
+  reviewBatch();
 });
+document.getElementById("batchMonth").addEventListener("change", reviewBatch);
+document.getElementById("batchYear").addEventListener("change", reviewBatch);
 downloadTemplateButton.addEventListener("click", downloadBatchTemplate);
 document.getElementById("batchClearBtn").addEventListener("click", clearBatch);
 tabButtons.individual.addEventListener("click", () => openSubtab("individual"));
@@ -314,6 +369,7 @@ batchButton.addEventListener("click", async () => {
   batchButton.disabled = true;
   batchStatus.className = "status-text";
   batchStatus.textContent = "Generating batch...";
+  reviewBatch();
   try {
     const response = await fetch("/api/soa-excel/batch", { method: "POST", body: form });
     if (!response.ok) {

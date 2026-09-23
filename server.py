@@ -529,6 +529,7 @@ def soa_excel_generate():
 
 
 @app.route("/api/soa-excel/batch", methods=["POST"])
+@app.route("/api/soa-excel/batch/validate", methods=["POST"])
 def soa_excel_batch():
     license_response = require_license_connection()
     if license_response:
@@ -543,6 +544,8 @@ def soa_excel_batch():
         if not 1 <= month <= 12 or not 1900 <= year <= 2100:
             raise ValueError("Choose a valid claim month and year.")
         upload.stream.seek(0)
+        if request.path.endswith("/validate"):
+            return jsonify(batch_workbooks(upload.stream, month, year, preview=True))
         archive = batch_workbooks(upload.stream, month, year)
         return send_file(archive, mimetype="application/zip", as_attachment=True, download_name="SOA_Batch.zip")
     except (TypeError, ValueError) as exc:

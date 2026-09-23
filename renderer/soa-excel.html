@@ -89,9 +89,11 @@
         <div class="field">
           <label for="batchFile">Batch Excel File</label>
           <input id="batchFile" type="file" accept=".xlsx,.xlsm,.xls">
+          <small>Day lists accept commas, periods, semicolons, or slashes (for example, 5.7.9). Use a named month or an Excel date for full dates. Workbook warnings are shown below and do not block generation.</small>
         </div>
 
         <div id="batchStatus" class="status-text" role="status"></div>
+        <div id="batchWarnings" role="status" hidden></div>
         <div class="batch-actions">
           <button id="downloadTemplate" class="quiet-btn" type="button">Download Template</button>
           <button id="batchGenerate" class="primary-btn" type="button" disabled>Generate Batch (ZIP)</button>
