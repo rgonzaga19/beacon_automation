@@ -143,7 +143,8 @@ def generate_workbook(data, *, validate_epo_quantity=False, validate_laboratory=
         drug_values = [(a, b, c, d, e, d * e, f, g, h, i, j) for a, b, c, d, e, f, g, h, i, j in _drug_rows(claim)]
         start = drugs.max_row + 1
         for values in drug_values:
-            drugs.append(values[:7] + (render_date,) + values[8:])
+            # Insert the render date before frequency, preserving all 12 columns.
+            drugs.append(values[:7] + (render_date,) + values[7:])
         _fill_rows(drugs, start, len(drug_values), 12, index)
         for row in range(start, start + len(drug_values)):
             drugs.cell(row, 5).number_format = drugs.cell(row, 6).number_format = "0.00"
