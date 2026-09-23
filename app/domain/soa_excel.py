@@ -53,7 +53,8 @@ def _room_board_prices(claim):
         (True, "alfa", 2, False): (1250, 1250, 412.5),
         (True, "alfa", 2, True): (350, 350, 212.5),
     }
-    values = prices.get((has_epo, epo_type, epo_qty, has_lab))
+    key = (has_epo, epo_type, epo_qty, has_lab) if has_epo else (False, has_lab)
+    values = prices.get(key)
     if values is None:
         values = (1750, 1750, 1162.5)
     return (500, *values)
