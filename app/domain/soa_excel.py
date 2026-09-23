@@ -115,10 +115,19 @@ def _supply_rows(data, claim):
     return rows
 
 
-def generate_workbook(data):
+def generate_workbook(data, *, validate_epo_quantity=False):
     claims = data.get("claims") if isinstance(data, dict) else None
     if not claims or len(claims) > 7:
         raise ValueError("Provide between 1 and 7 claims.")
+    if validate_epo_quantity:
+        for index, claim in enumerate(claims, 1):
+            if not claim.get("hasEpo"):
+                continue
+            epo_type = str(claim.get("epoType") or "alfa").lower()
+            maximum = 1 if epo_type == "beta" else 2
+            quantity = claim.get("epoQty")
+            if isinstance(quantity, bool) or not isinstance(quantity, (int, float)) or quantity not in range(1, maximum + 1):
+                raise ValueError(f"Claim {index}: EPO {epo_type.title()} quantity must be a whole number from 1 to {maximum}.")
     workbook = load_workbook(TEMPLATE_PATH)
     drugs = workbook.worksheets[0]
     supplies = workbook.worksheets[1]

@@ -119,12 +119,20 @@ function renderClaims() {
           </select>
         </label>
         <label class="claim-field compact">EPO Quantity
-          <input data-field="epoQty" type="number" min="1" max="${claim.epoType === "beta" ? "1" : "2"}" value="${claim.epoQty}" ${claim.hasEpo ? "" : "disabled"}>
+          <input data-field="epoQty" type="number" min="1" step="1" max="${claim.epoType === "beta" ? "1" : "2"}" value="${claim.epoQty}" ${claim.hasEpo ? "" : "disabled"}>
         </label>
       </div>
     </section>`).join("");
 
   claims.querySelectorAll(".claim").forEach((row, index) => {
+    row.querySelector('[data-field="epoQty"]').addEventListener("input", (event) => {
+      const input = event.target;
+      const max = claimState[index].epoType === "beta" ? 1 : 2;
+      const quantity = Math.max(1, Math.min(Math.trunc(Number(input.value)) || 1, max));
+      input.value = quantity;
+      claimState[index].epoQty = quantity;
+      renderSummary();
+    });
     row.querySelectorAll("[data-field]").forEach((input) => input.addEventListener("change", () => {
       const field = input.dataset.field;
       claimState[index][field] = input.type === "checkbox" ? input.checked : input.type === "number" ? Number(input.value) : input.value;
@@ -135,7 +143,7 @@ function renderClaims() {
       if (field === "epoType" && input.value === "beta") claimState[index].epoQty = 1;
       if (field === "epoQty") {
         const max = claimState[index].epoType === "beta" ? 1 : 2;
-        claimState[index].epoQty = Math.max(1, Math.min(Number(input.value) || 1, max));
+        claimState[index].epoQty = Math.max(1, Math.min(Math.trunc(Number(input.value)) || 1, max));
       }
       renderClaims();
     }));

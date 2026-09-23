@@ -514,7 +514,7 @@ def soa_excel_generate():
         return license_response
 
     try:
-        workbook = generate_workbook(request.get_json(force=True))
+        workbook = generate_workbook(request.get_json(force=True), validate_epo_quantity=True)
         return send_file(
             workbook,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
