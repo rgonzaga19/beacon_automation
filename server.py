@@ -1062,7 +1062,11 @@ def _run_cf2_automation(user_id, beacon_settings, state, stop_event):
                 "result": result,
             })
 
-        with browser_session.use_auth_context(beacon_settings, key=f"user:{user_id}"):
+        auth_key = browser_session.auth_context_key(
+            beacon_settings,
+            user_key=f"user:{user_id}",
+        )
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             automation = CF2Automation(
                 uploaded_excel_path=state["selected_file"],
@@ -1186,7 +1190,11 @@ def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop
     stopped = False
     room_token = _emit_room.set(user_room(user_id))
     try:
-        with browser_session.use_auth_context(beacon_settings, key=f"user:{user_id}"):
+        auth_key = browser_session.auth_context_key(
+            beacon_settings,
+            user_key=f"user:{user_id}",
+        )
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             soa_automation = SOAAutomation(soa_folder=soa_folder)
             soa_automation.run(transmittals, should_stop=stop_event.is_set)
@@ -1281,7 +1289,11 @@ def _run_beacon_automation(user_id, beacon_settings, transmittals, auto_encode_c
     stopped = False
     room_token = _emit_room.set(user_room(user_id))
     try:
-        with browser_session.use_auth_context(beacon_settings, key=f"user:{user_id}"):
+        auth_key = browser_session.auth_context_key(
+            beacon_settings,
+            user_key=f"user:{user_id}",
+        )
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             beacon_run(
                 transmittals,

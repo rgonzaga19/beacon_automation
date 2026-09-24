@@ -7,6 +7,7 @@ performed directly against Beacon's OAuth2 token endpoint.
 
 import sys
 import time
+import hashlib
 from contextlib import contextmanager
 from contextvars import ContextVar
 
@@ -23,6 +24,22 @@ BEACON_URLS = {
 
 _auth_context = ContextVar("beabots_auth_context", default=None)
 _auth_tokens = {}
+
+
+def auth_context_key(settings, user_key=None):
+    """Return a cache key scoped to one Beabots user and Beacon login."""
+    settings = settings or {}
+    identity = "|".join(
+        str(part or "")
+        for part in (
+            user_key or "legacy",
+            settings.get("server", "s4"),
+            settings.get("username", ""),
+            settings.get("password", ""),
+        )
+    )
+    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+    return f"{user_key or 'legacy'}:{settings.get('server', 's4')}:{digest}"
 
 
 def load_login_settings():
@@ -44,7 +61,7 @@ def _context_key():
 def use_auth_context(settings, key=None):
     """Bind Beacon credentials to the current thread/context."""
     token = _auth_context.set({
-        "key": key or f"{settings.get('server', 's4')}:{settings.get('username', '')}",
+        "key": key or auth_context_key(settings),
         "settings": dict(settings),
     })
     try:
@@ -89,13 +106,30 @@ def _store_auth_token(token_data):
     }
 
 
-def invalidate_auth_token():
+def _cache_keys_to_invalidate(cache_key):
+    if cache_key is not None:
+        return {cache_key}
+
+    context_key = _context_key()
+    if context_key != "legacy":
+        return {context_key}
+
+    return None
+
+
+def invalidate_auth_token(cache_key=None):
     """Discard cached authentication after credentials or server change."""
-    _auth_tokens.pop(_context_key(), None)
+    keys_to_invalidate = _cache_keys_to_invalidate(cache_key)
+    if keys_to_invalidate is None:
+        _auth_tokens.clear()
+    else:
+        for key in keys_to_invalidate:
+            _auth_tokens.pop(key, None)
+
     for module_name, cache_names in {
-        "cf2_api": ("_client_id_cache",),
-        "beacon_api": ("_client_id_cache",),
-        "soa_api": ("_client_ids_cache", "_client_ids_cache_user_id"),
+        "app.api.cf2": ("_client_id_cache",),
+        "app.api.beacon": ("_client_id_cache",),
+        "app.api.soa": ("_client_ids_cache",),
     }.items():
         module = sys.modules.get(module_name)
         if module is None:
@@ -104,12 +138,25 @@ def invalidate_auth_token():
             if hasattr(module, cache_name):
                 cache = getattr(module, cache_name)
                 if isinstance(cache, dict):
-                    cache.pop(_context_key(), None)
-                    for key in list(cache):
-                        if isinstance(key, tuple) and key and key[0] == _context_key():
-                            cache.pop(key, None)
-                else:
+                    if keys_to_invalidate is None:
+                        cache.clear()
+                    else:
+                        for context_key in keys_to_invalidate:
+                            cache.pop(context_key, None)
+                            for key in list(cache):
+                                if (
+                                    isinstance(key, tuple)
+                                    and key
+                                    and key[0] == context_key
+                                ):
+                                    cache.pop(key, None)
+                elif keys_to_invalidate is None:
                     setattr(module, cache_name, None)
+                else:
+                    for key in list(keys_to_invalidate):
+                        if cache == key:
+                            setattr(module, cache_name, None)
+                            break
 
 
 def _ensure_auth_token(username=None, password=None):
