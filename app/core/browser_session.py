@@ -24,6 +24,7 @@ BEACON_URLS = {
 
 _auth_context = ContextVar("beabots_auth_context", default=None)
 _auth_tokens = {}
+_auth_failures = {}
 
 
 def auth_context_key(settings, user_key=None):
@@ -94,6 +95,21 @@ def login_via_api(username, password, server=None):
     return response.json()
 
 
+def get_current_user_information(server=None):
+    """Return Beacon's current user record when the API exposes it.
+
+    Beacon's 2026-09 browser flow no longer showed a direct /token call before
+    same-origin API requests.  This endpoint is the browser-visible source for
+    the numeric user id used by GetAllClientsByUserId.
+    """
+    response = requests.get(
+        _get_beacon_url(server).rstrip("/") + "/api/Account/GetCurrentUserInformation",
+        timeout=15,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def _store_auth_token(token_data):
     """Cache an API token and the user ID returned with it."""
     _auth_tokens[_context_key()] = {
@@ -104,6 +120,16 @@ def _store_auth_token(token_data):
         "user_id": token_data.get("Id"),
         "issued_at": time.time(),
     }
+    _auth_failures.pop(_context_key(), None)
+
+
+def _configured_user_id():
+    settings = load_login_settings()
+    for key in ("beacon_user_id", "user_id", "Id", "id"):
+        value = settings.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return None
 
 
 def _cache_keys_to_invalidate(cache_key):
@@ -122,13 +148,22 @@ def invalidate_auth_token(cache_key=None):
     keys_to_invalidate = _cache_keys_to_invalidate(cache_key)
     if keys_to_invalidate is None:
         _auth_tokens.clear()
+        _auth_failures.clear()
     else:
         for key in keys_to_invalidate:
             _auth_tokens.pop(key, None)
+            _auth_failures.pop(key, None)
 
     for module_name, cache_names in {
         "app.api.cf2": ("_client_id_cache",),
-        "app.api.beacon": ("_client_id_cache",),
+        "app.api.beacon": (
+            "_client_id_cache",
+            "_transmittal_cache",
+            "_claims_cache",
+            "_claim_cache",
+            "_cf4_cache",
+            "_medicine_search_cache",
+        ),
         "app.api.soa": ("_client_ids_cache",),
     }.items():
         module = sys.modules.get(module_name)
@@ -161,21 +196,38 @@ def invalidate_auth_token(cache_key=None):
 
 def _ensure_auth_token(username=None, password=None):
     """Return a valid cached token or obtain a fresh one from Beacon."""
-    auth_token = _auth_tokens.get(_context_key())
+    context_key = _context_key()
+    auth_token = _auth_tokens.get(context_key)
     if auth_token is not None:
         issued_at = auth_token.get("issued_at", 0)
         expires_in = auth_token.get("expires_in") or 0
         if time.time() < issued_at + max(expires_in - 60, 0):
             return auth_token.get("access_token")
 
+    failure = _auth_failures.get(context_key)
+    if failure and time.time() < failure.get("retry_after", 0):
+        return None
+
     if username is None or password is None:
         settings = load_login_settings()
         username = settings.get("username", "")
         password = settings.get("password", "")
 
-    token_data = login_via_api(username, password, server=load_login_settings().get("server", "s4"))
+    try:
+        token_data = login_via_api(
+            username,
+            password,
+            server=load_login_settings().get("server", "s4"),
+        )
+    except Exception as exc:
+        _auth_failures[context_key] = {
+            "retry_after": time.time() + 300,
+            "error": str(exc),
+        }
+        raise
+
     _store_auth_token(token_data)
-    return _auth_tokens[_context_key()].get("access_token")
+    return _auth_tokens[context_key].get("access_token")
 
 
 def get_auth_token():
@@ -193,6 +245,23 @@ def get_user_id():
         _ensure_auth_token()
     except Exception as exc:
         logger.warning(f"get_user_id(): could not obtain a token ({exc}).")
-        return None
+
     auth_token = _auth_tokens.get(_context_key())
-    return auth_token.get("user_id") if auth_token else None
+    token_user_id = auth_token.get("user_id") if auth_token else None
+    if token_user_id:
+        return token_user_id
+
+    configured_user_id = _configured_user_id()
+    if configured_user_id:
+        return configured_user_id
+
+    try:
+        current_user = get_current_user_information(
+            server=load_login_settings().get("server", "s4")
+        )
+    except Exception as exc:
+        logger.warning(f"get_user_id(): current user lookup failed ({exc}).")
+        return None
+
+    user_id = current_user.get("id") if isinstance(current_user, dict) else None
+    return str(user_id) if user_id not in (None, "") else None

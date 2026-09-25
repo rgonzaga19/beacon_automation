@@ -19,6 +19,7 @@ from pathlib import Path
 
 from functools import wraps
 
+import requests
 from flask import Flask, request, jsonify, send_file, send_from_directory, session
 from flask_socketio import SocketIO, join_room
 from flask_cors import CORS
@@ -366,6 +367,7 @@ def decrypt_user_settings(settings):
         "username": settings.beacon_username or "",
         "password": decrypt_field(settings.beacon_password_encrypted),
         "server": settings.server or "s4",
+        "beacon_user_id": settings.beacon_user_id or "",
         "soa_folder": settings.soa_folder or "",
         "cf4": settings.cf4_settings or {},
     }
@@ -786,21 +788,44 @@ def beacon_validate():
             "error": "Beacon username and password are required.",
         }), 400
 
+    token_data = None
+    current_user_info = None
     try:
         token_data = browser_session.login_via_api(username, password, server=server)
     except Exception as ex:
-        settings.beacon_user_id = None
-        settings.beacon_validated_at = None
-        db.session.commit()
-        return jsonify({
-            "valid": False,
-            "error": f"Beacon login failed. Please check the username, password, and server. ({ex})",
-        }), 401
+        status_code = (
+            ex.response.status_code
+            if isinstance(ex, requests.HTTPError) and ex.response is not None
+            else None
+        )
+        if status_code is not None and status_code < 500:
+            settings.beacon_user_id = None
+            settings.beacon_validated_at = None
+            db.session.commit()
+            return jsonify({
+                "valid": False,
+                "error": f"Beacon login failed. Please check the username, password, and server. ({ex})",
+            }), 401
+        try:
+            current_user_info = browser_session.get_current_user_information(server=server)
+        except Exception:
+            settings.beacon_user_id = None
+            settings.beacon_validated_at = None
+            db.session.commit()
+            return jsonify({
+                "valid": False,
+                "error": f"Beacon login failed. Please check the username, password, and server. ({ex})",
+            }), 401
 
     settings.beacon_username = username
     settings.beacon_password_encrypted = encrypt_field(password)
     settings.server = server
-    settings.beacon_user_id = str(token_data.get("Id") or "")
+    beacon_user_id = None
+    if isinstance(token_data, dict):
+        beacon_user_id = token_data.get("Id")
+    if beacon_user_id in (None, "") and isinstance(current_user_info, dict):
+        beacon_user_id = current_user_info.get("id")
+    settings.beacon_user_id = str(beacon_user_id or settings.beacon_user_id or "")
     settings.beacon_validated_at = utc_now()
     db.session.commit()
     sync_legacy_settings_for_user(user)

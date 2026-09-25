@@ -24,9 +24,10 @@ def _base_url():
 
 def _headers():
     token = browser_session.get_auth_token()
-    if not token:
-        raise DraftApiError("No Beacon bearer token available.")
-    return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 
 def _eclaims_api_base():

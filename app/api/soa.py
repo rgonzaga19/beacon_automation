@@ -21,8 +21,8 @@ def _base_url():
 
 def _headers(json=True):
     token = browser_session.get_auth_token()
-    if not token: raise SoaApiError("Beacon auth token is unavailable")
-    h={"Authorization":f"Bearer {token}"}
+    h={}
+    if token: h["Authorization"]=f"Bearer {token}"
     if json: h["Content-Type"]="application/json"
     return h
 
@@ -260,7 +260,14 @@ def list_all_transmittals(client_id=263, days_back=31, package_type=7, limit=20)
         return []
 
 def get_claims(transmittal_id):
-    return _json(requests.get(_base_url()+"/api/PHICClaim/GetAllPHICClaimByPHICTransmittalId",headers=_headers(),params={"transmittalId":transmittal_id},timeout=30))
+    try:
+        return _json(requests.get(_base_url()+"/api/PHICClaim/GetAllPHICClaimByPHICTransmittalId",headers=_headers(),params={"transmittalId":transmittal_id},timeout=30))
+    except SoaApiError:
+        data = _json(requests.get(_base_url()+"/api/PHICTransmittal/GetPHICTransmittalById",headers=_headers(),params={"transmittalId":transmittal_id},timeout=30)) or {}
+        claims = data.get("transmittalClaims") if isinstance(data, dict) else None
+        if isinstance(claims, list) and claims:
+            return claims
+        raise
 
 def get_claim(claim_id):
     return _json(requests.get(_base_url()+"/api/PHICClaim/GetPHICClaim",headers=_headers(),params={"id":claim_id},timeout=30))

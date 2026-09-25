@@ -6,6 +6,7 @@ remain in beacon.py.
 """
 
 from datetime import datetime, timedelta
+import time
 import requests
 
 from app.core import browser_session
@@ -16,6 +17,11 @@ class BeaconApiError(RuntimeError):
 
 
 _client_id_cache = {}
+_transmittal_cache = {}
+_claims_cache = {}
+_claim_cache = {}
+_cf4_cache = {}
+_medicine_search_cache = {}
 
 
 def _base_url():
@@ -27,13 +33,10 @@ def _base_url():
 
 def _headers():
     token = browser_session.get_auth_token()
-    if not token:
-        raise BeaconApiError("Beacon auth token is unavailable")
-
-    return {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 
 def _check(response):
@@ -46,6 +49,13 @@ def _check(response):
             f"({response.status_code}): {body}"
         ) from exc
     return response
+
+
+def _is_beacon_out_of_memory(response):
+    return (
+        response.status_code >= 500
+        and "System.OutOfMemoryException" in (response.text or "")
+    )
 
 
 def _json(response):
@@ -61,25 +71,41 @@ def _json(response):
 
 
 def _get(path, params=None):
-    return _json(
-        requests.get(
+    last_response = None
+    for attempt in range(3):
+        response = requests.get(
             _base_url() + path,
             headers=_headers(),
             params=params,
             timeout=30,
         )
+        if response.ok or not _is_beacon_out_of_memory(response) or attempt == 2:
+            return _json(response)
+        last_response = response
+        time.sleep(0.8 * (attempt + 1))
+
+    return _json(
+        last_response
     )
 
 
 def _post(path, json_body=None, params=None):
-    return _json(
-        requests.post(
+    last_response = None
+    for attempt in range(3):
+        response = requests.post(
             _base_url() + path,
             headers=_headers(),
             params=params,
             json=json_body,
             timeout=60,
         )
+        if response.ok or not _is_beacon_out_of_memory(response) or attempt == 2:
+            return _json(response)
+        last_response = response
+        time.sleep(0.8 * (attempt + 1))
+
+    return _json(
+        last_response
     )
 
 
@@ -111,6 +137,10 @@ def get_transmittal(transmittal_no, client_id=None):
     """Search the exact transmittal number, preserving the original workflow."""
     if client_id is None:
         client_id = get_client_id()
+
+    cache_key = (browser_session._context_key(), int(client_id), str(transmittal_no).strip())
+    if cache_key in _transmittal_cache:
+        return _transmittal_cache[cache_key]
 
     # Same Transmittals table request shape used by Beacon/SOA API migration.
     today = datetime.now().date()
@@ -146,7 +176,10 @@ def get_transmittal(transmittal_no, client_id=None):
         == str(transmittal_no).strip()
     ]
 
-    return exact[0] if exact else None
+    result = exact[0] if exact else None
+    if result:
+        _transmittal_cache[cache_key] = result
+    return result
 
 
 def get_transmittal_by_id(transmittal_id):
@@ -157,12 +190,25 @@ def get_transmittal_by_id(transmittal_id):
 
 
 def get_claims(transmittal_id):
-    data = _get(
-        "/api/PHICClaim/GetAllPHICClaimByPHICTransmittalId",
-        params={"transmittalId": transmittal_id},
-    ) or []
+    cache_key = (browser_session._context_key(), int(transmittal_id))
+    if cache_key in _claims_cache:
+        return _claims_cache[cache_key]
+
+    try:
+        data = _get(
+            "/api/PHICClaim/GetAllPHICClaimByPHICTransmittalId",
+            params={"transmittalId": transmittal_id},
+        ) or []
+    except BeaconApiError:
+        data = get_transmittal_by_id(transmittal_id) or {}
+        fallback_claims = data.get("transmittalClaims") if isinstance(data, dict) else None
+        if isinstance(fallback_claims, list) and fallback_claims:
+            _claims_cache[cache_key] = fallback_claims
+            return fallback_claims
+        raise
 
     if isinstance(data, list):
+        _claims_cache[cache_key] = data
         return data
 
     if isinstance(data, dict):
@@ -175,23 +221,38 @@ def get_claims(transmittal_id):
         ):
             value = data.get(key)
             if isinstance(value, list):
+                _claims_cache[cache_key] = value
                 return value
 
     return []
 
 
 def get_claim(claim_id):
-    return _get(
+    cache_key = (browser_session._context_key(), int(claim_id))
+    if cache_key in _claim_cache:
+        return _claim_cache[cache_key]
+
+    claim = _get(
         "/api/PHICClaim/GetPHICClaim",
         params={"id": claim_id},
     )
+    if isinstance(claim, dict) and claim:
+        _claim_cache[cache_key] = claim
+    return claim
 
 
 def get_cf4_values(claim_id):
-    return _get(
+    cache_key = (browser_session._context_key(), int(claim_id))
+    if cache_key in _cf4_cache:
+        return _cf4_cache[cache_key]
+
+    cf4 = _get(
         "/api/PHICCF4/GetCf4Values",
         params={"ClaimId": claim_id},
     )
+    if isinstance(cf4, dict) and cf4:
+        _cf4_cache[cache_key] = cf4
+    return cf4
 
 
 def get_doctors_by_claim_id(claim_id):
@@ -248,18 +309,24 @@ def get_surgical_procedures(cf2_id):
 
 
 def search_medicines(search_term):
+    cache_key = (browser_session._context_key(), str(search_term or "").strip().casefold())
+    if cache_key in _medicine_search_cache:
+        return _medicine_search_cache[cache_key]
+
     data = _post(
         "/api/Medicine/SearchMedicines",
         json_body={"search": search_term},
     ) or []
 
     if isinstance(data, list):
+        _medicine_search_cache[cache_key] = data
         return data
 
     if isinstance(data, dict):
         for key in ("items", "data", "result", "medicines"):
             value = data.get(key)
             if isinstance(value, list):
+                _medicine_search_cache[cache_key] = value
                 return value
 
     return []

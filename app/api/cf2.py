@@ -65,12 +65,10 @@ def _base_url():
 
 def _headers():
     token = browser_session.get_auth_token()
-    if not token:
-        raise Cf2ApiError("No API auth token available.")
-    return {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 
 def _eclaims_api_base():
@@ -484,10 +482,20 @@ def search_existing_transmittal(transmittal_number, attempts=3):
 
 def get_claims_for_transmittal(transmittal_id):
     """Return the claims shown by Beacon's Manage Claims page."""
-    return _get(
-        "/api/PHICClaim/GetAllPHICClaimByPHICTransmittalId",
-        params={"transmittalId": transmittal_id},
-    ) or []
+    try:
+        return _get(
+            "/api/PHICClaim/GetAllPHICClaimByPHICTransmittalId",
+            params={"transmittalId": transmittal_id},
+        ) or []
+    except Cf2ApiError:
+        transmittal = _get(
+            "/api/PHICTransmittal/GetPHICTransmittalById",
+            params={"transmittalId": transmittal_id},
+        ) or {}
+        claims = transmittal.get("transmittalClaims") if isinstance(transmittal, dict) else None
+        if isinstance(claims, list) and claims:
+            return claims
+        raise
 
 
 def check_transmittal_for_facility(transmittal_id, client_id=None):
