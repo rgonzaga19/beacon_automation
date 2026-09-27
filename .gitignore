@@ -14,7 +14,8 @@ htmlcov/
 .pyre/
 .ruff_cache/
 *.egg-info/
-/tests/
+/tests/*
+!/tests/test_beacon_session.py
 
 ###############################################################################
 # Virtual Environment

@@ -32,7 +32,7 @@ def _base_url():
 
 
 def _headers():
-    token = browser_session.get_auth_token()
+    token = browser_session.require_auth_token()
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -73,7 +73,7 @@ def _json(response):
 def _get(path, params=None):
     last_response = None
     for attempt in range(3):
-        response = requests.get(
+        response = browser_session.http_request("GET",
             _base_url() + path,
             headers=_headers(),
             params=params,
@@ -92,7 +92,7 @@ def _get(path, params=None):
 def _post(path, json_body=None, params=None):
     last_response = None
     for attempt in range(3):
-        response = requests.post(
+        response = browser_session.http_request("POST",
             _base_url() + path,
             headers=_headers(),
             params=params,

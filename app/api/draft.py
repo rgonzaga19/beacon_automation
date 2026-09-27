@@ -23,7 +23,7 @@ def _base_url():
     return browser_session._get_beacon_url().rstrip("/")
 
 def _headers():
-    token = browser_session.get_auth_token()
+    token = browser_session.require_auth_token()
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -36,7 +36,7 @@ def _eclaims_api_base():
 
 def _request(method, path, *, params=None, json_body=None, base=None):
     url = f"{base or _base_url()}{path}"
-    r = requests.request(method, url, headers=_headers(), params=params, json=json_body, timeout=20)
+    r = browser_session.http_request(method, url, headers=_headers(), params=params, json=json_body, timeout=20)
     if not r.ok:
         raise DraftApiError(f"{method} {path} failed: HTTP {r.status_code}: {r.text[:500]}")
     return r.json() if r.content else None

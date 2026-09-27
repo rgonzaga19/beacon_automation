@@ -20,7 +20,7 @@ def _base_url():
     return browser_session._get_beacon_url().rstrip("/")
 
 def _headers(json=True):
-    token = browser_session.get_auth_token()
+    token = browser_session.require_auth_token()
     h={}
     if token: h["Authorization"]=f"Bearer {token}"
     if json: h["Content-Type"]="application/json"
@@ -45,7 +45,7 @@ def _json(r):
 
 
 def _get(path, params=None):
-    return _json(requests.get(_base_url() + path, headers=_headers(), params=params, timeout=30))
+    return _json(browser_session.http_request("GET", _base_url() + path, headers=_headers(), params=params, timeout=30))
 
 
 _client_ids_cache = {}
@@ -116,7 +116,7 @@ def _search_transmittal_once(transmittal_no, client_id, date_from, date_to, pack
         "transmittalPackageType": package_type,
     }
 
-    r=requests.get(
+    r=browser_session.http_request("GET",
         _base_url()+"/api/PHICTransmittal/GetAllPHICTransmittal",
         headers=_headers(),
         params=params,
@@ -237,7 +237,7 @@ def list_all_transmittals(client_id=263, days_back=31, package_type=7, limit=20)
         params["transmittalPackageType"] = package_type
 
     try:
-        r=requests.get(
+        r=browser_session.http_request("GET",
             _base_url()+"/api/PHICTransmittal/GetAllPHICTransmittal",
             headers=_headers(),
             params=params,
@@ -261,29 +261,29 @@ def list_all_transmittals(client_id=263, days_back=31, package_type=7, limit=20)
 
 def get_claims(transmittal_id):
     try:
-        return _json(requests.get(_base_url()+"/api/PHICClaim/GetAllPHICClaimByPHICTransmittalId",headers=_headers(),params={"transmittalId":transmittal_id},timeout=30))
+        return _json(browser_session.http_request("GET", _base_url()+"/api/PHICClaim/GetAllPHICClaimByPHICTransmittalId",headers=_headers(),params={"transmittalId":transmittal_id},timeout=30))
     except SoaApiError:
-        data = _json(requests.get(_base_url()+"/api/PHICTransmittal/GetPHICTransmittalById",headers=_headers(),params={"transmittalId":transmittal_id},timeout=30)) or {}
+        data = _json(browser_session.http_request("GET", _base_url()+"/api/PHICTransmittal/GetPHICTransmittalById",headers=_headers(),params={"transmittalId":transmittal_id},timeout=30)) or {}
         claims = data.get("transmittalClaims") if isinstance(data, dict) else None
         if isinstance(claims, list) and claims:
             return claims
         raise
 
 def get_claim(claim_id):
-    return _json(requests.get(_base_url()+"/api/PHICClaim/GetPHICClaim",headers=_headers(),params={"id":claim_id},timeout=30))
+    return _json(browser_session.http_request("GET", _base_url()+"/api/PHICClaim/GetPHICClaim",headers=_headers(),params={"id":claim_id},timeout=30))
 
 def get_cf1(claim_id):
-    return _json(requests.get(_base_url()+"/api/PHICCF1/GetPHICCF1Summary",headers=_headers(),params={"id":claim_id},timeout=30))
+    return _json(browser_session.http_request("GET", _base_url()+"/api/PHICCF1/GetPHICCF1Summary",headers=_headers(),params={"id":claim_id},timeout=30))
 
 def get_charges(claim_id):
     """Return Beacon's current MED and XLSO charge rows exactly as exposed by the claim."""
-    meds = _json(requests.get(
+    meds = _json(browser_session.http_request("GET",
         _base_url() + "/api/PHICChargesDrugAndMedicineController/GetPHICChargesDrugsAndMedicines",
         headers=_headers(),
         params={"phicClaimId": claim_id},
         timeout=30,
     )) or []
-    xlso = _json(requests.get(
+    xlso = _json(browser_session.http_request("GET",
         _base_url() + "/api/PHICChargesXLSOController/GetPHICChargesXLSO",
         headers=_headers(),
         params={"phicClaimId": claim_id},
@@ -314,7 +314,7 @@ def get_charges(claim_id):
 
 def get_documents(claim_id):
     """Return claim documents; ESA document existence is separate from charge-import state."""
-    docs = _json(requests.get(
+    docs = _json(browser_session.http_request("GET",
         _base_url() + "/api/PHICDocument/GetPHICDocuments",
         headers=_headers(),
         params={"phicClaimId": claim_id},
@@ -384,7 +384,7 @@ def get_soa_state(claim_id):
 def _upload_file(path, endpoint, claim_id=None):
     path=Path(path); params={"phicClaimId":claim_id} if claim_id is not None else None
     with path.open("rb") as f:
-        r=requests.post(_base_url()+endpoint,headers=_headers(json=False),params=params,
+        r=browser_session.http_request("POST", _base_url()+endpoint,headers=_headers(json=False),params=params,
           files={"file_0":(path.name,f,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},timeout=60)
     return _json(r)
 
@@ -479,7 +479,7 @@ def batch_upload_medicines(claim_id, rows):
         raise SoaApiError("SOA workbook contains no complete MED charge rows")
 
     payload = [_medicine_payload_row(row) for row in valid_rows]
-    return _json(requests.post(
+    return _json(browser_session.http_request("POST",
         _base_url() + "/api/PHICChargesDrugAndMedicineController/BatchUploadCharges",
         headers=_headers(),
         params={"phicClaimId": claim_id},
@@ -503,7 +503,7 @@ def batch_upload_xlso(claim_id, rows):
         raise SoaApiError("SOA workbook contains no complete XLSO charge rows")
 
     payload = [_xlso_payload_row(row) for row in valid_rows]
-    return _json(requests.post(
+    return _json(browser_session.http_request("POST",
         _base_url() + "/api/PHICChargesXLSOController/BatchUploadXLSO",
         headers=_headers(),
         params={"phicClaimId": claim_id},
@@ -512,7 +512,7 @@ def batch_upload_xlso(claim_id, rows):
     ))
 def get_phic_units():
     """Return Beacon's PHIC unit list used by the XLSO edit dialog."""
-    data = _json(requests.get(
+    data = _json(browser_session.http_request("GET",
         _base_url() + "/api/PHICEsoa/GetPHICUnits",
         headers=_headers(),
         params={"search": "undefined"},
@@ -523,7 +523,7 @@ def get_phic_units():
 
 def edit_xlso_charge(row):
     """Save one existing XLSO row using the endpoint captured from Beacon."""
-    return _json(requests.put(
+    return _json(browser_session.http_request("PUT",
         _base_url() + "/api/PHICChargesXLSOController/EditPHICChargesXLSO",
         headers=_headers(),
         json=row,
@@ -532,15 +532,15 @@ def edit_xlso_charge(row):
 
 
 def get_summary(claim_id):
-    return _json(requests.get(_base_url()+"/api/PHICEsoa/GetSummary",headers=_headers(),params={"PHICClaimId":claim_id},timeout=30))
+    return _json(browser_session.http_request("GET", _base_url()+"/api/PHICEsoa/GetSummary",headers=_headers(),params={"PHICClaimId":claim_id},timeout=30))
 def update_summary(payload):
-    return _json(requests.post(_base_url()+"/api/PHICEsoa/UpdateSummary",headers=_headers(),json=payload,timeout=30))
+    return _json(browser_session.http_request("POST", _base_url()+"/api/PHICEsoa/UpdateSummary",headers=_headers(),json=payload,timeout=30))
 def get_esoa_xml(claim_id, facility_id=263):
-    return _json(requests.get(_base_url()+"/api/PHICEsoa/GetESOAXML",headers=_headers(),params={"claimId":claim_id,"facilityId":facility_id},timeout=30))
+    return _json(browser_session.http_request("GET", _base_url()+"/api/PHICEsoa/GetESOAXML",headers=_headers(),params={"claimId":claim_id,"facilityId":facility_id},timeout=30))
 def validate_esoa(payload):
-    return _json(requests.post(_eclaims_api_base()+"/ValidateESOA",headers=_headers(),json=payload,timeout=60))
+    return _json(browser_session.http_request("POST", _eclaims_api_base()+"/ValidateESOA",headers=_headers(),json=payload,timeout=60))
 def generate_and_upload_esoa(claim_id, facility_id=263):
-    return _json(requests.post(_base_url()+"/api/PHICEsoa/GenerateAndUploadEsoaXML",headers=_headers(),json={"claimId":claim_id,"facilityId":facility_id,"isUpload":True},timeout=60))
+    return _json(browser_session.http_request("POST", _base_url()+"/api/PHICEsoa/GenerateAndUploadEsoaXML",headers=_headers(),json={"claimId":claim_id,"facilityId":facility_id,"isUpload":True},timeout=60))
 
 def parse_soa_workbook(path):
     """Parse each patient's SOA workbook dynamically from its own row values.

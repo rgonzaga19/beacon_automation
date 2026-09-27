@@ -4,7 +4,7 @@ discovered by capturing (HAR) a real CF2 encoding session in the browser
 and confirming the exact request/response shape for each call used here.
 
 This bypasses the Beacon UI and authenticates via the bearer token from
-browser_session.get_auth_token() (the same OAuth2 /token endpoint
+browser_session.require_auth_token() (the same OAuth2 /token endpoint
 Beacon's own SIGN IN button uses, confirmed via an earlier HAR).
 
 Every function raises on a non-2xx response (via response.raise_for_status())
@@ -64,7 +64,7 @@ def _base_url():
 
 
 def _headers():
-    token = browser_session.get_auth_token()
+    token = browser_session.require_auth_token()
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -116,14 +116,14 @@ def _raise_for_status(response, path):
 
 def _get(path, params=None, base=None):
     url = f"{base or _base_url()}{path}"
-    response = requests.get(url, headers=_headers(), params=params, timeout=20)
+    response = browser_session.http_request("GET", url, headers=_headers(), params=params, timeout=20)
     _raise_for_status(response, path)
     return response.json() if response.content else None
 
 
 def _post(path, json_body=None, params=None, base=None):
     url = f"{base or _base_url()}{path}"
-    response = requests.post(
+    response = browser_session.http_request("POST",
         url, headers=_headers(), json=json_body, params=params, timeout=20
     )
     _raise_for_status(response, path)
@@ -132,7 +132,7 @@ def _post(path, json_body=None, params=None, base=None):
 
 def _put(path, json_body=None, params=None, base=None):
     url = f"{base or _base_url()}{path}"
-    response = requests.put(
+    response = browser_session.http_request("PUT",
         url, headers=_headers(), json=json_body, params=params, timeout=20
     )
     _raise_for_status(response, path)
@@ -141,7 +141,7 @@ def _put(path, json_body=None, params=None, base=None):
 
 def _delete(path, params=None, base=None):
     url = f"{base or _base_url()}{path}"
-    response = requests.delete(
+    response = browser_session.http_request("DELETE",
         url, headers=_headers(), params=params, timeout=20
     )
     _raise_for_status(response, path)

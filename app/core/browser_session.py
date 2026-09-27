@@ -8,6 +8,7 @@ performed directly against Beacon's OAuth2 token endpoint.
 import sys
 import time
 import hashlib
+from threading import RLock
 from contextlib import contextmanager
 from contextvars import ContextVar
 
@@ -25,6 +26,31 @@ BEACON_URLS = {
 _auth_context = ContextVar("beabots_auth_context", default=None)
 _auth_tokens = {}
 _auth_failures = {}
+_http_sessions = {}
+_http_sessions_lock = RLock()
+
+
+def http_request(method, url, **kwargs):
+    """Keep routing cookies per account/login, with domain-scoped cookie handling.
+
+    Serialize access because requests.Session is mutable. Authentication headers
+    remain request-local so they are never installed globally on the session.
+    No automatic retries are added, especially for writes.
+    """
+    context_key = _context_key()
+    identity = auth_context_key(load_login_settings(), context_key)
+    with _http_sessions_lock:
+        key = (context_key, identity)
+        entry = _http_sessions.get(key)
+        if entry is None:
+            entry = (requests.Session(), RLock())
+            _http_sessions[key] = entry
+        session, lock = entry
+        lock.acquire()
+    try:
+        return session.request(method, url, **kwargs)
+    finally:
+        lock.release()
 
 
 def auth_context_key(settings, user_key=None):
@@ -81,29 +107,42 @@ def _get_beacon_url(server=None):
 
 def login_via_api(username, password, server=None):
     """Authenticate against Beacon's OAuth2 password-token endpoint."""
-    response = requests.post(
-        _get_beacon_url(server).rstrip("/") + "/token",
-        data={
-            "grant_type": "password",
-            "username": username,
-            "password": password,
-        },
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        timeout=15,
-    )
-    response.raise_for_status()
-    return response.json()
+    settings = load_login_settings()
+    settings.update(username=username, password=password)
+    if server is not None:
+        settings["server"] = server
+    with use_auth_context(settings, key=_context_key()):
+        # Visit the landing page first, as a browser does, to establish ARR affinity
+        # before asking a backend instance to issue the token.
+        try:
+            landing = http_request("GET", _get_beacon_url(server), timeout=15)
+            if not landing.ok:
+                logger.warning(
+                    f"Beacon landing page returned HTTP {landing.status_code}; "
+                    "continuing with token login."
+                )
+        except requests.RequestException:
+            logger.warning("Beacon landing page unavailable; continuing with token login.")
+        response = http_request("POST",
+            _get_beacon_url(server).rstrip("/") + "/token",
+            data={
+                "grant_type": "password",
+                "username": username,
+                "password": password,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=15,
+        )
+        response.raise_for_status()
+        return response.json()
 
 
 def get_current_user_information(server=None):
-    """Return Beacon's current user record when the API exposes it.
-
-    Beacon's 2026-09 browser flow no longer showed a direct /token call before
-    same-origin API requests.  This endpoint is the browser-visible source for
-    the numeric user id used by GetAllClientsByUserId.
-    """
-    response = requests.get(
+    """Return the current user using the same token and routing cookies."""
+    token = (_auth_tokens.get(_context_key()) or {}).get("access_token")
+    response = http_request("GET",
         _get_beacon_url(server).rstrip("/") + "/api/Account/GetCurrentUserInformation",
+        headers={"Authorization": f"Bearer {token}"} if token else {},
         timeout=15,
     )
     response.raise_for_status()
@@ -146,6 +185,12 @@ def _cache_keys_to_invalidate(cache_key):
 def invalidate_auth_token(cache_key=None):
     """Discard cached authentication after credentials or server change."""
     keys_to_invalidate = _cache_keys_to_invalidate(cache_key)
+    with _http_sessions_lock:
+        for session_key in list(_http_sessions):
+            if keys_to_invalidate is None or session_key[0] in keys_to_invalidate:
+                session, lock = _http_sessions.pop(session_key)
+                with lock:
+                    session.close()
     if keys_to_invalidate is None:
         _auth_tokens.clear()
         _auth_failures.clear()
@@ -237,6 +282,16 @@ def get_auth_token():
     except Exception as exc:
         logger.warning(f"get_auth_token(): could not obtain a token ({exc}).")
         return None
+
+
+def require_auth_token():
+    """Prevent API clients from proceeding anonymously after login failure."""
+    token = _ensure_auth_token()
+    if not token:
+        failure = _auth_failures.get(_context_key()) or {}
+        detail = failure.get("error") or "login returned no access token"
+        raise RuntimeError(f"Beacon authentication unavailable: {detail}")
+    return token
 
 
 def get_user_id():
