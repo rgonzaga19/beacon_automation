@@ -16,6 +16,32 @@ CLAIM_FILLS = (
     PatternFill("solid", fgColor="FFFFF8E7"),
     PatternFill("solid", fgColor="FFEAF3FF"),
 )
+MONTHS = {
+    name[:3].lower(): index
+    for index, name in enumerate(
+        (
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ),
+        1,
+    )
+}
+MONTH_PATTERN = re.compile(
+    r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+    r"jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?|tember)?|oct(?:ober)?|"
+    r"nov(?:ember)?|dec(?:ember)?)\b",
+    re.I,
+)
 
 STATIC_DRUG_ROWS = [
     ("MED01", "APRINOL", "REGULAR HEPARIN", 1, 250, "VIAL", "DURING HD TREATMENT", "IV", "HEPARIN (as SODIUM) 5000 IU/mL SOLUTION 5 mL VIAL", "VIAL"),
@@ -235,15 +261,24 @@ def _normalized_row(row):
     return {re.sub(r"[^A-Z0-9]+", " ", str(key).upper()).strip(): value for key, value in row.items() if key is not None}
 
 
+def _cell_text(value):
+    return str(value or "").strip().lstrip("'").strip()
+
+
 def _days(value, warn=None):
-    if value is None or str(value).strip().lower() in ("", "no", "none", "n/a", "-"):
+    raw = _cell_text(value)
+    if value is None or raw.lower() in ("", "no", "none", "n/a", "-"):
         return {}
     if isinstance(value, (date, datetime)):
         return {value.day: 1}
     if isinstance(value, float) and value.is_integer():
         value = int(value)
     result = {}
-    text = re.sub(r"(\d)(st|nd|rd|th)", r"\1", str(value), flags=re.I).replace(" ", "")
+    text = re.sub(r"(\d)(st|nd|rd|th)", r"\1", _cell_text(value), flags=re.I)
+    if MONTH_PATTERN.search(text):
+        text = MONTH_PATTERN.sub("", text)
+        text = re.sub(r"(?<!\d)(?:20\d{2}|19\d{2})(?!\d)", "", text)
+    text = text.replace(" ", "")
     for token in re.split(r"[.,;/\n]+", text):
         if not token:
             continue
@@ -269,10 +304,9 @@ def _treatment(value, default_month, default_year, warn=None):
         return value.day, value.month, value.year
     if isinstance(value, float) and value.is_integer():
         value = int(value)
-    text = re.sub(r"(\d)(st|nd|rd|th)", r"\1", str(value or "").strip(), flags=re.I)
-    months = {name[:3].lower(): index for index, name in enumerate(("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"), 1)}
+    text = re.sub(r"(\d)(st|nd|rd|th)", r"\1", _cell_text(value), flags=re.I)
     month_match = re.search(r"([A-Za-z]{3,9})", text)
-    month = months.get(month_match.group(1)[:3].lower()) if month_match else default_month
+    month = MONTHS.get(month_match.group(1)[:3].lower()) if month_match else default_month
     year_match = re.search(r"(?:^|\D)(20\d{2}|19\d{2})(?:\D|$)", text)
     year = int(year_match.group(1)) if year_match else default_year
     text = re.sub(r"(?<!\d)(?:20\d{2}|19\d{2})(?!\d)", "", text)

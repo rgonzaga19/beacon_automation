@@ -16,6 +16,7 @@ htmlcov/
 *.egg-info/
 /tests/*
 !/tests/test_beacon_session.py
+!/tests/test_soa_excel_parser.py
 
 ###############################################################################
 # Virtual Environment
