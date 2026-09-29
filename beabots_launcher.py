@@ -29,10 +29,37 @@ _mutex_handle = None
 
 
 class WindowAppearance:
-    """Expose only theme selection to the web UI."""
+    """Expose native appearance and file dialogs to the web UI."""
 
     def __init__(self):
         self._window = None
+
+    def select_soa_files(self):
+        """Use the native multi-select dialog for keyboard file selection."""
+        if self._window is None:
+            return {"error": "The desktop file picker is unavailable."}
+        try:
+            selected = self._window.create_file_dialog(
+                webview.OPEN_DIALOG,
+                allow_multiple=True,
+                file_types=("Excel Workbooks (*.xlsx;*.xls)",),
+            )
+            if not selected:
+                return {"cancelled": True}
+            if isinstance(selected, str):
+                selected = [selected]
+            files = []
+            for filename in selected:
+                path = Path(filename)
+                if path.suffix.lower() not in {".xlsx", ".xls"}:
+                    return {"error": "Please select only Excel workbooks (.xlsx or .xls)."}
+                files.append({
+                    "name": path.name,
+                    "data": base64.b64encode(path.read_bytes()).decode("ascii"),
+                })
+            return {"files": files}
+        except Exception:
+            return {"error": "Unable to read the selected SOA files. Please try again."}
 
     def set_titlebar_theme(self, theme):
         if theme not in ("dark", "light") or os.name != "nt" or self._window is None:

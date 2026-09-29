@@ -397,13 +397,14 @@
       <div class="section-row">
         <div class="folder-input-wrapper">
           <span class="icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
-          <input type="text" id="soaFolderInput" readonly placeholder="No folder selected" />
+          <input type="text" id="soaFolderInput" readonly placeholder="No folder selected" aria-describedby="soaSelectionHint" />
         </div>
-        <button class="cyber-btn" id="browseBtn">
+        <button class="cyber-btn" id="browseBtn" aria-describedby="soaSelectionHint">
           <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
           BROWSE
         </button>
       </div>
+      <p id="soaSelectionHint" class="text-sec text-small">In the file picker: Ctrl+click to select multiple files, Shift+click for a range, or focus the file list and press Ctrl+A to select all.</p>
     </div>
 
     <aside class="soa-guide" aria-label="SOA file naming guide">

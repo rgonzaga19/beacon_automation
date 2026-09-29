@@ -23,6 +23,26 @@ webSoaInput.hidden = true;
 document.body.appendChild(webSoaInput);
 let selectedSoaFiles = [];
 
+function soaDesktopApi() {
+  // Workspaces run in an iframe; pywebview exposes its bridge on the host.
+  for (const frame of [window, window.parent, window.top]) {
+    try {
+      if (typeof frame.pywebview?.api?.select_soa_files === "function") {
+        return frame.pywebview.api;
+      }
+    } catch (_) { /* A cross-origin host cannot expose the desktop bridge. */ }
+  }
+  return null;
+}
+
+function updateSoaSelection(files) {
+  selectedSoaFiles = files;
+  soaFolderInput.value = files.length
+    ? `${files.length} SOA Excel file${files.length === 1 ? "" : "s"} selected`
+    : "";
+  soaFolderInput.title = files.map((file) => file.name).join("\n");
+}
+
 (async function initFolder() {
   if (!window.beabots?.selectSoaFolder) {
     soaFolderInput.placeholder = "No SOA Excel files selected";
@@ -35,6 +55,27 @@ let selectedSoaFiles = [];
 
 browseBtn.addEventListener("click", async () => {
   if (!window.beabots?.selectSoaFolder) {
+    const desktopApi = soaDesktopApi();
+    if (desktopApi) {
+      browseBtn.disabled = true;
+      try {
+        const result = await desktopApi.select_soa_files();
+        if (result.cancelled) return;
+        if (result.error) {
+          showModal("SOA File Selection", result.error);
+          return;
+        }
+        updateSoaSelection(result.files.map((file) => {
+          const bytes = Uint8Array.from(atob(file.data), (char) => char.charCodeAt(0));
+          return new File([bytes], file.name);
+        }));
+      } catch (_) {
+        showModal("SOA File Selection", "Unable to open the selected files. Please try again.");
+      } finally {
+        browseBtn.disabled = soaRunActive;
+      }
+      return;
+    }
     webSoaInput.value = "";
     webSoaInput.click();
     return;
@@ -53,10 +94,7 @@ browseBtn.addEventListener("click", async () => {
 });
 
 webSoaInput.addEventListener("change", () => {
-  selectedSoaFiles = [...(webSoaInput.files || [])];
-  soaFolderInput.value = selectedSoaFiles.length
-    ? `${selectedSoaFiles.length} SOA Excel file${selectedSoaFiles.length === 1 ? "" : "s"} selected`
-    : "";
+  if (webSoaInput.files?.length) updateSoaSelection([...webSoaInput.files]);
 });
 
 // ---------------------------------------------------------------------------
