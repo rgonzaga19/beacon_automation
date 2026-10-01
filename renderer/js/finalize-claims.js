@@ -4,6 +4,7 @@ const lookupButton = document.getElementById("lookupButton");
 const summary = document.getElementById("summary");
 const claimsBody = document.getElementById("claimsBody");
 const claimEditor = document.getElementById("claimEditor");
+const claimActionsMenu = document.getElementById("claimActionsMenu");
 const editorSubtitle = document.getElementById("editorSubtitle");
 let activeEditClaim = null;
 
@@ -99,7 +100,9 @@ lookupForm.addEventListener("submit", async (event) => {
         editButton.textContent = "EDIT";
         editButton.dataset.transmittalId = claim.transmittal_id;
         editButton.dataset.claimId = claim.claim_id;
-        editButton.dataset.action = "edit-claim";
+        editButton.dataset.action = "toggle-claim-menu";
+        editButton.setAttribute("aria-haspopup", "menu");
+        editButton.setAttribute("aria-expanded", "false");
         editButton.setAttribute("aria-label", `Edit claim ${claim.claim_series || "in transmittal " + claim.transmittal_number}`);
         actionCell.append(editButton);
       } else {
@@ -147,12 +150,25 @@ function populateDoctorFields() {
   setInputValue("editDoctorSignDate", selected.dataset.signDate || "");
 }
 
-async function openClaimEditor(transmittalId, claimId) {
-  activeEditClaim = { transmittalId, claimId };
+async function openClaimEditor(transmittalId, claimId, view = "cf2") {
+  activeEditClaim = { transmittalId, claimId, view };
+  const editorContent = document.querySelector(".editor-content");
+  editorContent.dataset.view = view;
+  document.querySelectorAll(".editor-section[data-editor-section]").forEach((section) => {
+    section.hidden = section.dataset.editorSection !== view;
+  });
+  document.getElementById("editorTitle").textContent = ({
+    cf2: "Change Admission and Discharge Time",
+    doctor: "Change Doctor",
+    cf4: "Add CF4 Vitals",
+    hpi: "History of Present Illness",
+    pmh: "Pertinent Past Medical History",
+    soa: "Remove SOA Data",
+  })[view] || "Edit Draft Claim";
   claimEditor.hidden = false;
   editorSubtitle.textContent = "Loading draft claim...";
   document.getElementById("editorSoaSummary").textContent = "Loading SOA rows...";
-  ["cf2", "doctor", "cf4", "soa"].forEach((section) => setEditorMessage(section, ""));
+  ["cf2", "doctor", "cf4", "hpi", "pmh", "soa"].forEach((section) => setEditorMessage(section, ""));
   try {
     const data = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/edit`);
     editorSubtitle.textContent = `${data.patient_name || "Draft claim"} | ${data.transmittal_number} | ${data.claim_series || "Claim series pending"}`;
@@ -189,6 +205,8 @@ async function openClaimEditor(transmittalId, claimId) {
       vsrr: "editRespiratoryRate", vsTemp: "editTemperature", height: "editHeight", weight: "editWeight",
     };
     Object.entries(vitalInputs).forEach(([key, id]) => setInputValue(id, data.cf4_vitals[key]));
+    setInputValue("editHistoryOfPresentIllness", data.cf4_text.history_of_present_illness);
+    setInputValue("editPertinentPastMedicalHistory", data.cf4_text.pertinent_past_medical_history);
 
     document.getElementById("editorSoaSummary").textContent =
       `MED rows: ${data.soa_counts.med} | XLSO rows: ${data.soa_counts.xlso} | Payment receipts: ${data.soa_counts.payments}`;
@@ -198,20 +216,62 @@ async function openClaimEditor(transmittalId, claimId) {
 }
 
 claimsBody.addEventListener("click", (event) => {
-  const button = event.target.closest('[data-action="edit-claim"]');
-  if (button) openClaimEditor(button.dataset.transmittalId, button.dataset.claimId);
+  const toggle = event.target.closest('[data-action="toggle-claim-menu"]');
+  if (toggle) {
+    const shouldOpen = claimActionsMenu.hidden || claimActionsMenu.dataset.claimId !== toggle.dataset.claimId;
+    closeClaimActionsMenu();
+    if (shouldOpen) {
+      claimActionsMenu.dataset.transmittalId = toggle.dataset.transmittalId;
+      claimActionsMenu.dataset.claimId = toggle.dataset.claimId;
+      claimActionsMenu.hidden = false;
+      toggle.setAttribute("aria-expanded", "true");
+      const rect = toggle.getBoundingClientRect();
+      const menuWidth = claimActionsMenu.offsetWidth;
+      const menuHeight = claimActionsMenu.offsetHeight;
+      const left = rect.right + menuWidth + 8 <= window.innerWidth ? rect.right + 6 : Math.max(8, rect.left - menuWidth - 6);
+      const top = Math.min(Math.max(8, rect.top), window.innerHeight - menuHeight - 8);
+      claimActionsMenu.style.left = `${left}px`;
+      claimActionsMenu.style.top = `${top}px`;
+    }
+  }
 });
+
+function closeClaimActionsMenu() {
+  claimActionsMenu.hidden = true;
+  claimsBody.querySelectorAll('[data-action="toggle-claim-menu"]').forEach((button) => button.setAttribute("aria-expanded", "false"));
+}
+
+claimActionsMenu.addEventListener("click", (event) => {
+  const option = event.target.closest("[data-editor-view]");
+  if (!option) return;
+  const { transmittalId, claimId } = claimActionsMenu.dataset;
+  closeClaimActionsMenu();
+  openClaimEditor(transmittalId, claimId, option.dataset.editorView);
+});
+
+document.addEventListener("click", (event) => {
+  if (!claimActionsMenu.hidden && !claimActionsMenu.contains(event.target) && !event.target.closest('[data-action="toggle-claim-menu"]')) {
+    closeClaimActionsMenu();
+  }
+});
+window.addEventListener("scroll", () => {
+  if (!claimActionsMenu.hidden) closeClaimActionsMenu();
+}, true);
+window.addEventListener("resize", closeClaimActionsMenu);
 
 document.getElementById("editDoctorSelect").addEventListener("change", populateDoctorFields);
 document.getElementById("editorClose").addEventListener("click", () => {
   claimEditor.hidden = true;
   activeEditClaim = null;
+  document.querySelector(".editor-content").removeAttribute("data-view");
 });
 claimEditor.addEventListener("click", (event) => {
   if (event.target === claimEditor) document.getElementById("editorClose").click();
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !claimEditor.hidden) document.getElementById("editorClose").click();
+  if (event.key !== "Escape") return;
+  if (!claimActionsMenu.hidden) closeClaimActionsMenu();
+  else if (!claimEditor.hidden) document.getElementById("editorClose").click();
 });
 
 document.querySelectorAll("[data-save-editor]").forEach((button) => {
@@ -241,17 +301,20 @@ document.querySelectorAll("[data-save-editor]").forEach((button) => {
         height: document.getElementById("editHeight").value,
         weight: document.getElementById("editWeight").value,
       },
+      hpi: { historyOfPresentIllness: document.getElementById("editHistoryOfPresentIllness").value },
+      pmh: { pertinentPastMedicalHistory: document.getElementById("editPertinentPastMedicalHistory").value },
     };
     button.disabled = true;
     const originalText = button.textContent;
     button.textContent = "SAVING...";
     setEditorMessage(section, "Saving changes to Beacon...");
     try {
-      await editorRequest(`${route}/${section === "cf4" ? "cf4-vitals" : section}`, {
+      const endpoint = section === "cf4" ? "cf4-vitals" : ["hpi", "pmh"].includes(section) ? "cf4-text" : section;
+      await editorRequest(`${route}/${endpoint}`, {
         method: "POST",
         body: JSON.stringify(payloads[section]),
       });
-      await openClaimEditor(transmittalId, claimId);
+      await openClaimEditor(transmittalId, claimId, activeEditClaim.view);
       setEditorMessage(section, "Saved to Beacon.");
     } catch (error) {
       setEditorMessage(section, error.message || "Save failed.", true);
@@ -272,7 +335,7 @@ document.getElementById("removeSoaButton").addEventListener("click", async (even
   setEditorMessage("soa", "Removing the SOA charge rows from Beacon...");
   try {
     const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/soa`, { method: "DELETE" });
-    await openClaimEditor(transmittalId, claimId);
+    await openClaimEditor(transmittalId, claimId, activeEditClaim.view);
     setEditorMessage("soa", `Removed ${result.med_count} medicine and ${result.xlso_count} other charge rows. No payment receipts were attached.`);
   } catch (error) {
     setEditorMessage("soa", error.message || "Beacon could not remove the SOA data.", true);

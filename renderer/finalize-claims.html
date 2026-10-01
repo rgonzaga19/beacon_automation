@@ -34,27 +34,45 @@
     .status-complete { --status-color:#188a28; }
     .status-on-queue { --status-color:#08a1b6; }
     .transmittal-status { padding:4px 8px; color:var(--text-pri); border:1px solid color-mix(in srgb, var(--status-color,#909398) 45%, transparent); border-radius:999px; background:color-mix(in srgb, var(--status-color,#909398) 10%, transparent); }
-    .editor-overlay { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:20px; background:rgba(2,7,15,.78); }
+    .editor-overlay { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:20px; background:rgba(2,7,15,.78); backdrop-filter:blur(4px); }
     .editor-overlay[hidden] { display:none; }
-    .editor-dialog { display:flex; flex-direction:column; width:min(920px,100%); max-height:min(92vh,900px); overflow:hidden; background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:0 24px 80px rgba(0,0,0,.5); }
-    .editor-header { display:flex; align-items:center; gap:14px; padding:16px 20px; border-bottom:1px solid var(--border); }
-    .editor-header h2 { margin:0; color:var(--text-pri); font-size:14px; }
-    .editor-subtitle { margin-top:4px; color:var(--text-sec); font-size:10px; }
-    .editor-close { margin-left:auto; min-height:32px; padding:0 11px; }
-    .editor-content { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; overflow:auto; padding:16px; }
-    .editor-section { min-width:0; padding:15px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--bg-panel); }
-    .editor-section h3 { margin:0 0 12px; color:var(--text-pri); font-size:11px; letter-spacing:.3px; text-transform:uppercase; }
-    .editor-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .editor-dialog { display:flex; flex-direction:column; width:min(1040px,100%); max-height:min(92vh,940px); overflow:hidden; background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:0 24px 80px rgba(0,0,0,.5); }
+    .editor-header { display:flex; align-items:center; gap:14px; padding:19px 24px; border-bottom:1px solid var(--border); background:var(--bg-panel); }
+    .editor-heading { min-width:0; }
+    .editor-eyebrow { display:block; margin-bottom:3px; color:var(--accent); font-size:9px; font-weight:800; letter-spacing:1px; }
+    .editor-header h2 { margin:0; color:var(--text-pri); font-size:16px; }
+    .editor-subtitle { margin-top:5px; color:var(--text-sec); font-size:11px; overflow-wrap:anywhere; }
+    .editor-close { margin-left:auto; min-height:34px; padding:0 12px; flex:none; }
+    .editor-content { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:12px; overflow:auto; padding:18px; }
+    .editor-content[data-view] { grid-template-columns:minmax(0,1fr); }
+    .editor-section { min-width:0; padding:16px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--bg-panel); }
+    .editor-section[hidden] { display:none; }
+    .editor-section h3 { display:flex; align-items:center; gap:9px; margin:0 0 15px; padding-bottom:10px; color:var(--text-pri); border-bottom:1px solid var(--border); font-size:11px; letter-spacing:.3px; text-transform:uppercase; }
+    .editor-section h3::before { width:3px; height:14px; flex:none; border-radius:2px; background:var(--accent); content:""; }
+    .editor-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .editor-field { min-width:0; }
     .editor-field label { display:block; margin:0 0 5px; color:var(--text-sec); font-size:10px; font-weight:700; }
-    .editor-field input,.editor-field select { width:100%; min-height:35px; padding:6px 9px; color:var(--text-pri); background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-md); font:11px var(--font-ui); }
-    .editor-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+    .editor-field input,.editor-field select { width:100%; min-height:37px; padding:7px 10px; color:var(--text-pri); background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-sm); font:11px var(--font-ui); }
+    .editor-field input:focus,.editor-field select:focus { border-color:var(--accent); outline:2px solid var(--accent-soft); }
+    .editor-field textarea { width:100%; min-height:150px; padding:8px 10px; resize:vertical; color:var(--text-pri); background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-sm); font:11px/1.5 var(--font-ui); user-select:text; }
+    .editor-field textarea:focus { border-color:var(--accent); outline:2px solid var(--accent-soft); }
+    .editor-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-top:14px; }
+    .editor-actions .cyber-btn { min-height:34px; padding:0 12px; font-size:10px; }
     .editor-message { min-height:15px; margin-top:8px; color:var(--text-sec); font-size:10px; }
     .editor-message.error { color:var(--error); }
     .editor-doc-list { display:grid; gap:7px; margin:0; padding:0; list-style:none; color:var(--text-sec); font-size:10px; }
     .editor-doc-list li { overflow-wrap:anywhere; }
     .editor-note { margin:10px 0 0; color:var(--text-sec); font-size:10px; line-height:1.5; }
-    @media(max-width:700px) { .editor-content { grid-template-columns:1fr; } .editor-dialog { max-height:96vh; } }
+    @media(max-width:700px) { .editor-overlay { padding:10px; } .editor-content { grid-template-columns:1fr; padding:12px; } .editor-dialog { max-height:96vh; } .editor-header { padding:15px; } }
+    @media(max-width:420px) { .editor-grid { grid-template-columns:1fr; gap:9px; } .editor-section { padding:13px; } }
     .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
+    .claim-actions-menu { position:fixed; z-index:1100; width:286px; padding:5px; color:var(--text-pri); background:color-mix(in srgb,var(--bg-panel) 94%,#fff 6%); border:1px solid color-mix(in srgb,var(--border) 72%,var(--text-sec)); border-radius:8px; box-shadow:0 12px 34px rgba(0,0,0,.42); backdrop-filter:blur(16px); }
+    .claim-actions-menu[hidden] { display:none; }
+    .claim-actions-menu button { width:100%; min-height:38px; display:grid; grid-template-columns:24px minmax(0,1fr); align-items:center; gap:9px; padding:0 9px; color:var(--text-pri); background:transparent; border:0; border-radius:5px; text-align:left; font:500 12px var(--font-ui); cursor:pointer; }
+    .claim-actions-menu button:hover,.claim-actions-menu button:focus-visible { color:var(--text-pri); background:var(--accent-soft); outline:none; }
+    .claim-actions-menu button:focus-visible { box-shadow:inset 0 0 0 1px var(--accent); }
+    .claim-menu-icon { width:21px; height:21px; display:grid; place-items:center; color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 45%,transparent); border-radius:5px; font-size:10px; font-weight:800; }
+    .claim-menu-divider { height:1px; margin:5px 4px; background:var(--border); }
     table { width:100%; border-collapse:collapse; font-size:11px; text-align:left; }
     th { color:var(--text-sec); background:var(--bg-panel); font-weight:700; white-space:nowrap; }
     th,td { padding:11px 12px; border-bottom:1px solid var(--border); }
@@ -93,11 +111,21 @@
       </section>
     </main>
   </div>
+  <div class="claim-actions-menu" id="claimActionsMenu" role="menu" aria-label="Draft claim actions" hidden>
+    <button type="button" role="menuitem" data-editor-view="cf2"><span class="claim-menu-icon" aria-hidden="true">T</span><span>Change time</span></button>
+    <button type="button" role="menuitem" data-editor-view="doctor"><span class="claim-menu-icon" aria-hidden="true">D</span><span>Change doctor</span></button>
+    <div class="claim-menu-divider" role="separator"></div>
+    <button type="button" role="menuitem" data-editor-view="hpi"><span class="claim-menu-icon" aria-hidden="true">H</span><span>History of Present Illness</span></button>
+    <button type="button" role="menuitem" data-editor-view="pmh"><span class="claim-menu-icon" aria-hidden="true">P</span><span>Pertinent Past Medical History</span></button>
+    <div class="claim-menu-divider" role="separator"></div>
+    <button type="button" role="menuitem" data-editor-view="soa"><span class="claim-menu-icon" aria-hidden="true">S</span><span>Remove SOA data</span></button>
+    <button type="button" role="menuitem" data-editor-view="cf4"><span class="claim-menu-icon" aria-hidden="true">V</span><span>Add vitals</span></button>
+  </div>
   <div class="editor-overlay" id="claimEditor" hidden>
     <section class="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
-      <header class="editor-header"><div><h2 id="editorTitle">Edit Draft Claim</h2><div class="editor-subtitle" id="editorSubtitle"></div></div><button class="cyber-btn editor-close" id="editorClose" type="button" aria-label="Close editor">CLOSE</button></header>
+      <header class="editor-header"><div class="editor-heading"><span class="editor-eyebrow">CLAIM WORKSPACE</span><h2 id="editorTitle">Edit Draft Claim</h2><div class="editor-subtitle" id="editorSubtitle"></div></div><button class="cyber-btn editor-close" id="editorClose" type="button" aria-label="Close editor">CLOSE</button></header>
       <div class="editor-content">
-        <section class="editor-section">
+        <section class="editor-section" data-editor-section="cf2">
           <h3>CF2 Admission and Discharge</h3>
           <div class="editor-grid">
             <div class="editor-field"><label for="editAdmissionDate">Admission Date</label><input id="editAdmissionDate" type="date"></div>
@@ -108,17 +136,17 @@
           <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="cf2">SAVE CF2</button></div>
           <div class="editor-message" id="cf2EditorMessage" aria-live="polite"></div>
         </section>
-        <section class="editor-section">
+        <section class="editor-section" data-editor-section="doctor">
           <h3>CF2 Doctor and Sign Date</h3>
           <div class="editor-field"><label for="editDoctorSelect">Doctor record to replace</label><select id="editDoctorSelect"></select></div>
-          <div class="editor-grid" style="margin-top:10px">
+          <div class="editor-grid" style="margin-top:12px">
             <div class="editor-field"><label for="editDoctorAccreditation">Doctor Accreditation Number</label><input id="editDoctorAccreditation" type="text"></div>
             <div class="editor-field"><label for="editDoctorSignDate">Doctor Sign Date</label><input id="editDoctorSignDate" type="date"></div>
           </div>
           <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="doctor">SAVE DOCTOR</button></div>
           <div class="editor-message" id="doctorEditorMessage" aria-live="polite"></div>
         </section>
-        <section class="editor-section">
+        <section class="editor-section" data-editor-section="cf4">
           <h3>CF4 Vitals</h3>
           <div class="editor-grid">
             <div class="editor-field"><label for="editSystolic">Blood Pressure - Systolic</label><input id="editSystolic" type="number" step="any"></div>
@@ -132,7 +160,19 @@
           <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="cf4">SAVE VITALS</button><button class="cyber-btn" id="generateCf4Button" type="button">GENERATE CF4</button></div>
           <div class="editor-message" id="cf4EditorMessage" aria-live="polite"></div>
         </section>
-        <section class="editor-section">
+        <section class="editor-section" data-editor-section="hpi">
+          <h3>History of Present Illness</h3>
+          <div class="editor-field"><label for="editHistoryOfPresentIllness">History of Present Illness</label><textarea id="editHistoryOfPresentIllness" rows="6"></textarea></div>
+          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="hpi">SAVE HPI</button></div>
+          <div class="editor-message" id="hpiEditorMessage" aria-live="polite"></div>
+        </section>
+        <section class="editor-section" data-editor-section="pmh">
+          <h3>Pertinent Past Medical History</h3>
+          <div class="editor-field"><label for="editPertinentPastMedicalHistory">Pertinent Past Medical History</label><textarea id="editPertinentPastMedicalHistory" rows="6"></textarea></div>
+          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="pmh">SAVE HISTORY</button></div>
+          <div class="editor-message" id="pmhEditorMessage" aria-live="polite"></div>
+        </section>
+        <section class="editor-section" data-editor-section="soa">
           <h3>SOA Charges and Payments</h3>
           <p class="editor-note" id="editorSoaSummary">Loading SOA rows...</p>
           <div class="editor-actions"><button class="cyber-btn danger" id="removeSoaButton" type="button">REMOVE SOA DATA</button><button class="cyber-btn" id="generateSoaButton" type="button">GENERATE SOA</button></div>

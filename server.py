@@ -1000,6 +1000,10 @@ def get_finalize_claim_edit_data(transmittal_id, claim_id):
                 key: exam.get(key)
                 for key in ("vsbpSystolic", "vsbpDiastolic", "vshr", "vsrr", "vsTemp", "height", "weight")
             },
+            "cf4_text": {
+                "history_of_present_illness": cf4.get("historyOfPresentIllness") or "",
+                "pertinent_past_medical_history": cf4.get("pertinentPastMedicalHistory") or "",
+            },
             "soa_counts": {"med": len(meds), "xlso": len(xlso), "payments": len(payments)},
         })
     except (ValueError, LookupError) as exc:
@@ -1143,6 +1147,43 @@ def save_finalize_claim_cf4_vitals(transmittal_id, claim_id):
     except Exception as exc:
         logger.error(f"Finalize Claims CF4 vital save failed for claim {claim_id}: {exc}")
         return jsonify({"error": "Beacon could not save the CF4 vital sign changes."}), 502
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/cf4-text", methods=["POST"])
+@login_required
+def save_finalize_claim_cf4_text(transmittal_id, claim_id):
+    data = request.get_json(silent=True) or {}
+    field_keys = (
+        "historyOfPresentIllness",
+        "pertinentPastMedicalHistory",
+    )
+    if not any(key in data for key in field_keys):
+        return jsonify({"error": "No CF4 text field was provided."}), 400
+
+    try:
+        user = current_user()
+        beacon_settings, auth_key = _beacon_edit_settings(user)
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+            cf4 = beacon_api.get_cf4_values(claim_id)
+            if not isinstance(cf4, dict) or not cf4:
+                raise RuntimeError("Beacon did not return the CF4 record.")
+            payload = beacon_automation._normalize_cf4_save_payload(cf4, claim_id, False, {}, [])
+            payload["historyOfPresentIllness"] = cf4.get("historyOfPresentIllness") or ""
+            payload["pertinentPastMedicalHistory"] = cf4.get("pertinentPastMedicalHistory") or ""
+            for key in field_keys:
+                if key in data:
+                    payload[key] = str(data.get(key) or "").strip()
+            if not beacon_api.save_cf4_values(payload):
+                raise RuntimeError("Beacon returned an empty CF4 save response.")
+            beacon_api._cf4_cache.pop((browser_session._context_key(), int(claim_id)), None)
+        return jsonify({"saved": True})
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims CF4 text save failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not save the CF4 text changes."}), 502
 
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/soa", methods=["DELETE"])

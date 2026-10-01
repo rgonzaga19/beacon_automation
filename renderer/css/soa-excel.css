@@ -76,8 +76,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .summary-claim strong { color: var(--text-pri); }
 .side-actions, .batch-actions { display: grid; grid-template-columns: 1fr 1.25fr; gap: 10px; }
 .primary-btn, .quiet-btn, .danger-btn { min-height: 43px; padding: 0 18px; border-radius: 7px; font: 800 12px var(--font-ui); cursor: pointer; }
-.primary-btn { color: var(--bg-base); background: var(--soa-accent); border: 1px solid var(--soa-accent); }
-.primary-btn:hover:not(:disabled) { background: var(--soa-accent-strong); }
+.primary-btn { color: var(--bg-base); background: var(--soa-accent); border: 1px solid var(--soa-accent); transition: color .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.primary-btn:hover:not(:disabled) { color: var(--text-pri); background: var(--soa-accent-strong); border-color: var(--soa-accent-strong); box-shadow: 0 0 0 3px var(--accent-soft); transform: translateY(-1px); }
+.primary-btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+.primary-btn:focus-visible { outline: 2px solid var(--soa-accent); outline-offset: 3px; }
 .primary-btn:disabled { color: var(--text-sec); background: var(--soa-soft); border-color: var(--soa-soft); cursor: not-allowed; }
 .quiet-btn { color: var(--soa-accent); background: transparent; border: 1px solid var(--soa-border); }
 .quiet-btn:hover { color: var(--text-pri); border-color: var(--soa-accent); background: var(--accent-soft); }
@@ -87,7 +89,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .batch-copy, .field small { margin: 0; color: var(--text-sec); font-size: 12px; line-height: 1.6; }
 .batch-period-row { display: grid; grid-template-columns: 1.35fr .98fr; gap: 8px; }
 input[type="file"] { padding: 6px; color: var(--text-sec); }
-input[type="file"]::file-selector-button { min-height: 34px; margin-right: 12px; padding: 0 16px; color: var(--text-sec); background: var(--soa-input); border: 1px solid var(--soa-border); border-radius: 7px; font: 800 12px var(--font-ui); }
+input[type="file"]::file-selector-button { min-height: 34px; margin-right: 12px; padding: 0 16px; color: var(--text-sec); background: var(--soa-input); border: 1px solid var(--soa-border); border-radius: 7px; font: 800 12px var(--font-ui); cursor: pointer; transition: color .15s ease, background .15s ease, border-color .15s ease, transform .15s ease; }
+input[type="file"]::file-selector-button:hover { color: var(--text-pri); background: var(--accent-soft); border-color: var(--soa-accent); }
+input[type="file"]:focus-visible { outline: 2px solid var(--soa-accent); outline-offset: 3px; border-radius: 7px; }
 .status-text { min-height: 22px; margin-top: 12px; color: var(--text-sec); font-size: 12px; }
 .status-text.error { color: var(--soa-danger); }
 #batchWarnings { margin-top: 12px; padding: 12px; border: 1px solid var(--text-sec); border-radius: 8px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
