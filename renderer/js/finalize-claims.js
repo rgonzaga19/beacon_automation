@@ -163,7 +163,7 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
     cf4: "Add CF4 Vitals",
     hpi: "History of Present Illness",
     pmh: "Pertinent Past Medical History",
-    soa: "Remove SOA Data",
+    soa: "Generate/Remove SOA Data",
   })[view] || "Edit Draft Claim";
   claimEditor.hidden = false;
   editorSubtitle.textContent = "Loading draft claim...";

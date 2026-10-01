@@ -21,7 +21,7 @@ body { margin: 0; min-height: 100vh; overflow: auto; background: var(--soa-page)
 .subtab.active { color: var(--text-pri); background: var(--soa-soft); border-color: var(--soa-accent); }
 .tab-page { display: none; }
 .tab-page.active { display: block; }
-.individual-layout { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(340px, 1fr); gap: 18px; }
+.individual-layout { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 18px; }
 .left-stack, .right-stack { display: grid; gap: 14px; align-content: start; }
 .card { background: var(--soa-surface); border: 1px solid var(--soa-border); border-radius: 8px; padding: 24px; }
 .card h2, .claim-title { margin: 0; color: var(--text-pri); font-size: 13px; font-weight: 800; }
@@ -52,11 +52,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 #claims { display: grid; gap: 14px; }
-.claim { display: grid; gap: 18px; padding: 26px 24px 24px; background: var(--soa-surface); border: 1px solid var(--soa-border); border-radius: 8px; }
+.claim { display: grid; gap: 18px; min-width: 0; padding: 26px 24px 24px; background: var(--soa-surface); border: 1px solid var(--soa-border); border-radius: 8px; container-type: inline-size; }
 .claim-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--soa-border); }
-.claim-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 16px; align-items: end; }
+.claim-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 16px; align-items: start; }
 .claim-field { display: grid; gap: 7px; }
-.claim-field.compact select, .claim-field.compact input[type="number"] { width: 100px; }
+.claim-field.compact select, .claim-field.compact input[type="number"] { width: 100%; max-width: 160px; }
 .check-pill { min-height: 39px; display: flex; align-items: center; gap: 10px; padding: 0 14px; color: var(--text-sec); background: var(--soa-input); border: 1px solid var(--soa-border); border-radius: 8px; cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease; }
 .check-pill:has(input:checked) { color: var(--text-pri); background: var(--accent-soft); border-color: var(--soa-accent); }
 .check-pill input { appearance: none; position: relative; width: 19px; height: 19px; min-height: 19px; flex: 0 0 19px; margin: 0; border: 1px solid var(--soa-border); border-radius: 5px; background: transparent; }
@@ -224,9 +224,17 @@ html[data-theme="light"] .summary-claims {
   .individual-layout { grid-template-columns: 1fr; }
 }
 
+@container (max-width: 620px) {
+  .claim-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@container (max-width: 400px) {
+  .claim-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (max-width: 760px) {
   .soa-header { flex-direction: column; padding: 14px; }
   .page-body { padding: 14px; }
-  .settings-grid, .claim-grid, .batch-period-row, .side-actions, .batch-actions { grid-template-columns: 1fr; }
+  .settings-grid, .batch-period-row, .side-actions, .batch-actions { grid-template-columns: 1fr; }
   .subtabs { margin-top: 0; }
 }
