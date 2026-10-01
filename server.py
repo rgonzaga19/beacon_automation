@@ -56,6 +56,7 @@ from app.domain.cf2_mapper import build_cf2_data
 from app.automation.cf2 import CF2Automation
 from app.automation.soa import SOAAutomation
 from app.automation.beacon import run as beacon_run
+from app.api import beacon as beacon_api
 from app.domain.reports import report
 from app.domain.soa_excel import batch_workbooks, build_batch_template, generate_workbook
 from app.core.security import decrypt_field, encrypt_field
@@ -836,6 +837,55 @@ def beacon_validate():
         "beacon_user_id": settings.beacon_user_id,
         "beacon_validated_at": settings.beacon_validated_at.isoformat(),
     })
+
+
+@app.route("/api/beacon/finalize-claims", methods=["GET"])
+@login_required
+def get_finalize_claims():
+    transmittal_number = str(request.args.get("transmittal") or "").strip()
+    if not transmittal_number:
+        return jsonify({"error": "Enter a transmittal number."}), 400
+
+    user = current_user()
+    settings = get_or_create_user_settings(user)
+    beacon_settings = {
+        "username": settings.beacon_username,
+        "password": decrypt_field(settings.beacon_password_encrypted),
+        "server": settings.server,
+        "user_id": settings.beacon_user_id,
+    }
+    auth_key = browser_session.auth_context_key(beacon_settings, user_key=f"user:{user.id}")
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            transmittal = beacon_api.get_transmittal(transmittal_number, search_days=93)
+            if not transmittal:
+                return jsonify({"transmittal": None, "claims": []})
+            transmittal_id = transmittal.get("id")
+            claims = beacon_api.get_claims(transmittal_id)
+
+        rows = []
+        for claim in claims:
+            form1 = claim.get("phiccF1") or {}
+            rows.append({
+                "claim_series": claim.get("claimSeriesLhio") or "",
+                "patient_name": form1.get("patientFullname") or "",
+                "member_name": form1.get("memberFullname") or "",
+                "status": claim.get("claimStatusDescription") or "",
+                "package": claim.get("phicPackageDescription") or "",
+                "is_final": bool(claim.get("isFinal")),
+            })
+        return jsonify({
+            "transmittal": {
+                "number": transmittal.get("transmittalNumber") or transmittal_number,
+                "status": transmittal.get("transmittalStatusDescription") or "",
+                "claims_count": transmittal.get("totalClaims", len(rows)),
+            },
+            "claims": rows,
+        })
+    except Exception as exc:
+        logger.error(f"Finalize Claims lookup failed for {transmittal_number}: {exc}")
+        return jsonify({"error": "Beacon lookup failed. Check your connection and Beacon settings, then try again."}), 502
 
 
 @app.route("/api/cf4/settings", methods=["GET"])

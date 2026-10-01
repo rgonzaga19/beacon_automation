@@ -133,18 +133,18 @@ def get_client_id():
     return _client_id_cache[cache_key]
 
 
-def get_transmittal(transmittal_no, client_id=None):
+def get_transmittal(transmittal_no, client_id=None, search_days=31):
     """Search the exact transmittal number, preserving the original workflow."""
     if client_id is None:
         client_id = get_client_id()
 
-    cache_key = (browser_session._context_key(), int(client_id), str(transmittal_no).strip())
+    cache_key = (browser_session._context_key(), int(client_id), str(transmittal_no).strip(), int(search_days))
     if cache_key in _transmittal_cache:
         return _transmittal_cache[cache_key]
 
     # Same Transmittals table request shape used by Beacon/SOA API migration.
     today = datetime.now().date()
-    date_from = today - timedelta(days=31)
+    date_from = today - timedelta(days=int(search_days))
     date_to = today + timedelta(days=1)
 
     data = _get(

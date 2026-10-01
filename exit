@@ -1,0 +1,272 @@
+[33mcommit 9457a8274e6e3e650745d9817afc542bf9bd6c1e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 29 19:19:05 2026 +0800
+
+    added soa excel batch validation in dates of epo date format
+
+[33mcommit cd607aa5f44a27b945ba25ccf85a2498c1b40431[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 29 10:17:55 2026 +0800
+
+    added multiple selection in file picker for soa upload
+
+[33mcommit 469c5e3b608bcd182aa0491c9c95ba12413775fb[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Sun Sep 27 12:08:20 2026 +0800
+
+    changed version to 4.0.8
+
+[33mcommit 9025aa63e8f24e5b022b6f6a2b8a44b51dae17c4[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Sun Sep 27 11:52:43 2026 +0800
+
+    fixed token and ARRAffinity cookies in the browser issue
+
+[33mcommit 243ac5e27545284a8a68c91d6e45b6510139da7c[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Fri Sep 25 21:04:34 2026 +0800
+
+    fixed token issue due to recent update
+
+[33mcommit 6369ba9d001cd604cfe593a9eca914e46dbd9a27[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Thu Sep 24 16:18:36 2026 +0800
+
+    fixed switching account caching issue
+
+[33mcommit 5af43df8c81d5f7129bf5aa38c14763278050c1c[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 23 14:30:14 2026 +0800
+
+    fixed philhealth drug and unit mapping
+
+[33mcommit 213689320e9605ddc2eb7f05689bdd46de9a6a9a[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 23 13:55:40 2026 +0800
+
+    1 laboratoy can be selected
+
+[33mcommit f74b7fcf8b9569261ba1e5402cec008891010be2[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 23 13:19:14 2026 +0800
+
+    fixed no epo with lab amount
+
+[33mcommit fdfaf8b8629bd9caa7d2004749922a16e7e2a138[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 23 12:58:19 2026 +0800
+
+    fixed alpha and beta qty
+
+[33mcommit 587e056e1d932b513384766ca8830862f2494d5f[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 23 12:52:37 2026 +0800
+
+    added validation in soa excel
+
+[33mcommit 5b5732184bbe1c72d32de6483d127ade61695623[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 23 12:10:16 2026 +0800
+
+    deleted start bat file
+
+[33mcommit 6daea4f012afecb19ed1ba2cdf8f92b6ab2a74dc[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 23 11:57:57 2026 +0800
+
+    fixed saving and cancel issue, added license validation in soa excel
+
+[33mcommit 706034048480c87c420b7a3c11f58ab7e9e5598a[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 22 22:05:46 2026 +0800
+
+    fixed font sizing for page headers
+
+[33mcommit d44650103076040c4c6ac1c3387434e66af2efe3[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 22 21:49:11 2026 +0800
+
+    generated file issue fixed
+
+[33mcommit 2aeb557ecb46b117073e0bd33034a45fc134ab8e[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 22 21:33:43 2026 +0800
+
+    resolved generation file issue
+
+[33mcommit f21d455305a843da170ee59e911a1c140648daad[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 22 20:48:06 2026 +0800
+
+    added pdf splitter link in about page
+
+[33mcommit ad60a6855311e41d1cc398fb8a395db59e868116[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 22 20:37:51 2026 +0800
+
+    merged the soa excel generator in beabots
+
+[33mcommit cb05b7d34f7d688eee387daba1f3030f7c3b8c11[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 22 13:26:00 2026 +0800
+
+    moved the scrolling update status below logout
+
+[33mcommit 8abf56e0d1cd117cf47ba463bc49dfabbf444c27[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 22 12:54:35 2026 +0800
+
+    added an updater
+
+[33mcommit 86e988289d8fde8c8159c46221ff76b8c17e5627[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 22 12:12:33 2026 +0800
+
+    changed version to 4.0.6
+
+[33mcommit cfe1b489e255d8d92b7cb2ef7cbaece4af308816[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 22 12:05:31 2026 +0800
+
+    enforce worker sha256
+
+[33mcommit 507716a32db143a612958a439d7b412b7e3f27b4[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Tue Sep 22 11:27:08 2026 +0800
+
+    handle ui web view responsiveness
+
+[33mcommit 54b3d564ba1802e565757541f7e0de844be038b7[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Mon Sep 21 23:22:56 2026 +0800
+
+    added responsive design
+
+[33mcommit a95685a0f14c74731e6c767fb84f77484b449cb3[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Mon Sep 21 22:27:18 2026 +0800
+
+    converted to executable installer w/ licensing and auto updater
+
+[33mcommit af0537e5e0477bb0dddb9eeefc38f4fd15fd8900[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Mon Sep 21 19:00:30 2026 +0800
+
+    updated soa file handling specially in Ñ
+
+[33mcommit ad4f7bf4ab4c802754be45da1668e5a94d73973b[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Mon Sep 21 10:47:23 2026 +0800
+
+    changed login autofill color
+
+[33mcommit a3aa659f6e9a674095ed8ebffbd6a6af3de95250[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Fri Sep 18 22:32:41 2026 +0800
+
+    successfully refactor the project
+
+[33mcommit e2b29ed107467e83580b530ce8ae209d01ce52e2[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Fri Sep 18 21:53:19 2026 +0800
+
+    updated dashboard and page behaviour
+
+[33mcommit 6bf317d89d746e988fd066d67f5e19b0f1af221b[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Fri Sep 18 11:27:57 2026 +0800
+
+    added info in about page
+
+[33mcommit 73a42fee9325d78002c6716aa8ddce4314f7ba67[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Fri Sep 18 10:51:45 2026 +0800
+
+    updated requirements.txt and gitignore
+
+[33mcommit 3a253129e1d7febad0e175fce980bdadb922fec4[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Thu Sep 17 21:55:24 2026 +0800
+
+    converted to focus web app ready for hosting
+
+[33mcommit a492afb574fa036844c277c88affcc6c8151eac7[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Thu Sep 17 20:35:57 2026 +0800
+
+    added postgres support
+
+[33mcommit af089f3e6b1c89d6b85495cc5e7694cc57a7bc9e[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Thu Sep 17 20:11:54 2026 +0800
+
+    now supports multi user run
+
+[33mcommit 8b91011484b57fff1500db8d7f100206e2ddaecf[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Thu Sep 17 18:20:15 2026 +0800
+
+    converting webapp to deployable website
+
+[33mcommit d5150a820dd6b541300b29547cf99321065891da[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Thu Sep 17 15:48:10 2026 +0800
+
+    changed sidebar dashboard icon
+
+[33mcommit 6a79a41a6fed891f87ab02cf11efb2382ca95993[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 16 21:32:17 2026 +0800
+
+    modified iss app version
+
+[33mcommit af0f855cc199f0478a770be3d39cd56a49d0c980[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 16 21:21:01 2026 +0800
+
+    changed version to 4.0.5
+
+[33mcommit a4ca00eb1adc5d4f17ad5579e428571e733781eb[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 16 21:14:14 2026 +0800
+
+    used standard font style for everything
+
+[33mcommit f68e7187a103490bd0065917be244dc1e3a18649[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 16 21:06:34 2026 +0800
+
+    fixed border edge issue
+
+[33mcommit 0dc49efb6a73291d96bdddd7302806432bee0ec9[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 16 20:42:32 2026 +0800
+
+    added px contact number
+
+[33mcommit 21769883d725a884de900f032f70b9efbc94f53c[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 16 20:20:38 2026 +0800
+
+    modifeid ui layout and design
+
+[33mcommit 11ea3df8949d6c4740b0c2fec0a5663a59648198[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Wed Sep 16 19:26:14 2026 +0800
+
+    added stop automation logic and clear button
+
+[33mcommit 90b00355e9a7e38310a8801979d88d5257e8c713[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Thu Sep 10 18:27:25 2026 +0800
+
+    fixed PIN in new draft for S-Employed Private transmittal error
+
+[33mcommit 62b87b178e8f1373459ca649e8d14db0579a3f66[m
+Author: Romel <gonzagaromel19@gmail.com>
+Date:   Thu Sep 10 16:39:02 2026 +0800
+
+    changed version to 4.0.4
+
+[33mcommit ec2af78d78515edec6adffa3e389fcfd5ee99e51[m
+Author: Romel <gonzagarome
