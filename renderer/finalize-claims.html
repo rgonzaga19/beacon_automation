@@ -34,6 +34,26 @@
     .status-complete { --status-color:#188a28; }
     .status-on-queue { --status-color:#08a1b6; }
     .transmittal-status { padding:4px 8px; color:var(--text-pri); border:1px solid color-mix(in srgb, var(--status-color,#909398) 45%, transparent); border-radius:999px; background:color-mix(in srgb, var(--status-color,#909398) 10%, transparent); }
+    .editor-overlay { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:20px; background:rgba(2,7,15,.78); }
+    .editor-overlay[hidden] { display:none; }
+    .editor-dialog { display:flex; flex-direction:column; width:min(920px,100%); max-height:min(92vh,900px); overflow:hidden; background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:0 24px 80px rgba(0,0,0,.5); }
+    .editor-header { display:flex; align-items:center; gap:14px; padding:16px 20px; border-bottom:1px solid var(--border); }
+    .editor-header h2 { margin:0; color:var(--text-pri); font-size:14px; }
+    .editor-subtitle { margin-top:4px; color:var(--text-sec); font-size:10px; }
+    .editor-close { margin-left:auto; min-height:32px; padding:0 11px; }
+    .editor-content { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; overflow:auto; padding:16px; }
+    .editor-section { min-width:0; padding:15px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--bg-panel); }
+    .editor-section h3 { margin:0 0 12px; color:var(--text-pri); font-size:11px; letter-spacing:.3px; text-transform:uppercase; }
+    .editor-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .editor-field label { display:block; margin:0 0 5px; color:var(--text-sec); font-size:10px; font-weight:700; }
+    .editor-field input,.editor-field select { width:100%; min-height:35px; padding:6px 9px; color:var(--text-pri); background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-md); font:11px var(--font-ui); }
+    .editor-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+    .editor-message { min-height:15px; margin-top:8px; color:var(--text-sec); font-size:10px; }
+    .editor-message.error { color:var(--error); }
+    .editor-doc-list { display:grid; gap:7px; margin:0; padding:0; list-style:none; color:var(--text-sec); font-size:10px; }
+    .editor-doc-list li { overflow-wrap:anywhere; }
+    .editor-note { margin:10px 0 0; color:var(--text-sec); font-size:10px; line-height:1.5; }
+    @media(max-width:700px) { .editor-content { grid-template-columns:1fr; } .editor-dialog { max-height:96vh; } }
     .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
     table { width:100%; border-collapse:collapse; font-size:11px; text-align:left; }
     th { color:var(--text-sec); background:var(--bg-panel); font-weight:700; white-space:nowrap; }
@@ -72,6 +92,54 @@
         </div>
       </section>
     </main>
+  </div>
+  <div class="editor-overlay" id="claimEditor" hidden>
+    <section class="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+      <header class="editor-header"><div><h2 id="editorTitle">Edit Draft Claim</h2><div class="editor-subtitle" id="editorSubtitle"></div></div><button class="cyber-btn editor-close" id="editorClose" type="button" aria-label="Close editor">CLOSE</button></header>
+      <div class="editor-content">
+        <section class="editor-section">
+          <h3>CF2 Admission and Discharge</h3>
+          <div class="editor-grid">
+            <div class="editor-field"><label for="editAdmissionDate">Admission Date</label><input id="editAdmissionDate" type="date"></div>
+            <div class="editor-field"><label for="editAdmissionTime">Admission Time</label><input id="editAdmissionTime" type="time"></div>
+            <div class="editor-field"><label for="editDischargeDate">Discharge Date</label><input id="editDischargeDate" type="date"></div>
+            <div class="editor-field"><label for="editDischargeTime">Discharge Time</label><input id="editDischargeTime" type="time"></div>
+          </div>
+          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="cf2">SAVE CF2</button></div>
+          <div class="editor-message" id="cf2EditorMessage" aria-live="polite"></div>
+        </section>
+        <section class="editor-section">
+          <h3>CF2 Doctor and Sign Date</h3>
+          <div class="editor-field"><label for="editDoctorSelect">Doctor record to replace</label><select id="editDoctorSelect"></select></div>
+          <div class="editor-grid" style="margin-top:10px">
+            <div class="editor-field"><label for="editDoctorAccreditation">Doctor Accreditation Number</label><input id="editDoctorAccreditation" type="text"></div>
+            <div class="editor-field"><label for="editDoctorSignDate">Doctor Sign Date</label><input id="editDoctorSignDate" type="date"></div>
+          </div>
+          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="doctor">SAVE DOCTOR</button></div>
+          <div class="editor-message" id="doctorEditorMessage" aria-live="polite"></div>
+        </section>
+        <section class="editor-section">
+          <h3>CF4 Vitals</h3>
+          <div class="editor-grid">
+            <div class="editor-field"><label for="editSystolic">Blood Pressure - Systolic</label><input id="editSystolic" type="number" step="any"></div>
+            <div class="editor-field"><label for="editDiastolic">Blood Pressure - Diastolic</label><input id="editDiastolic" type="number" step="any"></div>
+            <div class="editor-field"><label for="editHeartRate">Heart Rate</label><input id="editHeartRate" type="number" step="any"></div>
+            <div class="editor-field"><label for="editRespiratoryRate">Respiratory Rate</label><input id="editRespiratoryRate" type="number" step="any"></div>
+            <div class="editor-field"><label for="editTemperature">Temperature</label><input id="editTemperature" type="number" step="any"></div>
+            <div class="editor-field"><label for="editHeight">Height</label><input id="editHeight" type="number" step="any"></div>
+            <div class="editor-field"><label for="editWeight">Weight</label><input id="editWeight" type="number" step="any"></div>
+          </div>
+          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="cf4">SAVE VITALS</button><button class="cyber-btn" id="generateCf4Button" type="button">GENERATE CF4</button></div>
+          <div class="editor-message" id="cf4EditorMessage" aria-live="polite"></div>
+        </section>
+        <section class="editor-section">
+          <h3>SOA Charges and Payments</h3>
+          <p class="editor-note" id="editorSoaSummary">Loading SOA rows...</p>
+          <div class="editor-actions"><button class="cyber-btn danger" id="removeSoaButton" type="button">REMOVE SOA DATA</button><button class="cyber-btn" id="generateSoaButton" type="button">GENERATE SOA</button></div>
+          <div class="editor-message" id="soaEditorMessage" aria-live="polite"></div>
+        </section>
+      </div>
+    </section>
   </div>
   <div id="modalRoot"></div>
   <script src="js/common.js"></script>

@@ -3,6 +3,9 @@ const transmittalInput = document.getElementById("transmittalInput");
 const lookupButton = document.getElementById("lookupButton");
 const summary = document.getElementById("summary");
 const claimsBody = document.getElementById("claimsBody");
+const claimEditor = document.getElementById("claimEditor");
+const editorSubtitle = document.getElementById("editorSubtitle");
+let activeEditClaim = null;
 
 function statusClass(status) {
   const normalized = String(status || "").trim().toUpperCase();
@@ -89,15 +92,16 @@ lookupForm.addEventListener("submit", async (event) => {
       row.append(packageCell);
 
       const actionCell = document.createElement("td");
-      if (claim.edit_url && statusClass(claim.transmittal_status) === "status-draft") {
-        const editLink = document.createElement("a");
-        editLink.className = "cyber-btn";
-        editLink.href = claim.edit_url;
-        editLink.target = "_blank";
-        editLink.rel = "noopener noreferrer";
-        editLink.textContent = "EDIT";
-        editLink.setAttribute("aria-label", `Edit claim ${claim.claim_series || "in transmittal " + claim.transmittal_number} in Beacon`);
-        actionCell.append(editLink);
+      if (claim.transmittal_id && claim.claim_id && statusClass(claim.transmittal_status) === "status-draft") {
+        const editButton = document.createElement("button");
+        editButton.className = "cyber-btn";
+        editButton.type = "button";
+        editButton.textContent = "EDIT";
+        editButton.dataset.transmittalId = claim.transmittal_id;
+        editButton.dataset.claimId = claim.claim_id;
+        editButton.dataset.action = "edit-claim";
+        editButton.setAttribute("aria-label", `Edit claim ${claim.claim_series || "in transmittal " + claim.transmittal_number}`);
+        actionCell.append(editButton);
       } else {
         actionCell.textContent = "-";
       }
@@ -110,4 +114,209 @@ lookupForm.addEventListener("submit", async (event) => {
     lookupButton.disabled = false;
     lookupButton.textContent = "LOOK UP";
   }
+});
+
+async function editorRequest(path, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Beacon request failed.");
+  return result;
+}
+
+function setEditorMessage(section, message, error = false) {
+  const element = document.getElementById(`${section}EditorMessage`);
+  element.textContent = message;
+  element.classList.toggle("error", error);
+}
+
+function setInputValue(id, value) {
+  document.getElementById(id).value = value == null ? "" : String(value);
+}
+
+function populateDoctorFields() {
+  const selected = document.getElementById("editDoctorSelect").selectedOptions[0];
+  if (!selected?.dataset.doctorId) {
+    setInputValue("editDoctorAccreditation", "");
+    setInputValue("editDoctorSignDate", "");
+    return;
+  }
+  setInputValue("editDoctorAccreditation", selected.dataset.accreditation || "");
+  setInputValue("editDoctorSignDate", selected.dataset.signDate || "");
+}
+
+async function openClaimEditor(transmittalId, claimId) {
+  activeEditClaim = { transmittalId, claimId };
+  claimEditor.hidden = false;
+  editorSubtitle.textContent = "Loading draft claim...";
+  document.getElementById("editorSoaSummary").textContent = "Loading SOA rows...";
+  ["cf2", "doctor", "cf4", "soa"].forEach((section) => setEditorMessage(section, ""));
+  try {
+    const data = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/edit`);
+    editorSubtitle.textContent = `${data.patient_name || "Draft claim"} | ${data.transmittal_number} | ${data.claim_series || "Claim series pending"}`;
+
+    setInputValue("editAdmissionDate", data.cf2.admission_date);
+    setInputValue("editAdmissionTime", data.cf2.admission_time);
+    setInputValue("editDischargeDate", data.cf2.discharge_date);
+    setInputValue("editDischargeTime", data.cf2.discharge_time);
+
+    const doctorSelect = document.getElementById("editDoctorSelect");
+    doctorSelect.replaceChildren();
+    const addOption = (label, doctor = null) => {
+      const option = document.createElement("option");
+      option.value = doctor?.id ?? "";
+      option.textContent = label;
+      if (doctor) {
+        option.dataset.doctorId = doctor.id;
+        option.dataset.accreditation = doctor.accreditation_number;
+        option.dataset.signDate = doctor.sign_date;
+      }
+      doctorSelect.append(option);
+    };
+    if (data.doctors.length) {
+      data.doctors.forEach((doctor) => addOption(`${doctor.fullname || "Doctor"} (${doctor.accreditation_number || "No accreditation number"})`, doctor));
+      doctorSelect.selectedIndex = 0;
+      populateDoctorFields();
+    } else {
+      addOption("Add a doctor");
+      populateDoctorFields();
+    }
+
+    const vitalInputs = {
+      vsbpSystolic: "editSystolic", vsbpDiastolic: "editDiastolic", vshr: "editHeartRate",
+      vsrr: "editRespiratoryRate", vsTemp: "editTemperature", height: "editHeight", weight: "editWeight",
+    };
+    Object.entries(vitalInputs).forEach(([key, id]) => setInputValue(id, data.cf4_vitals[key]));
+
+    document.getElementById("editorSoaSummary").textContent =
+      `MED rows: ${data.soa_counts.med} | XLSO rows: ${data.soa_counts.xlso} | Payment receipts: ${data.soa_counts.payments}`;
+  } catch (error) {
+    editorSubtitle.textContent = error.message || "Unable to load this draft claim.";
+  }
+}
+
+claimsBody.addEventListener("click", (event) => {
+  const button = event.target.closest('[data-action="edit-claim"]');
+  if (button) openClaimEditor(button.dataset.transmittalId, button.dataset.claimId);
+});
+
+document.getElementById("editDoctorSelect").addEventListener("change", populateDoctorFields);
+document.getElementById("editorClose").addEventListener("click", () => {
+  claimEditor.hidden = true;
+  activeEditClaim = null;
+});
+claimEditor.addEventListener("click", (event) => {
+  if (event.target === claimEditor) document.getElementById("editorClose").click();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !claimEditor.hidden) document.getElementById("editorClose").click();
+});
+
+document.querySelectorAll("[data-save-editor]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    if (!activeEditClaim) return;
+    const section = button.dataset.saveEditor;
+    const { transmittalId, claimId } = activeEditClaim;
+    const route = `/api/beacon/finalize-claims/${transmittalId}/${claimId}`;
+    const payloads = {
+      cf2: {
+        admission_date: document.getElementById("editAdmissionDate").value,
+        admission_time: document.getElementById("editAdmissionTime").value,
+        discharge_date: document.getElementById("editDischargeDate").value,
+        discharge_time: document.getElementById("editDischargeTime").value,
+      },
+      doctor: {
+        doctor_id: document.getElementById("editDoctorSelect").value,
+        accreditation_number: document.getElementById("editDoctorAccreditation").value.trim(),
+        sign_date: document.getElementById("editDoctorSignDate").value,
+      },
+      cf4: {
+        vsbpSystolic: document.getElementById("editSystolic").value,
+        vsbpDiastolic: document.getElementById("editDiastolic").value,
+        vshr: document.getElementById("editHeartRate").value,
+        vsrr: document.getElementById("editRespiratoryRate").value,
+        vsTemp: document.getElementById("editTemperature").value,
+        height: document.getElementById("editHeight").value,
+        weight: document.getElementById("editWeight").value,
+      },
+    };
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = "SAVING...";
+    setEditorMessage(section, "Saving changes to Beacon...");
+    try {
+      await editorRequest(`${route}/${section === "cf4" ? "cf4-vitals" : section}`, {
+        method: "POST",
+        body: JSON.stringify(payloads[section]),
+      });
+      await openClaimEditor(transmittalId, claimId);
+      setEditorMessage(section, "Saved to Beacon.");
+    } catch (error) {
+      setEditorMessage(section, error.message || "Save failed.", true);
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  });
+});
+
+document.getElementById("removeSoaButton").addEventListener("click", async (event) => {
+  if (!activeEditClaim) return;
+  const button = event.currentTarget;
+  const { transmittalId, claimId } = activeEditClaim;
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "REMOVING...";
+  setEditorMessage("soa", "Removing the SOA charge rows from Beacon...");
+  try {
+    const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/soa`, { method: "DELETE" });
+    await openClaimEditor(transmittalId, claimId);
+    setEditorMessage("soa", `Removed ${result.med_count} medicine and ${result.xlso_count} other charge rows. No payment receipts were attached.`);
+  } catch (error) {
+    setEditorMessage("soa", error.message || "Beacon could not remove the SOA data.", true);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+});
+
+async function generateEditorFile({ button, section, endpoint, successText }) {
+  if (!activeEditClaim) return;
+  const { transmittalId, claimId } = activeEditClaim;
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "GENERATING...";
+  setEditorMessage(section, "Validating and generating in Beacon...");
+  try {
+    await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/${endpoint}`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    setEditorMessage(section, successText);
+  } catch (error) {
+    setEditorMessage(section, error.message || "Beacon generation failed.", true);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+document.getElementById("generateSoaButton").addEventListener("click", (event) => {
+  generateEditorFile({
+    button: event.currentTarget,
+    section: "soa",
+    endpoint: "soa/generate",
+    successText: "SOA validated, generated, and uploaded to Beacon.",
+  });
+});
+
+document.getElementById("generateCf4Button").addEventListener("click", (event) => {
+  generateEditorFile({
+    button: event.currentTarget,
+    section: "cf4",
+    endpoint: "cf4-generate",
+    successText: "CF4 generated in Beacon.",
+  });
 });

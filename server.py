@@ -15,6 +15,7 @@ import threading
 import tempfile
 import uuid
 import re
+from datetime import datetime, timedelta, timezone
 from contextvars import ContextVar
 from pathlib import Path
 
@@ -57,7 +58,11 @@ from app.domain.cf2_mapper import build_cf2_data
 from app.automation.cf2 import CF2Automation
 from app.automation.soa import SOAAutomation
 from app.automation.beacon import run as beacon_run
+from app.automation import beacon as beacon_automation
 from app.api import beacon as beacon_api
+from app.api import cf2 as cf2_api
+from app.api import soa as soa_api
+from app.domain.time_parser import format_beacon_time
 from app.domain.reports import report
 from app.domain.soa_excel import batch_workbooks, build_batch_template, generate_workbook
 from app.core.security import decrypt_field, encrypt_field
@@ -900,6 +905,8 @@ def get_finalize_claims():
                 for claim in claims:
                     form1 = claim.get("phiccF1") or {}
                     rows.append({
+                        "transmittal_id": transmittal.get("id"),
+                        "claim_id": claim.get("id"),
                         "transmittal_number": transmittal.get("transmittalNumber") or transmittal_number,
                         "transmittal_status": transmittal_status,
                         "claim_series": claim.get("claimSeriesLhio") or "",
@@ -907,13 +914,6 @@ def get_finalize_claims():
                         "member_name": form1.get("memberFullname") or "",
                         "status": claim.get("claimStatusDescription") or "",
                         "package": claim.get("phicPackageDescription") or "",
-                        "edit_url": (
-                            f"{beacon_api._base_url().rstrip('/')}/eclaims/phic-claims-details/"
-                            f"{transmittal.get('id')}/summary/{claim.get('id')}#cf2Navigation"
-                            if str(transmittal_status).strip().casefold() == "draft"
-                            and transmittal.get("id") and claim.get("id")
-                            else None
-                        ),
                     })
             if patient_query and not rows:
                 not_found.append(patient_query)
@@ -925,6 +925,305 @@ def get_finalize_claims():
     except Exception as exc:
         logger.error(f"Finalize Claims lookup failed for {patient_query or ', '.join(transmittal_numbers)}: {exc}")
         return jsonify({"error": "Beacon lookup failed. Check your connection and Beacon settings, then try again."}), 502
+
+
+def _beacon_edit_settings(user):
+    settings = get_or_create_user_settings(user)
+    beacon_settings = {
+        "username": settings.beacon_username,
+        "password": decrypt_field(settings.beacon_password_encrypted),
+        "server": settings.server,
+        "user_id": settings.beacon_user_id,
+    }
+    auth_key = browser_session.auth_context_key(beacon_settings, user_key=f"user:{user.id}")
+    return beacon_settings, auth_key
+
+
+def _require_draft_claim(transmittal_id, claim_id):
+    transmittal = beacon_api.get_transmittal_by_id(transmittal_id) or {}
+    if str(transmittal.get("transmittalStatusDescription") or "").strip().casefold() != "draft":
+        raise ValueError("Only claims in a DRAFT transmittal can be edited here.")
+    claims = beacon_api.get_claims(transmittal_id)
+    claim = next((row for row in claims if str(row.get("id")) == str(claim_id)), None)
+    if not claim:
+        raise LookupError("This claim does not belong to the selected transmittal.")
+    return transmittal, claim
+
+
+def _beacon_local_datetime(value):
+    if not value:
+        return None
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone(timedelta(hours=8))).replace(tzinfo=None)
+    return parsed
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/edit", methods=["GET"])
+@login_required
+def get_finalize_claim_edit_data(transmittal_id, claim_id):
+    user = current_user()
+    beacon_settings, auth_key = _beacon_edit_settings(user)
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            transmittal, claim_row = _require_draft_claim(transmittal_id, claim_id)
+            cf2 = cf2_api.get_cf2(claim_id) or {}
+            doctors = cf2_api.get_doctors(claim_id) or []
+            cf4 = beacon_api.get_cf4_values(claim_id) or {}
+            meds, xlso = soa_api.get_charges(claim_id)
+            payments = soa_api.get_payment_receipts(claim_id)
+
+        admission = _beacon_local_datetime(cf2.get("admissionDateTime"))
+        discharge = _beacon_local_datetime(cf2.get("dischargeDateTime"))
+        exam = cf4.get("phiccF4PhysicalExam") or {}
+        return jsonify({
+            "transmittal_number": transmittal.get("transmittalNumber") or "",
+            "claim_series": claim_row.get("claimSeriesLhio") or "",
+            "patient_name": ((claim_row.get("phiccF1") or {}).get("patientFullname") or ""),
+            "cf2": {
+                "admission_date": admission.strftime("%Y-%m-%d") if admission else "",
+                "admission_time": admission.strftime("%H:%M") if admission else "",
+                "discharge_date": discharge.strftime("%Y-%m-%d") if discharge else "",
+                "discharge_time": discharge.strftime("%H:%M") if discharge else "",
+            },
+            "doctors": [
+                {
+                    "id": doctor.get("id"),
+                    "accreditation_number": doctor.get("accreditationNumber") or "",
+                    "fullname": doctor.get("fullname") or "",
+                    "sign_date": str(doctor.get("doctorSignDate") or "").split("T", 1)[0],
+                }
+                for doctor in doctors if isinstance(doctor, dict)
+            ],
+            "cf4_vitals": {
+                key: exam.get(key)
+                for key in ("vsbpSystolic", "vsbpDiastolic", "vshr", "vsrr", "vsTemp", "height", "weight")
+            },
+            "soa_counts": {"med": len(meds), "xlso": len(xlso), "payments": len(payments)},
+        })
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims editor load failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Could not load this draft claim from Beacon."}), 502
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/cf2", methods=["POST"])
+@login_required
+def save_finalize_claim_cf2(transmittal_id, claim_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        admission_date = datetime.strptime(str(data.get("admission_date") or ""), "%Y-%m-%d").date()
+        admission_time = datetime.strptime(str(data.get("admission_time") or ""), "%H:%M").time()
+        discharge_date = datetime.strptime(str(data.get("discharge_date") or ""), "%Y-%m-%d").date()
+        discharge_time = datetime.strptime(str(data.get("discharge_time") or ""), "%H:%M").time()
+        if datetime.combine(discharge_date, discharge_time) < datetime.combine(admission_date, admission_time):
+            return jsonify({"error": "Discharge date and time must be after admission."}), 400
+
+        user = current_user()
+        beacon_settings, auth_key = _beacon_edit_settings(user)
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+            cf2 = cf2_api.get_cf2(claim_id)
+            if not isinstance(cf2, dict) or not cf2:
+                raise RuntimeError("Beacon did not return the CF2 record.")
+            cf2.update({
+                "admissionDate": admission_date.strftime("%m-%d-%Y"),
+                "admissionTime": format_beacon_time(admission_time),
+                "admissionDateTime": cf2_api.to_utc_datetime_iso(admission_date, admission_time),
+                "dischargeDate": discharge_date.strftime("%m-%d-%Y"),
+                "dischargeTime": format_beacon_time(discharge_time),
+                "dischargeDateTime": cf2_api.to_utc_datetime_iso(discharge_date, discharge_time),
+                "surgicalProcedures": cf2_api.build_surgical_procedures_for_cf2(claim_id),
+            })
+            cf2_api.edit_cf2(cf2)
+        return jsonify({"saved": True})
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims CF2 save failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not save the CF2 date and time changes."}), 502
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/doctor", methods=["POST"])
+@login_required
+def save_finalize_claim_doctor(transmittal_id, claim_id):
+    data = request.get_json(silent=True) or {}
+    accreditation_number = str(data.get("accreditation_number") or "").strip()
+    sign_date_text = str(data.get("sign_date") or "").strip()
+    try:
+        if not accreditation_number:
+            return jsonify({"error": "Enter the doctor's accreditation number."}), 400
+        sign_date = datetime.strptime(sign_date_text, "%Y-%m-%d").date()
+        selected_id = str(data.get("doctor_id") or "")
+        user = current_user()
+        beacon_settings, auth_key = _beacon_edit_settings(user)
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+            doctors = cf2_api.get_doctors(claim_id) or []
+            previous = next((d for d in doctors if selected_id and str(d.get("id")) == selected_id), None)
+            if selected_id and not previous:
+                return jsonify({"error": "The selected doctor is no longer on this claim. Reload the editor."}), 409
+            if previous and str(previous.get("accreditationNumber") or "").strip() == accreditation_number and str(previous.get("doctorSignDate") or "").startswith(sign_date_text):
+                return jsonify({"saved": True, "unchanged": True})
+
+            cf2 = cf2_api.get_cf2(claim_id) or {}
+            admission = _beacon_local_datetime(cf2.get("admissionDateTime"))
+            discharge = _beacon_local_datetime(cf2.get("dischargeDateTime"))
+            if not admission or not discharge:
+                raise RuntimeError("Save the CF2 admission and discharge dates before changing the doctor.")
+            created = cf2_api.add_doctor(
+                claim_id=claim_id,
+                client_id=cf2_api.get_client_id(),
+                accreditation_number=accreditation_number,
+                sign_date_str=sign_date.strftime("%m-%d-%Y"),
+                admission_date_str=admission.strftime("%m-%d-%Y"),
+                discharge_date_iso=cf2_api.to_utc_midnight_iso(discharge.date()),
+                hospital_identity=cf2_api.get_hospital_identity(transmittal_id),
+            )
+            if not isinstance(created, dict) or not created:
+                raise RuntimeError("Beacon did not confirm the replacement doctor record.")
+            returned_sign_date = str(created.get("doctorSignDate") or "").split("T", 1)[0]
+            if returned_sign_date != sign_date.isoformat():
+                raise RuntimeError("Beacon did not save the requested CF2 doctor sign date.")
+            if previous:
+                cf2_api.delete_doctor(previous.get("id"))
+            doctor_name = beacon_automation._cf4_signature_doctor_name(
+                created.get("fullname")
+                or " ".join(
+                    str(created.get(key) or "")
+                    for key in ("firstname", "middlename", "lastname", "suffix")
+                )
+            )
+            cf4_date_signed = (sign_date - timedelta(days=1)).strftime("%Y-%m-%dT16:00:00Z")
+            if not doctor_name:
+                raise RuntimeError("Beacon saved the CF2 doctor but returned no usable signature name.")
+            if not beacon_api.new_pdf_cf4(claim_id, doctor_name, cf4_date_signed):
+                raise RuntimeError("Beacon saved the CF2 doctor but did not confirm the CF4 signature update.")
+        return jsonify({"saved": True, "doctor": created or {}})
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims doctor save failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not save the doctor change."}), 502
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/cf4-vitals", methods=["POST"])
+@login_required
+def save_finalize_claim_cf4_vitals(transmittal_id, claim_id):
+    data = request.get_json(silent=True) or {}
+    vital_keys = ("vsbpSystolic", "vsbpDiastolic", "vshr", "vsrr", "vsTemp", "height", "weight")
+    try:
+        submitted = {}
+        for key in vital_keys:
+            value = data.get(key)
+            submitted[key] = None if value in (None, "") else float(value)
+        user = current_user()
+        beacon_settings, auth_key = _beacon_edit_settings(user)
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+            cf4 = beacon_api.get_cf4_values(claim_id)
+            if not isinstance(cf4, dict) or not cf4:
+                raise RuntimeError("Beacon did not return the CF4 record.")
+            payload = beacon_automation._normalize_cf4_save_payload(cf4, claim_id, False, {}, [])
+            exam = dict(payload.get("phiccF4PhysicalExam") or {})
+            exam.update(submitted)
+            payload["phiccF4PhysicalExam"] = exam
+            payload.update(submitted)
+            if not beacon_api.save_cf4_values(payload):
+                raise RuntimeError("Beacon returned an empty CF4 save response.")
+            beacon_api._cf4_cache.pop((browser_session._context_key(), int(claim_id)), None)
+        return jsonify({"saved": True})
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims CF4 vital save failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not save the CF4 vital sign changes."}), 502
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/soa", methods=["DELETE"])
+@login_required
+def remove_finalize_claim_soa(transmittal_id, claim_id):
+    user = current_user()
+    beacon_settings, auth_key = _beacon_edit_settings(user)
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+            receipts = soa_api.get_payment_receipts(claim_id)
+            if receipts:
+                return jsonify({
+                    "error": "This claim has payment receipts, so no SOA data was changed."
+                }), 409
+            meds, xlso = soa_api.get_charges(claim_id)
+            med_ids = [row.get("id") for row in meds if row.get("id") is not None]
+            xlso_ids = [row.get("id") for row in xlso if row.get("id") is not None]
+            if med_ids:
+                soa_api.remove_med_charges(claim_id, med_ids)
+            if xlso_ids:
+                soa_api.remove_xlso_charges(claim_id, xlso_ids)
+            remaining_meds, remaining_xlso = soa_api.get_charges(claim_id)
+            if remaining_meds or remaining_xlso:
+                raise RuntimeError("Beacon still returns SOA charge rows after removal.")
+        return jsonify({"removed": True, "med_count": len(med_ids), "xlso_count": len(xlso_ids)})
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims SOA removal failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not remove all SOA charge rows."}), 502
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/soa/generate", methods=["POST"])
+@login_required
+def generate_finalize_claim_soa(transmittal_id, claim_id):
+    user = current_user()
+    beacon_settings, auth_key = _beacon_edit_settings(user)
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+            facility_id = beacon_api.get_client_id()
+            esoa = soa_api.get_esoa_xml(claim_id, facility_id)
+            validation = soa_api.validate_esoa(esoa)
+            if str(validation).strip() != "XML is Valid!":
+                return jsonify({"error": f"SOA validation failed: {validation}"}), 400
+            generated = soa_api.generate_and_upload_esoa(claim_id, facility_id)
+            if str(generated).strip().casefold() != "true":
+                raise RuntimeError(f"Beacon returned an unsuccessful SOA generation response: {generated}")
+        return jsonify({"generated": True})
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims SOA generation failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not generate and upload the SOA."}), 502
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/cf4-generate", methods=["POST"])
+@login_required
+def generate_finalize_claim_cf4(transmittal_id, claim_id):
+    user = current_user()
+    beacon_settings, auth_key = _beacon_edit_settings(user)
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+            generated = beacon_api.generate_cf4_xml(
+                claim_id=claim_id,
+                facility_id=beacon_api.get_client_id(),
+                transmittal_id=transmittal_id,
+            )
+            if generated is not True:
+                raise RuntimeError(f"Beacon returned an unsuccessful CF4 generation response: {generated}")
+        return jsonify({"generated": True})
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims CF4 generation failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not generate the CF4."}), 502
 
 
 @app.route("/api/cf4/settings", methods=["GET"])

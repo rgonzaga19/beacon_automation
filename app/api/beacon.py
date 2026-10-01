@@ -382,3 +382,15 @@ def save_cf4_values(payload):
         "/api/PHICCF4/SavePhicCf4Values",
         json_body=payload,
     )
+
+
+def generate_cf4_xml(claim_id, facility_id, transmittal_id):
+    """Generate CF4 XML using Beacon's captured GenerateXMLfromPHICCF4 call."""
+    return _post(
+        "/api/phiccf4/GenerateXMLfromPHICCF4",
+        json_body={
+            "claimId": str(claim_id),
+            "facilityId": int(facility_id),
+            "transmittalId": int(transmittal_id),
+        },
+    )

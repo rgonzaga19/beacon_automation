@@ -696,30 +696,12 @@ class SOAAutomation:
 
             soa_api.update_summary(summary)
 
-            esoa = soa_api.get_esoa_xml(
-                claim_id,
-                facility_id,
-            )
-            validation = soa_api.validate_esoa(esoa)
-
-            if str(validation).strip() != "XML is Valid!":
-                raise Exception(
-                    f"ESOA validation failed: {validation}"
-                )
-
-            generated = soa_api.generate_and_upload_esoa(
-                claim_id,
-                facility_id,
-            )
-
-            if str(generated).lower() != "true":
-                raise Exception(
-                    f"ESOA generation/upload failed: {generated}"
-                )
-
             result["status"] = "success"
+            result["message"] = (
+                "SOA charges and summary saved. Generate the SOA from Finalize Claims when ready."
+            )
             logger.info(
-                "Statement of Account validated and generated successfully."
+                "SOA charges and summary saved. Generate the SOA from Finalize Claims when ready."
             )
 
         except Exception as exc:

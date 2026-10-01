@@ -1123,6 +1123,14 @@ def new_doctor(
     return _post("/api/PHICDoctor/NewPHICDoctor", json_body=payload)
 
 
+def delete_doctor(doctor_id):
+    """Remove one claim doctor; endpoint and doctorId query confirmed by HAR."""
+    return _delete(
+        "/api/PHICDoctor/DeletePHICDoctor",
+        params={"doctorId": doctor_id},
+    )
+
+
 def add_doctor(
     claim_id,
     client_id,

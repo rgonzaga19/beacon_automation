@@ -312,6 +312,40 @@ def get_charges(claim_id):
     return meds if isinstance(meds, list) else [], xlso if isinstance(xlso, list) else []
 
 
+def get_payment_receipts(claim_id):
+    """Return payment receipts attached to a claim, as Beacon exposes them."""
+    data = _json(browser_session.http_request(
+        "GET",
+        _base_url() + "/api/PHICPaymentOfficialReceiptController/GetPHICPaymentOfficialReceipt",
+        headers=_headers(),
+        params={"phicClaimId": claim_id},
+        timeout=30,
+    )) or []
+    if isinstance(data, dict):
+        data = data.get("items") or data.get("data") or data.get("receipts") or []
+    return data if isinstance(data, list) else []
+
+
+def remove_med_charges(claim_id, charge_ids):
+    return _json(browser_session.http_request(
+        "POST",
+        _base_url() + "/api/PHICChargesDrugAndMedicineController/RemoveSelectedPHICChargesDrugsAndMedicines",
+        headers=_headers(),
+        json={"phicClaimId": int(claim_id), "pHICChargesDrugsAndMedicinesIds": list(charge_ids)},
+        timeout=30,
+    ))
+
+
+def remove_xlso_charges(claim_id, charge_ids):
+    return _json(browser_session.http_request(
+        "POST",
+        _base_url() + "/api/PHICChargesXLSOController/RemoveSelectedPHICChargesXLSO",
+        headers=_headers(),
+        json={"pHICClaimId": int(claim_id), "pHICChargesXLSOIds": list(charge_ids)},
+        timeout=30,
+    ))
+
+
 def get_documents(claim_id):
     """Return claim documents; ESA document existence is separate from charge-import state."""
     docs = _json(browser_session.http_request("GET",
