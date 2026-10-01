@@ -61,7 +61,7 @@ const workspaceRoutes = {
   cf2: "cf2.html",
   uploadSoa: "upload-soa.html",
   cf4: "cf4.html",
-  finalizeClaims: "finalize-claims.html",
+  finalizeClaims: "edit-claims.html",
   soaExcel: "soa-excel.html",
   settings: "settings.html",
   about: "about.html",

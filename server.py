@@ -977,6 +977,16 @@ def get_finalize_claim_edit_data(transmittal_id, claim_id):
         admission = _beacon_local_datetime(cf2.get("admissionDateTime"))
         discharge = _beacon_local_datetime(cf2.get("dischargeDateTime"))
         exam = cf4.get("phiccF4PhysicalExam") or {}
+        course_in_ward = []
+        for order in cf4.get("phiccF4DoctorsOrder") or []:
+            if not isinstance(order, dict):
+                continue
+            order_date = _beacon_local_datetime(order.get("date"))
+            course_in_ward.append({
+                "id": order.get("id"),
+                "date": order_date.strftime("%Y-%m-%d") if order_date else "",
+                "order": order.get("order") or "",
+            })
         return jsonify({
             "transmittal_number": transmittal.get("transmittalNumber") or "",
             "claim_series": claim_row.get("claimSeriesLhio") or "",
@@ -1004,6 +1014,7 @@ def get_finalize_claim_edit_data(transmittal_id, claim_id):
                 "history_of_present_illness": cf4.get("historyOfPresentIllness") or "",
                 "pertinent_past_medical_history": cf4.get("pertinentPastMedicalHistory") or "",
             },
+            "cf4_course_in_ward": course_in_ward,
             "soa_counts": {"med": len(meds), "xlso": len(xlso), "payments": len(payments)},
         })
     except (ValueError, LookupError) as exc:
@@ -1184,6 +1195,57 @@ def save_finalize_claim_cf4_text(transmittal_id, claim_id):
     except Exception as exc:
         logger.error(f"Finalize Claims CF4 text save failed for claim {claim_id}: {exc}")
         return jsonify({"error": "Beacon could not save the CF4 text changes."}), 502
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/course-in-ward", methods=["POST"])
+@login_required
+def save_finalize_claim_course_in_ward(transmittal_id, claim_id):
+    entries = (request.get_json(silent=True) or {}).get("entries")
+    if not isinstance(entries, list):
+        return jsonify({"error": "Course in the Ward entries must be a list."}), 400
+
+    try:
+        submitted = []
+        for index, entry in enumerate(entries, start=1):
+            if not isinstance(entry, dict):
+                raise ValueError(f"Course in the Ward entry {index} is invalid.")
+            date = datetime.strptime(str(entry.get("date") or ""), "%Y-%m-%d").date()
+            order = str(entry.get("order") or "").strip()
+            if not order:
+                raise ValueError(f"Enter the course text for entry {index}.")
+            submitted.append({"id": str(entry.get("id") or ""), "date": date, "order": order})
+
+        user = current_user()
+        beacon_settings, auth_key = _beacon_edit_settings(user)
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+            cf4 = beacon_api.get_cf4_values(claim_id)
+            if not isinstance(cf4, dict) or not cf4:
+                raise RuntimeError("Beacon did not return the CF4 record.")
+            payload = beacon_automation._normalize_cf4_save_payload(cf4, claim_id, False, {}, [])
+            existing = {
+                str(order.get("id")): dict(order)
+                for order in (payload.get("phiccF4DoctorsOrder") or [])
+                if isinstance(order, dict) and order.get("id") is not None
+            }
+            payload["phiccF4DoctorsOrder"] = [
+                {
+                    **existing.get(entry["id"], {"informalEntry": False}),
+                    "date": beacon_automation._local_date_to_beacon_utc(entry["date"]),
+                    "order": entry["order"],
+                }
+                for entry in submitted
+            ]
+            if not beacon_api.save_cf4_values(payload):
+                raise RuntimeError("Beacon returned an empty CF4 save response.")
+            beacon_api._cf4_cache.pop((browser_session._context_key(), int(claim_id)), None)
+        return jsonify({"saved": True, "entries": len(submitted)})
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims Course in the Ward save failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not save the Course in the Ward changes."}), 502
 
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/soa", methods=["DELETE"])

@@ -7,6 +7,70 @@ const claimEditor = document.getElementById("claimEditor");
 const claimActionsMenu = document.getElementById("claimActionsMenu");
 const editorSubtitle = document.getElementById("editorSubtitle");
 let activeEditClaim = null;
+let courseInWardRowIndex = 0;
+
+function renderCourseInWardRows(entries = []) {
+  const container = document.getElementById("courseInWardRows");
+  container.replaceChildren();
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "course-ward-empty";
+    empty.textContent = "No Course in the Ward entries found.";
+    container.append(empty);
+    return;
+  }
+  entries.forEach((entry) => addCourseInWardRow(entry));
+}
+
+function addCourseInWardRow(entry = {}) {
+  const container = document.getElementById("courseInWardRows");
+  container.querySelector(".course-ward-empty")?.remove();
+  const row = document.createElement("div");
+  row.className = "course-ward-row";
+  const fieldId = ++courseInWardRowIndex;
+  const dateField = document.createElement("div");
+  dateField.className = "course-ward-field";
+  const dateLabel = document.createElement("label");
+  dateLabel.textContent = "Date";
+  const date = document.createElement("input");
+  date.type = "date";
+  date.value = entry.date || "";
+  date.dataset.courseDate = "";
+  dateLabel.htmlFor = `courseDate${fieldId}`;
+  date.id = dateLabel.htmlFor;
+  dateField.append(dateLabel, date);
+  const orderField = document.createElement("div");
+  orderField.className = "course-ward-field";
+  const orderLabel = document.createElement("label");
+  orderLabel.textContent = "Course Entry";
+  const order = document.createElement("textarea");
+  order.rows = 3;
+  order.value = entry.order || "";
+  order.placeholder = "Course in the Ward entry";
+  order.dataset.courseOrder = "";
+  orderLabel.htmlFor = `courseOrder${fieldId}`;
+  order.id = orderLabel.htmlFor;
+  orderField.append(orderLabel, order);
+  const remove = document.createElement("button");
+  remove.className = "cyber-btn danger course-ward-remove";
+  remove.type = "button";
+  remove.textContent = "REMOVE";
+  remove.addEventListener("click", () => {
+    row.remove();
+    if (!container.children.length) renderCourseInWardRows();
+  });
+  if (entry.id != null) row.dataset.courseId = entry.id;
+  row.append(dateField, orderField, remove);
+  container.append(row);
+}
+
+function readCourseInWardRows() {
+  return Array.from(document.querySelectorAll("#courseInWardRows .course-ward-row")).map((row) => ({
+    id: row.dataset.courseId || null,
+    date: row.querySelector("[data-course-date]").value,
+    order: row.querySelector("[data-course-order]").value,
+  }));
+}
 
 function statusClass(status) {
   const normalized = String(status || "").trim().toUpperCase();
@@ -163,12 +227,13 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
     cf4: "Add CF4 Vitals",
     hpi: "History of Present Illness",
     pmh: "Pertinent Past Medical History",
+    course: "Update Course in the Ward",
     soa: "Generate/Remove SOA Data",
   })[view] || "Edit Draft Claim";
   claimEditor.hidden = false;
   editorSubtitle.textContent = "Loading draft claim...";
   document.getElementById("editorSoaSummary").textContent = "Loading SOA rows...";
-  ["cf2", "doctor", "cf4", "hpi", "pmh", "soa"].forEach((section) => setEditorMessage(section, ""));
+  ["cf2", "doctor", "cf4", "hpi", "pmh", "course", "soa"].forEach((section) => setEditorMessage(section, ""));
   try {
     const data = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/edit`);
     editorSubtitle.textContent = `${data.patient_name || "Draft claim"} | ${data.transmittal_number} | ${data.claim_series || "Claim series pending"}`;
@@ -207,6 +272,7 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
     Object.entries(vitalInputs).forEach(([key, id]) => setInputValue(id, data.cf4_vitals[key]));
     setInputValue("editHistoryOfPresentIllness", data.cf4_text.history_of_present_illness);
     setInputValue("editPertinentPastMedicalHistory", data.cf4_text.pertinent_past_medical_history);
+    renderCourseInWardRows(data.cf4_course_in_ward || []);
 
     document.getElementById("editorSoaSummary").textContent =
       `MED rows: ${data.soa_counts.med} | XLSO rows: ${data.soa_counts.xlso} | Payment receipts: ${data.soa_counts.payments}`;
@@ -303,13 +369,14 @@ document.querySelectorAll("[data-save-editor]").forEach((button) => {
       },
       hpi: { historyOfPresentIllness: document.getElementById("editHistoryOfPresentIllness").value },
       pmh: { pertinentPastMedicalHistory: document.getElementById("editPertinentPastMedicalHistory").value },
+      course: { entries: readCourseInWardRows() },
     };
     button.disabled = true;
     const originalText = button.textContent;
     button.textContent = "SAVING...";
     setEditorMessage(section, "Saving changes to Beacon...");
     try {
-      const endpoint = section === "cf4" ? "cf4-vitals" : ["hpi", "pmh"].includes(section) ? "cf4-text" : section;
+      const endpoint = section === "cf4" ? "cf4-vitals" : ["hpi", "pmh"].includes(section) ? "cf4-text" : section === "course" ? "course-in-ward" : section;
       await editorRequest(`${route}/${endpoint}`, {
         method: "POST",
         body: JSON.stringify(payloads[section]),
@@ -383,3 +450,5 @@ document.getElementById("generateCf4Button").addEventListener("click", (event) =
     successText: "CF4 generated in Beacon.",
   });
 });
+
+document.getElementById("addCourseInWardRow").addEventListener("click", () => addCourseInWardRow());

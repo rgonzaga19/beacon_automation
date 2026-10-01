@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Finalize Claims</title>
+  <title>Edit Claims</title>
   <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/theme.css">
   <style>
@@ -62,11 +62,22 @@
     .editor-actions .cyber-btn { min-height:34px; padding:0 12px; font-size:10px; }
     .editor-message { min-height:15px; margin-top:8px; color:var(--text-sec); font-size:10px; }
     .editor-message.error { color:var(--error); }
+    .course-ward-list { display:grid; gap:10px; }
+    .course-ward-row { display:grid; grid-template-columns:170px minmax(0,1fr) auto; gap:10px; align-items:start; padding:12px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-dark); }
+    .course-ward-field { min-width:0; }
+    .course-ward-field label { display:block; margin:0 0 6px; color:var(--text-sec); font-size:9px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }
+    .course-ward-field input,.course-ward-field textarea { box-sizing:border-box; width:100%; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-sm); font:11px var(--font-ui); }
+    .course-ward-field input { min-height:38px; padding:7px 10px; color-scheme:dark; }
+    .course-ward-field textarea { min-height:72px; padding:8px 10px; resize:vertical; line-height:1.45; }
+    .course-ward-field input:focus,.course-ward-field textarea:focus { border-color:var(--accent); outline:2px solid var(--accent-soft); }
+    .course-ward-remove { min-height:37px; padding:0 10px; }
+    .course-ward-empty { margin:0; color:var(--text-sec); font-size:11px; }
     .editor-doc-list { display:grid; gap:7px; margin:0; padding:0; list-style:none; color:var(--text-sec); font-size:10px; }
     .editor-doc-list li { overflow-wrap:anywhere; }
     .editor-note { margin:10px 0 0; color:var(--text-sec); font-size:10px; line-height:1.5; }
     @media(max-width:700px) { .editor-overlay { padding:10px; } .editor-content { grid-template-columns:1fr; padding:12px; } .editor-dialog { max-height:96vh; } .editor-header { padding:15px; } }
     @media(max-width:420px) { .editor-grid { grid-template-columns:1fr; gap:9px; } .editor-section { padding:13px; } }
+    @media(max-width:620px) { .course-ward-row { grid-template-columns:1fr; } .course-ward-remove { width:100%; } }
     .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
     .claim-actions-menu { position:fixed; z-index:1100; width:286px; padding:5px; color:var(--text-pri); background:color-mix(in srgb,var(--bg-panel) 94%,#fff 6%); border:1px solid color-mix(in srgb,var(--border) 72%,var(--text-sec)); border-radius:8px; box-shadow:0 12px 34px rgba(0,0,0,.42); backdrop-filter:blur(16px); }
     .claim-actions-menu[hidden] { display:none; }
@@ -101,7 +112,7 @@
 </head>
 <body>
   <div class="page">
-    <header class="header"><h1>Finalize Claims</h1><p>Search Beacon by transmittal number or patient name.</p></header>
+    <header class="header"><h1>Edit Claims</h1><p>Search Beacon by transmittal number or patient name.</p></header>
     <main>
       <section class="lookup-card" aria-label="Transmittal claims lookup">
         <form id="lookupForm" class="lookup-form">
@@ -133,6 +144,7 @@
     <button type="button" role="menuitem" data-editor-view="soa"><span class="claim-menu-icon" aria-hidden="true">S</span><span>Generate/Remove SOA Data</span></button>
     <button type="button" role="menuitem" data-editor-view="hpi"><span class="claim-menu-icon" aria-hidden="true">H</span><span>History of Present Illness</span></button>
     <button type="button" role="menuitem" data-editor-view="pmh"><span class="claim-menu-icon" aria-hidden="true">P</span><span>Pertinent Past Medical History</span></button>
+    <button type="button" role="menuitem" data-editor-view="course"><span class="claim-menu-icon" aria-hidden="true">C</span><span>Update Course in the Ward</span></button>
   </div>
   <div class="editor-overlay" id="claimEditor" hidden>
     <section class="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
@@ -184,6 +196,12 @@
           <div class="editor-field"><label for="editPertinentPastMedicalHistory">Pertinent Past Medical History</label><textarea id="editPertinentPastMedicalHistory" rows="6"></textarea></div>
           <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="pmh">SAVE HISTORY</button></div>
           <div class="editor-message" id="pmhEditorMessage" aria-live="polite"></div>
+        </section>
+        <section class="editor-section" data-editor-section="course">
+          <h3>Course in the Ward</h3>
+          <div class="course-ward-list" id="courseInWardRows"></div>
+          <div class="editor-actions"><button class="cyber-btn" id="addCourseInWardRow" type="button">ADD ENTRY</button><button class="cyber-btn" type="button" data-save-editor="course">SAVE COURSE IN THE WARD</button></div>
+          <div class="editor-message" id="courseEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="soa">
           <h3>SOA Charges and Payments</h3>
