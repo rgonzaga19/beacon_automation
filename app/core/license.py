@@ -86,7 +86,9 @@ def _load_state_unlocked():
 
 def _save_state_unlocked(state):
     _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    temp_file = _STATE_FILE.with_suffix(".json.tmp")
+    temp_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    os.replace(temp_file, _STATE_FILE)
 
 
 def _license_key_from_state(state):
@@ -164,6 +166,9 @@ def verify_license(license_key=None, force=False):
         state = _load_state_unlocked()
         if license_key is not None:
             state["license_key_encrypted"] = encrypt_field(str(license_key).strip())
+            # Persist the key before contacting the server so an app restart or
+            # update cannot discard a license that was just entered.
+            _save_state_unlocked(state)
 
         key = _license_key_from_state(state)
         if not key:
