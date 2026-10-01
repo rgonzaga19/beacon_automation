@@ -182,6 +182,51 @@ def get_transmittal(transmittal_no, client_id=None, search_days=31):
     return result
 
 
+def search_transmittals(query, client_id=None, search_days=93):
+    """Search Beacon transmittals by their searchable table text (for example, remarks)."""
+    if client_id is None:
+        client_id = get_client_id()
+
+    today = datetime.now().date()
+    date_from = today - timedelta(days=int(search_days))
+    date_to = today + timedelta(days=1)
+    rows = []
+    item_start = 0
+    page_size = 30
+    total = None
+
+    while total is None or item_start < total:
+        data = _get(
+            "/api/PHICTransmittal/GetAllPHICTransmittal",
+            params={
+                "clientId": client_id,
+                "dateFrom": date_from.strftime("%Y-%m-%dT16:00:00.000Z"),
+                "dateTo": date_to.strftime("%Y-%m-%dT15:59:59.999Z"),
+                "itemStart": item_start,
+                "itemEnd": item_start + page_size,
+                "que": str(query).strip(),
+                "transmittalPackageType": 7,
+            },
+        ) or {}
+        if isinstance(data, list):
+            page = data
+        else:
+            page = data.get("transmittalList") or data.get("items") or data.get("data") or []
+            if total is None and data.get("totalTransmittals") is not None:
+                total = int(data["totalTransmittals"])
+        rows.extend(page)
+        item_start += page_size
+        if not page or len(page) < page_size:
+            break
+
+    unique = {}
+    for row in rows:
+        identity = row.get("id") or row.get("transmittalNumber")
+        if identity is not None:
+            unique[str(identity)] = row
+    return list(unique.values())
+
+
 def get_transmittal_by_id(transmittal_id):
     return _get(
         "/api/PHICTransmittal/GetPHICTransmittalById",

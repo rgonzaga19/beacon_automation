@@ -18,6 +18,7 @@
     .field { flex:1; min-width:0; }
     .field label { display:block; margin-bottom:7px; color:var(--text-sec); font-size:11px; font-weight:700; }
     .field input { width:100%; height:38px; padding:0 12px; color:var(--text-pri); background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-md); font:inherit; outline:none; }
+    .field-hint { display:block; margin-top:5px; color:var(--text-sec); font-size:10px; }
     .field input:focus { border-color:var(--accent); }
     button { min-height:38px; padding:0 16px; }
     .summary { display:flex; flex-wrap:wrap; gap:8px 20px; margin:18px 0 12px; color:var(--text-sec); font-size:11px; }
@@ -46,11 +47,11 @@
 </head>
 <body>
   <div class="page">
-    <header class="header"><h1>Finalize Claims</h1><p>Look up claims by Beacon transmittal number.</p></header>
+    <header class="header"><h1>Finalize Claims</h1><p>Search Beacon by transmittal number or patient name.</p></header>
     <main>
       <section class="lookup-card" aria-label="Transmittal claims lookup">
         <form id="lookupForm" class="lookup-form">
-          <div class="field"><label for="transmittalInput">Transmittal Number</label><input id="transmittalInput" type="text" autocomplete="off" placeholder="Enter transmittal number" required></div>
+          <div class="field"><label for="transmittalInput">Transmittal Number or Patient Name</label><input id="transmittalInput" type="text" autocomplete="off" placeholder="Enter transmittals or a patient name" required><span class="field-hint">Separate multiple transmittal numbers with spaces, or enter a full or partial patient name.</span></div>
           <button class="cyber-btn" id="lookupButton" type="submit">LOOK UP</button>
         </form>
         <div class="status-legend" aria-label="Transmittal status legend">
@@ -65,8 +66,8 @@
         <div class="summary" id="summary" hidden></div>
         <div class="table-wrap">
           <table aria-label="Claims in transmittal">
-            <thead><tr><th>Claim Series</th><th>Patient</th><th>Member</th><th>Claim Status</th><th>Transmittal Status</th><th>Package</th><th>Final</th></tr></thead>
-            <tbody id="claimsBody"><tr><td class="message" colspan="7">Enter a transmittal number to view its claims.</td></tr></tbody>
+            <thead><tr><th>Transmittal</th><th>Claim Series</th><th>Patient</th><th>Member</th><th>Claim Status</th><th>Transmittal Status</th><th>Package</th><th>Action</th></tr></thead>
+            <tbody id="claimsBody"><tr><td class="message" colspan="8">Enter a transmittal number to view its claims.</td></tr></tbody>
           </table>
         </div>
       </section>

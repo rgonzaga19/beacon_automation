@@ -14,6 +14,7 @@ import base64
 import threading
 import tempfile
 import uuid
+import re
 from contextvars import ContextVar
 from pathlib import Path
 
@@ -842,9 +843,10 @@ def beacon_validate():
 @app.route("/api/beacon/finalize-claims", methods=["GET"])
 @login_required
 def get_finalize_claims():
-    transmittal_number = str(request.args.get("transmittal") or "").strip()
-    if not transmittal_number:
-        return jsonify({"error": "Enter a transmittal number."}), 400
+    patient_query = str(request.args.get("patient") or "").strip()
+    transmittal_numbers = list(dict.fromkeys(str(request.args.get("transmittal") or "").split()))
+    if not patient_query and not transmittal_numbers:
+        return jsonify({"error": "Enter a transmittal number or patient name."}), 400
 
     user = current_user()
     settings = get_or_create_user_settings(user)
@@ -855,36 +857,73 @@ def get_finalize_claims():
         "user_id": settings.beacon_user_id,
     }
     auth_key = browser_session.auth_context_key(beacon_settings, user_key=f"user:{user.id}")
+    transmittals = []
+    rows = []
+    not_found = []
+    query_tokens = set(re.sub(r"[^a-z0-9]+", " ", patient_query.casefold()).split())
+
+    def patient_matches(claim):
+        form1 = claim.get("phiccF1") or {}
+        patient_name = form1.get("patientFullname") or " ".join(
+            str(form1.get(key) or "")
+            for key in ("patientFirstname", "patientMiddlename", "patientLastname", "patientSuffix")
+        )
+        patient_tokens = set(re.sub(r"[^a-z0-9]+", " ", patient_name.casefold()).split())
+        return bool(query_tokens) and query_tokens.issubset(patient_tokens)
+
     try:
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
-            transmittal = beacon_api.get_transmittal(transmittal_number, search_days=93)
-            if not transmittal:
-                return jsonify({"transmittal": None, "claims": []})
-            transmittal_id = transmittal.get("id")
-            claims = beacon_api.get_claims(transmittal_id)
+            if patient_query:
+                candidates = beacon_api.search_transmittals(patient_query, search_days=93)
+            else:
+                candidates = [
+                    transmittal
+                    for number in transmittal_numbers
+                    if (transmittal := beacon_api.get_transmittal(number, search_days=93))
+                ]
+                found_numbers = {str(item.get("transmittalNumber") or "") for item in candidates}
+                not_found = [number for number in transmittal_numbers if number not in found_numbers]
 
-        rows = []
-        for claim in claims:
-            form1 = claim.get("phiccF1") or {}
-            rows.append({
-                "claim_series": claim.get("claimSeriesLhio") or "",
-                "patient_name": form1.get("patientFullname") or "",
-                "member_name": form1.get("memberFullname") or "",
-                "status": claim.get("claimStatusDescription") or "",
-                "package": claim.get("phicPackageDescription") or "",
-                "is_final": bool(claim.get("isFinal")),
-            })
+            for transmittal in candidates:
+                transmittal_number = str(transmittal.get("transmittalNumber") or "")
+                transmittal_status = transmittal.get("transmittalStatusDescription") or ""
+                claims = beacon_api.get_claims(transmittal.get("id"))
+                if patient_query:
+                    claims = [claim for claim in claims if patient_matches(claim)]
+                    if not claims:
+                        continue
+                transmittals.append({
+                    "number": transmittal_number,
+                    "status": transmittal_status,
+                })
+                for claim in claims:
+                    form1 = claim.get("phiccF1") or {}
+                    rows.append({
+                        "transmittal_number": transmittal.get("transmittalNumber") or transmittal_number,
+                        "transmittal_status": transmittal_status,
+                        "claim_series": claim.get("claimSeriesLhio") or "",
+                        "patient_name": form1.get("patientFullname") or "",
+                        "member_name": form1.get("memberFullname") or "",
+                        "status": claim.get("claimStatusDescription") or "",
+                        "package": claim.get("phicPackageDescription") or "",
+                        "edit_url": (
+                            f"{beacon_api._base_url().rstrip('/')}/eclaims/phic-claims-details/"
+                            f"{transmittal.get('id')}/summary/{claim.get('id')}#cf2Navigation"
+                            if str(transmittal_status).strip().casefold() == "draft"
+                            and transmittal.get("id") and claim.get("id")
+                            else None
+                        ),
+                    })
+            if patient_query and not rows:
+                not_found.append(patient_query)
         return jsonify({
-            "transmittal": {
-                "number": transmittal.get("transmittalNumber") or transmittal_number,
-                "status": transmittal.get("transmittalStatusDescription") or "",
-                "claims_count": transmittal.get("totalClaims", len(rows)),
-            },
+            "transmittals": transmittals,
+            "not_found": not_found,
             "claims": rows,
         })
     except Exception as exc:
-        logger.error(f"Finalize Claims lookup failed for {transmittal_number}: {exc}")
+        logger.error(f"Finalize Claims lookup failed for {patient_query or ', '.join(transmittal_numbers)}: {exc}")
         return jsonify({"error": "Beacon lookup failed. Check your connection and Beacon settings, then try again."}), 502
 
 
