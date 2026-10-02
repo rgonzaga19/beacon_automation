@@ -161,7 +161,7 @@ When preparing a release:
 4. Compute the installer checksum:
 
    ```powershell
-   Get-FileHash Output\Beabots_Setup_vX.X.X.exe -Algorithm SHA256
+   Get-FileHash .\Output\Beabots_Setup_v1.2.0.exe -Algorithm SHA256
    ```
 
 5. Upload the installer to the release location used by the Cloudflare Worker.
