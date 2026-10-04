@@ -144,6 +144,31 @@ document.getElementById("btnAbout").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------------------
+// PDF Splitter loading indicator
+// ---------------------------------------------------------------------------
+// The embedded PDF Splitter is a hosted page that can take a moment to appear;
+// keep a loader visible while its frame is active and still loading.
+const pdfSplitterFrame = document.querySelector('[data-workspace-frame="pdfSplitter"]');
+const pdfSplitterLoader = document.getElementById("pdfSplitterLoader");
+
+if (pdfSplitterFrame && pdfSplitterLoader) {
+  let pdfSplitterLoaded = false;
+  const syncPdfSplitterLoader = () => {
+    const active = pdfSplitterFrame.classList.contains("active");
+    pdfSplitterLoader.hidden = pdfSplitterLoaded || !active;
+  };
+  new MutationObserver(syncPdfSplitterLoader).observe(pdfSplitterFrame, {
+    attributes: true,
+    attributeFilter: ["src", "class"],
+  });
+  pdfSplitterFrame.addEventListener("load", () => {
+    pdfSplitterLoaded = true;
+    syncPdfSplitterLoader();
+  });
+  syncPdfSplitterLoader();
+}
+
+// ---------------------------------------------------------------------------
 // Initial state
 // ---------------------------------------------------------------------------
 const appVersionLabel = document.getElementById("appVersion");
