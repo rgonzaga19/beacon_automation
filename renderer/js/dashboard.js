@@ -53,6 +53,7 @@ const workspaceButtons = {
   finalizeClaims: document.getElementById("btnFinalizeClaims"),
   soaExcel: document.getElementById("btnSoaExcel"),
   autoRename: document.getElementById("btnAutoRename"),
+  pdfSplitter: document.getElementById("btnPdfSplitter"),
   settings: document.getElementById("btnSettings"),
   about: document.getElementById("btnAbout"),
 };
@@ -65,6 +66,7 @@ const workspaceRoutes = {
   finalizeClaims: "edit-claims.html",
   soaExcel: "soa-excel.html",
   autoRename: "auto-rename.html",
+  pdfSplitter: "https://rgonzaga19.github.io/pdfsplitter/",
   settings: "settings.html",
   about: "about.html",
 };
@@ -127,6 +129,9 @@ document.getElementById("btnSoaExcel").addEventListener("click", () => {
 });
 document.getElementById("btnAutoRename").addEventListener("click", () => {
   openWorkspace("autoRename");
+});
+document.getElementById("btnPdfSplitter").addEventListener("click", () => {
+  openWorkspace("pdfSplitter");
 });
 document.getElementById("btnSettings").addEventListener("click", () => {
   openWorkspace("settings");

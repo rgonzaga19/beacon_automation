@@ -41,3 +41,58 @@ td:first-child { width: 35px; color: var(--text-sec); }
 .row-warning td:last-child { color: var(--warning); }
 .privacy-note { margin: 12px 0 0; color: var(--text-sec); font-size: 10.5px; }
 @media (max-width: 760px) { .rename-header, .section-heading, .preview-heading { align-items: flex-start; flex-direction: column; } .upload-grid { grid-template-columns: 1fr; } .actions { align-items: flex-start; flex-direction: column; } .rename-body { padding-right: 14px; } }
+
+/* ---------- Credits marquee ---------- */
+/* Scrolling gratitude text crediting the tool's creators. Text only — no
+   container chrome — using shared theme tokens, pausing while hovered. */
+.credits-marquee {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+}
+.credits-track {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  animation: credits-scroll 28s linear infinite;
+  will-change: transform;
+}
+.credits-marquee:hover .credits-track { animation-play-state: paused; }
+.credits-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 46px;
+  white-space: nowrap;
+}
+.credits-kicker {
+  color: var(--text-sec);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+}
+.credits-name {
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+}
+.credits-amp {
+  color: var(--text-sec);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.credits-dot { color: var(--accent); font-size: 10px; opacity: .75; }
+@keyframes credits-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .credits-marquee { justify-content: center; }
+  .credits-track { animation: none; }
+  .credits-group[aria-hidden="true"] { display: none; }
+}
