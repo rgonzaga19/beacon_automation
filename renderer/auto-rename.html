@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF Auto Rename</title>
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/auto-rename.css">
+</head>
+<body>
+  <header class="rename-header">
+    <div><h1>PDF Auto Rename</h1><p>Organize claim PDFs using the filename groups in your Excel workbook.</p></div>
+    <button id="templateBtn" class="quiet-btn" type="button">Download Excel template</button>
+  </header>
+  <main class="rename-body">
+    <section class="card setup-card">
+      <div class="section-heading"><div><span class="step">01</span><h2>Choose your files</h2></div><p>Select PDFs in the order they should be grouped, plus an Excel filename mapping.</p></div>
+      <div class="upload-grid">
+        <label class="field"><span>PDF files</span><input id="pdfFiles" type="file" accept=".pdf,application/pdf" multiple><small id="pdfHint">Choose the PDFs to rename. Files are sorted naturally by filename.</small></label>
+        <label class="field"><span>Excel mapping</span><input id="workbookFile" type="file" accept=".xlsx,.xlsm"><small>One row per patient group. Include a File Name or Last Name column.</small></label>
+      </div>
+      <div class="order-head"><div><h3>Document order</h3><p>Each group follows this sequence.</p></div><button id="addType" class="quiet-btn small-btn" type="button">Add document type</button></div>
+      <div id="documentOrder" class="order-list"></div>
+      <div class="actions"><button id="previewBtn" class="primary-btn" type="button">Analyze and preview</button><span id="status" role="status" aria-live="polite">Choose files to get started.</span></div>
+    </section>
+    <section class="card preview-card">
+      <div class="preview-heading"><div><span class="step">02</span><div><h2>Review output</h2><p id="summary">Your proposed filenames will appear here.</p></div></div><button id="downloadBtn" class="primary-btn" type="button" disabled>Rename and download ZIP</button></div>
+      <div class="table-wrap"><table><thead><tr><th>#</th><th>Original PDF</th><th>Group</th><th>New filename</th><th>Status</th></tr></thead><tbody id="previewRows"><tr><td colspan="5" class="empty">Run Analyze and preview to see the proposed file names.</td></tr></tbody></table></div>
+      <p class="privacy-note">The download contains files in <strong>RENAMED / group folder / filename</strong>. Your selected originals remain unchanged.</p>
+    </section>
+  </main>
+  <script src="js/auto-rename.js"></script>
+</body>
+</html>

@@ -52,6 +52,7 @@ const workspaceButtons = {
   cf4: document.getElementById("btnCf4"),
   finalizeClaims: document.getElementById("btnFinalizeClaims"),
   soaExcel: document.getElementById("btnSoaExcel"),
+  autoRename: document.getElementById("btnAutoRename"),
   settings: document.getElementById("btnSettings"),
   about: document.getElementById("btnAbout"),
 };
@@ -63,6 +64,7 @@ const workspaceRoutes = {
   cf4: "cf4.html",
   finalizeClaims: "edit-claims.html",
   soaExcel: "soa-excel.html",
+  autoRename: "auto-rename.html",
   settings: "settings.html",
   about: "about.html",
 };
@@ -122,6 +124,9 @@ document.getElementById("btnFinalizeClaims").addEventListener("click", () => {
 });
 document.getElementById("btnSoaExcel").addEventListener("click", () => {
   openWorkspace("soaExcel");
+});
+document.getElementById("btnAutoRename").addEventListener("click", () => {
+  openWorkspace("autoRename");
 });
 document.getElementById("btnSettings").addEventListener("click", () => {
   openWorkspace("settings");

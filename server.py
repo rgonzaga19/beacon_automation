@@ -15,6 +15,7 @@ import threading
 import tempfile
 import uuid
 import re
+from io import BytesIO
 from datetime import datetime, timedelta, timezone
 from contextvars import ContextVar
 from pathlib import Path
@@ -59,6 +60,7 @@ from app.automation.cf2 import CF2Automation
 from app.automation.soa import SOAAutomation
 from app.automation.beacon import run as beacon_run
 from app.automation import beacon as beacon_automation
+from app.automation.auto_rename_service import build_renamed_archive, build_template, create_preview
 from app.api import beacon as beacon_api
 from app.api import cf2 as cf2_api
 from app.api import soa as soa_api
@@ -590,6 +592,52 @@ def soa_excel_save_generated():
     except Exception:
         logger.exception("SOA Excel generated file save failed")
         return jsonify({"ok": False, "error": "Unable to save generated file."}), 500
+
+
+@app.route("/api/auto-rename/preview", methods=["POST"])
+@app.route("/api/auto-rename/run", methods=["POST"])
+@login_required
+def auto_rename_process():
+    try:
+        uploads = request.files.getlist("pdfs")
+        workbook = request.files.get("workbook")
+        document_order = request.form.get("document_order", "CSF,CF4,PBEF,AF").split(",")
+        pdfs, rows, group_count = create_preview(uploads, workbook, document_order)
+        if request.path.endswith("/preview"):
+            return jsonify({"rows": rows, "pdf_count": len(pdfs), "group_count": group_count})
+        archive, renamed = build_renamed_archive(pdfs, rows)
+        return send_file(
+            archive,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name="Renamed_PDFs.zip",
+        )
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        logger.exception("PDF auto rename failed")
+        return jsonify({"error": "Unable to process the PDFs and Excel workbook."}), 500
+
+
+@app.route("/api/auto-rename/template", methods=["GET"])
+def auto_rename_template():
+    try:
+        group_size = int(request.args.get("group_size", "4"))
+        num_groups = int(request.args.get("groups", "10"))
+        workbook = BytesIO()
+        build_template(group_size, num_groups).save(workbook)
+        workbook.seek(0)
+        return send_file(
+            workbook,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name="PDF_Auto_Rename_Template.xlsx",
+        )
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        logger.exception("PDF auto rename template generation failed")
+        return jsonify({"error": "Unable to generate the Excel template."}), 500
 
 
 @app.route("/<path:filename>")
