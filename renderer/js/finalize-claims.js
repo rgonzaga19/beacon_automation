@@ -139,6 +139,9 @@ lookupForm.addEventListener("submit", async (event) => {
     claimsBody.replaceChildren();
     result.claims.forEach((claim) => {
       const row = document.createElement("tr");
+      row.dataset.claimRow = "";
+      row.tabIndex = 0;
+      row.setAttribute("aria-selected", "false");
       [claim.transmittal_number, claim.claim_series, claim.patient_name, claim.member_name, claim.status].forEach((value) => {
         const cell = document.createElement("td");
         cell.textContent = value || "-";
@@ -214,22 +217,32 @@ function populateDoctorFields() {
   setInputValue("editDoctorSignDate", selected.dataset.signDate || "");
 }
 
-async function openClaimEditor(transmittalId, claimId, view = "cf2") {
-  activeEditClaim = { transmittalId, claimId, view };
-  const editorContent = document.querySelector(".editor-content");
-  editorContent.dataset.view = view;
+const editorViewTitles = {
+  cf2: "Change Admission and Discharge Time",
+  doctor: "Change Doctor",
+  cf4: "Add CF4 Vitals",
+  hpi: "History of Present Illness",
+  pmh: "Pertinent Past Medical History",
+  course: "Update Course in the Ward",
+  soa: "Generate/Remove SOA Data",
+};
+
+function applyEditorView(view) {
+  document.querySelector(".editor-content").dataset.view = view;
   document.querySelectorAll(".editor-section[data-editor-section]").forEach((section) => {
     section.hidden = section.dataset.editorSection !== view;
   });
-  document.getElementById("editorTitle").textContent = ({
-    cf2: "Change Admission and Discharge Time",
-    doctor: "Change Doctor",
-    cf4: "Add CF4 Vitals",
-    hpi: "History of Present Illness",
-    pmh: "Pertinent Past Medical History",
-    course: "Update Course in the Ward",
-    soa: "Generate/Remove SOA Data",
-  })[view] || "Edit Draft Claim";
+  document.getElementById("editorTitle").textContent = editorViewTitles[view] || "Edit Draft Claim";
+  document.querySelectorAll("#editorTabs [data-editor-view]").forEach((button) => {
+    const active = button.dataset.editorView === view;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+}
+
+async function openClaimEditor(transmittalId, claimId, view = "cf2") {
+  activeEditClaim = { transmittalId, claimId, view };
+  applyEditorView(view);
   claimEditor.hidden = false;
   editorSubtitle.textContent = "Loading draft claim...";
   document.getElementById("editorSoaSummary").textContent = "Loading SOA rows...";
@@ -302,6 +315,32 @@ claimsBody.addEventListener("click", (event) => {
   }
 });
 
+function selectClaimRow(row) {
+  claimsBody.querySelectorAll("tr[data-claim-row]").forEach((item) => {
+    const isSelected = item === row;
+    item.classList.toggle("selected", isSelected);
+    item.setAttribute("aria-selected", String(isSelected));
+  });
+}
+
+function toggleClaimRowSelection(row) {
+  selectClaimRow(row.classList.contains("selected") ? null : row);
+}
+
+claimsBody.addEventListener("click", (event) => {
+  const row = event.target.closest("tr[data-claim-row]");
+  if (!row || event.target.closest("button, a, input, select, textarea, [data-action]")) return;
+  toggleClaimRowSelection(row);
+});
+
+claimsBody.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const row = event.target.closest("tr[data-claim-row]");
+  if (!row) return;
+  event.preventDefault();
+  toggleClaimRowSelection(row);
+});
+
 function closeClaimActionsMenu() {
   claimActionsMenu.hidden = true;
   claimsBody.querySelectorAll('[data-action="toggle-claim-menu"]').forEach((button) => button.setAttribute("aria-expanded", "false"));
@@ -333,6 +372,13 @@ document.getElementById("editorClose").addEventListener("click", () => {
 });
 claimEditor.addEventListener("click", (event) => {
   if (event.target === claimEditor) document.getElementById("editorClose").click();
+});
+
+document.getElementById("editorTabs").addEventListener("click", (event) => {
+  const tab = event.target.closest("[data-editor-view]");
+  if (!tab || !activeEditClaim) return;
+  activeEditClaim.view = tab.dataset.editorView;
+  applyEditorView(activeEditClaim.view);
 });
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
