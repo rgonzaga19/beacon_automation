@@ -225,6 +225,9 @@ if __name__ == "__main__":
             claim_update_installation, release_update_installation, close_for_update,
         )
         # Keep the persistent login cookie and theme across desktop restarts.
+        # The hosted PDF Splitter runs in a cross-origin iframe and cannot call
+        # the desktop save-dialog bridge, so allow its browser downloads.
+        webview.settings["ALLOW_DOWNLOADS"] = True
         webview.start(
             func=start_background_updater,
             private_mode=False,

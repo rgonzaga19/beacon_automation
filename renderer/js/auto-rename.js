@@ -31,11 +31,72 @@ function invalidatePreview() {
 }
 
 document.getElementById("addType").addEventListener("click", () => addDocumentType());
-document.getElementById("templateBtn").addEventListener("click", () => {
-  const count = orderList.querySelectorAll("input").length || 4;
-  window.location.href = `/api/auto-rename/template?group_size=${count}`;
-});
+const templateBtn = document.getElementById("templateBtn");
 addDocumentType("CSF"); addDocumentType("CF4"); addDocumentType("PBEF"); addDocumentType("AF");
+
+function getDesktopApi() {
+  for (const candidate of [window, window.parent, window.top]) {
+    try {
+      if (candidate?.pywebview?.api?.save_generated_file) return candidate.pywebview.api;
+    } catch (error) {
+      // Browser frames may have a different origin.
+    }
+  }
+  return null;
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error("Unable to read the generated file."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function saveGeneratedFile(blob, filename) {
+  let desktopApi = getDesktopApi();
+  if (!desktopApi) {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    desktopApi = getDesktopApi();
+  }
+
+  if (desktopApi) {
+    const result = await desktopApi.save_generated_file(filename, await blobToDataUrl(blob));
+    if (result?.cancelled) return null;
+    if (!result?.ok) throw new Error(result?.error || "Unable to save the generated file.");
+    return result.path || filename;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return filename;
+}
+
+templateBtn.addEventListener("click", async () => {
+  templateBtn.disabled = true;
+  setStatus("Preparing Excel template...");
+  try {
+    const count = orderList.querySelectorAll("input").length || 4;
+    const response = await fetch(`/api/auto-rename/template?group_size=${count}`);
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Unable to generate the Excel template.");
+    }
+    const savedPath = await saveGeneratedFile(await response.blob(), "PDF_Auto_Rename_Template.xlsx");
+    setStatus(savedPath === null ? "Save cancelled." : `Template saved: ${savedPath}`);
+  } catch (error) {
+    setStatus(error.message, true);
+  } finally {
+    templateBtn.disabled = false;
+  }
+});
 
 pdfFiles.addEventListener("change", () => {
   document.getElementById("pdfHint").textContent = `${pdfFiles.files.length} PDF file(s) selected. Files are sorted naturally by filename.`;
@@ -101,11 +162,8 @@ downloadBtn.addEventListener("click", async () => {
       const data = await response.json();
       throw new Error(data.error || "Could not create the renamed archive.");
     }
-    const url = URL.createObjectURL(await response.blob());
-    const link = document.createElement("a");
-    link.href = url; link.download = "Renamed_PDFs.zip"; link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setStatus("ZIP downloaded. The selected originals remain unchanged.");
+    const savedPath = await saveGeneratedFile(await response.blob(), "Renamed_PDFs.zip");
+    setStatus(savedPath === null ? "Save cancelled." : `ZIP saved: ${savedPath}. The selected originals remain unchanged.`);
   } catch (error) {
     setStatus(error.message, true);
   } finally {
