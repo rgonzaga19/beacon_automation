@@ -998,6 +998,24 @@ def _require_draft_claim(transmittal_id, claim_id):
     return transmittal, claim
 
 
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/transmit", methods=["POST"])
+@login_required
+def transmit_finalize_claims_transmittal(transmittal_id):
+    user = current_user()
+    beacon_settings, auth_key = _beacon_edit_settings(user)
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            transmittal = beacon_api.get_transmittal_by_id(transmittal_id) or {}
+            if str(transmittal.get("transmittalStatusDescription") or "").strip().casefold() != "draft":
+                return jsonify({"error": "Only DRAFT transmittals can be transmitted here."}), 409
+            result = beacon_api.transmit_transmittal(transmittal_id)
+            return jsonify({"status": result.get("transmittalStatusDescription"), "transmittal_number": result.get("transmittalNumber"), "e_ticket_number": result.get("eTicketNumber"), "control_number": result.get("transmissionControlNumber")})
+    except Exception as exc:
+        logger.error(f"Finalize Claims transmit failed for {transmittal_id}: {exc}")
+        return jsonify({"error": str(exc) or "Beacon transmit failed."}), 502
+
+
 def _beacon_local_datetime(value):
     if not value:
         return None

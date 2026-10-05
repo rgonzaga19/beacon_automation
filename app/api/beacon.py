@@ -109,6 +109,71 @@ def _post(path, json_body=None, params=None):
     )
 
 
+def _put(path, params=None):
+    response = browser_session.http_request(
+        "PUT", _base_url() + path, headers=_headers(), params=params, timeout=90
+    )
+    return _json(response)
+
+
+def transmit_transmittal(transmittal_id, timeout=90):
+    """Submit a draft transmittal and wait for Beacon's terminal status."""
+    import time as _time
+
+    blockers = []
+    for suffix, label in (("CF4", "CF4"), ("ESOA", "eSOA"), ("CF5", "CF5")):
+        missing = _get(
+            f"/api/PHICClaim/GetClaimsNoUploaded{suffix}",
+            params={"transmittalId": transmittal_id},
+        ) or []
+        if missing:
+            blockers.append(f"Missing {label} uploads for {len(missing)} claim(s).")
+    if blockers:
+        raise BeaconApiError(" ".join(blockers))
+
+    _put("/api/PHICTransmittal/SubmitTransmittal", params={"transmittalId": transmittal_id})
+    deadline = _time.monotonic() + timeout
+    status = {}
+    while _time.monotonic() < deadline:
+        status = _get(
+            "/api/PHICTransmittal/GetPHICTransmittalStatusById",
+            params={"transmittalId": transmittal_id},
+        ) or {}
+        description = str(status.get("transmittalStatusDescription") or "").upper()
+        if description in {"TRANSMITTED", "TRANSMIT ERROR"}:
+            if description == "TRANSMIT ERROR":
+                details = get_transmittal_by_id(transmittal_id) or {}
+                messages = []
+
+                def collect_errors(value):
+                    if isinstance(value, dict):
+                        for key, item in value.items():
+                            if (
+                                any(word in str(key).casefold() for word in ("error", "issue", "message"))
+                                and isinstance(item, (str, int, float))
+                                and str(item).strip()
+                            ):
+                                messages.append(str(item).strip())
+                            else:
+                                collect_errors(item)
+                    elif isinstance(value, list):
+                        for item in value:
+                            collect_errors(item)
+                collect_errors(status)
+                collect_errors(details)
+                detail = "; ".join(dict.fromkeys(messages))
+                raise BeaconApiError(
+                    detail
+                    or "Beacon reported TRANSMIT ERROR. See the transmittal in Beacon for its error details."
+                )
+            return status
+        _time.sleep(2)
+    raise BeaconApiError(
+        "Beacon is still processing the transmittal "
+        f"(last status: {status.get('transmittalStatusDescription', 'unknown')})."
+    )
+
+
 def get_client_id():
     """Resolve the current Beacon client/facility ID dynamically."""
     cache_key = browser_session._context_key()

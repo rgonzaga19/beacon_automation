@@ -161,6 +161,8 @@ lookupForm.addEventListener("submit", async (event) => {
 
       const actionCell = document.createElement("td");
       if (claim.transmittal_id && claim.claim_id && statusClass(claim.transmittal_status) === "status-draft") {
+        const actionButtons = document.createElement("div");
+        actionButtons.style.cssText = "display:flex;gap:6px;align-items:center";
         const editButton = document.createElement("button");
         editButton.className = "cyber-btn";
         editButton.type = "button";
@@ -171,7 +173,15 @@ lookupForm.addEventListener("submit", async (event) => {
         editButton.setAttribute("aria-haspopup", "menu");
         editButton.setAttribute("aria-expanded", "false");
         editButton.setAttribute("aria-label", `Edit claim ${claim.claim_series || "in transmittal " + claim.transmittal_number}`);
-        actionCell.append(editButton);
+        const transmitButton = document.createElement("button");
+        transmitButton.className = "cyber-btn";
+        transmitButton.type = "button";
+        transmitButton.textContent = "TRANSMIT";
+        transmitButton.dataset.transmittalId = claim.transmittal_id;
+        transmitButton.dataset.action = "transmit-claim";
+        transmitButton.setAttribute("aria-label", `Transmit ${claim.transmittal_number}`);
+        actionButtons.append(editButton, transmitButton);
+        actionCell.append(actionButtons);
       } else {
         actionCell.textContent = "-";
       }
@@ -295,6 +305,37 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
 }
 
 claimsBody.addEventListener("click", (event) => {
+  const transmitButton = event.target.closest('[data-action="transmit-claim"]');
+  if (transmitButton) {
+    const transmittalId = transmitButton.dataset.transmittalId;
+    const transmittalNumber = transmitButton.closest("tr").firstElementChild.textContent;
+    transmitButton.disabled = true;
+    transmitButton.textContent = "TRANSMITTING...";
+    (async () => {
+      try {
+        const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/transmit`, { method: "POST", body: "{}" });
+        const row = transmitButton.closest("tr");
+        row.querySelector(".transmittal-status").className = `transmittal-status ${statusClass(result.status)}`;
+        row.querySelector(".transmittal-status").lastChild.textContent = result.status || "TRANSMITTED";
+        const details = [result.e_ticket_number && `eTicket ${result.e_ticket_number}`, result.control_number && `TCN ${result.control_number}`].filter(Boolean).join(" | ");
+        if (details) row.querySelector(".transmittal-status").title = details;
+        transmitButton.textContent = "TRANSMITTED";
+        const feedback = document.createElement("div");
+        feedback.className = "message";
+        feedback.textContent = `Transmitted successfully.${details ? ` ${details}` : ""}`;
+        transmitButton.parentElement.after(feedback);
+      } catch (error) {
+        transmitButton.disabled = false;
+        transmitButton.textContent = "TRANSMIT";
+        transmitButton.title = error.message;
+        const feedback = document.createElement("div");
+        feedback.className = "message error";
+        feedback.textContent = `Transmit failed: ${error.message}`;
+        transmitButton.parentElement.after(feedback);
+      }
+    })();
+    return;
+  }
   const toggle = event.target.closest('[data-action="toggle-claim-menu"]');
   if (toggle) {
     const shouldOpen = claimActionsMenu.hidden || claimActionsMenu.dataset.claimId !== toggle.dataset.claimId;
