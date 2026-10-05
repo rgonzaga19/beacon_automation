@@ -6,6 +6,8 @@ const claimsBody = document.getElementById("claimsBody");
 const claimEditor = document.getElementById("claimEditor");
 const claimActionsMenu = document.getElementById("claimActionsMenu");
 const editorSubtitle = document.getElementById("editorSubtitle");
+const transmitAllButton = document.getElementById("transmitAllButton");
+const transmitAllStatus = document.getElementById("transmitAllStatus");
 let activeEditClaim = null;
 let courseInWardRowIndex = 0;
 
@@ -539,3 +541,145 @@ document.getElementById("generateCf4Button").addEventListener("click", (event) =
 });
 
 document.getElementById("addCourseInWardRow").addEventListener("click", () => addCourseInWardRow());
+
+function setTransmitAllStatus(message, error = false) {
+  transmitAllStatus.textContent = message;
+  transmitAllStatus.classList.toggle("error", error);
+}
+
+function waitForRowTransmit(button) {
+  const deadline = Date.now() + 120000;
+  return new Promise((resolve) => {
+    const timer = setInterval(() => {
+      if (button.textContent.trim() === "TRANSMITTED") {
+        clearInterval(timer);
+        resolve(true);
+      } else if (!button.disabled || !button.isConnected || Date.now() > deadline) {
+        clearInterval(timer);
+        resolve(false);
+      }
+    }, 250);
+  });
+}
+
+function markRowTransmitted(row, sourceRow) {
+  const badge = row.querySelector(".transmittal-status");
+  const sourceBadge = sourceRow.querySelector(".transmittal-status");
+  if (badge && sourceBadge) {
+    badge.className = sourceBadge.className;
+    badge.lastChild.textContent = sourceBadge.textContent;
+    badge.title = sourceBadge.title;
+  }
+  const button = row.querySelector('[data-action="transmit-claim"]');
+  if (button && button.textContent.trim() !== "TRANSMITTED") {
+    button.disabled = true;
+    button.textContent = "TRANSMITTED";
+  }
+}
+
+function getReadyTransmittalGroups() {
+  const rows = Array.from(claimsBody.querySelectorAll("tr[data-claim-row]"));
+  const groups = new Map();
+  rows.forEach((row) => {
+    const button = row.querySelector('[data-action="transmit-claim"]');
+    if (!button || button.disabled || button.textContent.trim() !== "TRANSMIT") return;
+    const transmittalId = button.dataset.transmittalId;
+    if (!groups.has(transmittalId)) groups.set(transmittalId, []);
+    groups.get(transmittalId).push(row);
+  });
+  return { rows, groups };
+}
+
+function closeTransmitAllConfirm(onKey) {
+  document.removeEventListener("keydown", onKey);
+  document.getElementById("modalRoot").innerHTML = "";
+}
+
+function showTransmitAllConfirm(transmittalCount, rowCount, onConfirm) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Transmit All</h3>
+        <p>Transmit ${transmittalCount} draft transmittal${transmittalCount === 1 ? "" : "s"} (${rowCount} claim row${rowCount === 1 ? "" : "s"}) to PhilHealth now?\n\nThis action submits the claims for processing and cannot be undone. Rows that are not in DRAFT status are skipped.</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="transmitAllCancelBtn" type="button">CANCEL</button>
+          <button class="cyber-btn danger" id="transmitAllConfirmBtn" type="button">YES, TRANSMIT ALL</button>
+        </div>
+      </div>
+    </div>`;
+  function close() {
+    closeTransmitAllConfirm(onKey);
+  }
+  function onKey(event) {
+    if (event.key === "Escape") close();
+  }
+  document.getElementById("transmitAllCancelBtn").addEventListener("click", close);
+  document.getElementById("transmitAllConfirmBtn").addEventListener("click", () => {
+    close();
+    onConfirm();
+  });
+  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.getElementById("transmitAllCancelBtn").focus();
+}
+
+async function runTransmitAll() {
+  const { rows, groups } = getReadyTransmittalGroups();
+  if (!groups.size) {
+    setTransmitAllStatus("No ready rows to transmit. Only rows in a DRAFT transmittal can be transmitted.", true);
+    return;
+  }
+
+  const entries = Array.from(groups.entries());
+  transmitAllButton.disabled = true;
+  const originalText = transmitAllButton.textContent;
+  transmitAllButton.textContent = "TRANSMITTING ALL...";
+  let transmitted = 0;
+  let failed = 0;
+  let rowTotal = 0;
+  try {
+    for (let index = 0; index < entries.length; index += 1) {
+      const [transmittalId, groupRows] = entries[index];
+      const primaryRow = groupRows[0];
+      const button = primaryRow.querySelector('[data-action="transmit-claim"]');
+      const transmittalNumber = primaryRow.firstElementChild.textContent;
+      setTransmitAllStatus(`Transmitting ${index + 1} of ${entries.length}: ${transmittalNumber}...`);
+      if (!button || button.disabled || button.textContent.trim() !== "TRANSMIT") continue;
+      button.click();
+      const success = await waitForRowTransmit(button);
+      if (success) {
+        transmitted += 1;
+        rowTotal += groupRows.length;
+        rows.forEach((row) => {
+          if (row === primaryRow) return;
+          const siblingButton = row.querySelector('[data-action="transmit-claim"]');
+          if (siblingButton && siblingButton.dataset.transmittalId === transmittalId) markRowTransmitted(row, primaryRow);
+        });
+      } else {
+        failed += 1;
+      }
+    }
+    if (failed === 0) {
+      setTransmitAllStatus(`Transmitted ${transmitted} transmittal${transmitted === 1 ? "" : "s"} (${rowTotal} row${rowTotal === 1 ? "" : "s"}).`);
+    } else {
+      setTransmitAllStatus(`${transmitted} transmittal${transmitted === 1 ? "" : "s"} transmitted, ${failed} failed. Check the row messages for details.`, true);
+    }
+  } finally {
+    transmitAllButton.disabled = false;
+    transmitAllButton.textContent = originalText;
+  }
+}
+
+transmitAllButton.addEventListener("click", () => {
+  const { groups } = getReadyTransmittalGroups();
+  if (!groups.size) {
+    setTransmitAllStatus("No ready rows to transmit. Only rows in a DRAFT transmittal can be transmitted.", true);
+    return;
+  }
+  const transmittalCount = groups.size;
+  const rowCount = Array.from(groups.values()).reduce((total, groupRows) => total + groupRows.length, 0);
+  showTransmitAllConfirm(transmittalCount, rowCount, runTransmitAll);
+});

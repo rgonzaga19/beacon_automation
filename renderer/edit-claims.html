@@ -23,6 +23,10 @@
     .field input:focus { border-color:var(--accent); }
     button { min-height:38px; padding:0 16px; }
     .lookup-control-row > button { flex:none; }
+    .page-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+    .page-toolbar .cyber-btn { min-height:38px; }
+    .toolbar-status { color:var(--text-sec); font-size:11px; }
+    .toolbar-status.error { color:var(--error); }
     .summary { display:flex; flex-wrap:wrap; gap:8px 20px; margin:18px 0 12px; color:var(--text-sec); font-size:11px; }
     .summary strong { color:var(--text-pri); }
     .status-legend { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; margin:16px 0 2px; padding:11px 13px; border:1px solid var(--border); border-radius:var(--radius-md); color:var(--text-sec); font-size:10px; }
@@ -123,6 +127,10 @@
   <div class="page">
     <header class="header"><h1>Edit Claims</h1><p>Search Beacon by transmittal number or patient name.</p></header>
     <main>
+      <div class="page-toolbar" aria-label="Claim actions toolbar">
+        <button class="cyber-btn" id="transmitAllButton" type="button">TRANSMIT ALL</button>
+        <span class="toolbar-status" id="transmitAllStatus" aria-live="polite"></span>
+      </div>
       <section class="lookup-card" aria-label="Transmittal claims lookup">
         <form id="lookupForm" class="lookup-form">
           <div class="field"><label for="transmittalInput">Transmittal Number or Patient Name</label><div class="lookup-control-row"><input id="transmittalInput" type="text" autocomplete="off" placeholder="Enter transmittals or a patient name" required><button class="cyber-btn" id="lookupButton" type="submit">LOOK UP</button></div><span class="field-hint">Separate multiple transmittal numbers with spaces, or enter a full or partial patient name.</span></div>
