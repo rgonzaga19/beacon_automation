@@ -94,7 +94,9 @@
     .claim-actions-menu button:focus-visible { box-shadow:inset 0 0 0 1px var(--accent); }
     .claim-menu-icon { width:21px; height:21px; display:grid; place-items:center; color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 45%,transparent); border-radius:5px; font-size:10px; font-weight:800; }
     .claim-menu-divider { height:1px; margin:5px 4px; background:var(--border); }
-    table { width:100%; min-width:820px; border-collapse:collapse; font-size:11px; text-align:left; }
+    table { width:100%; min-width:960px; border-collapse:collapse; font-size:11px; text-align:left; }
+    .icon-btn { min-height:30px; width:30px; padding:0; display:inline-grid; place-items:center; }
+    .icon-btn svg { width:13px; height:13px; display:block; }
     th { color:var(--text-sec); background:var(--bg-panel); font-weight:700; white-space:nowrap; }
     th,td { padding:11px 12px; border-bottom:1px solid var(--border); }
     td { color:var(--text-pri); }
@@ -103,7 +105,7 @@
     tbody tr[data-claim-row]:hover { background:var(--accent-soft); }
     tbody tr[data-claim-row]:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
     tbody tr[data-claim-row].selected { background:var(--accent-soft-strong); }
-    tbody tr[data-claim-row].selected td:first-child { box-shadow:inset 3px 0 0 var(--accent); }
+    tbody tr[data-claim-row].selected td:nth-child(2) { box-shadow:inset 3px 0 0 var(--accent); }
     .message { padding:24px 12px; color:var(--text-sec); text-align:center; }
     .message.error { color:var(--error); }
     @media(max-width:900px) {
@@ -147,8 +149,8 @@
         <div class="summary" id="summary" hidden></div>
         <div class="table-wrap">
           <table aria-label="Claims in transmittal">
-            <thead><tr><th>Transmittal</th><th>Claim Series</th><th>Patient</th><th>Member</th><th>Claim Status</th><th>Transmittal Status</th><th>Package</th><th>Action</th></tr></thead>
-            <tbody id="claimsBody"><tr><td class="message" colspan="8">Enter a transmittal number to view its claims.</td></tr></tbody>
+            <thead><tr><th>Action</th><th>Transmittal</th><th>Claim Series</th><th>Patient</th><th>Member</th><th>Admission</th><th>Discharge</th><th>Claim Status</th><th>Transmittal Status</th></tr></thead>
+            <tbody id="claimsBody"><tr><td class="message" colspan="9">Enter a transmittal number to view its claims.</td></tr></tbody>
           </table>
         </div>
       </section>

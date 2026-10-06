@@ -952,6 +952,16 @@ def get_finalize_claims():
                 })
                 for claim in claims:
                     form1 = claim.get("phiccF1") or {}
+                    admission_date = ""
+                    discharge_date = ""
+                    try:
+                        cf2 = cf2_api.get_cf2(claim.get("id")) or {}
+                        admission = _beacon_local_datetime(cf2.get("admissionDateTime"))
+                        discharge = _beacon_local_datetime(cf2.get("dischargeDateTime"))
+                        admission_date = admission.strftime("%Y-%m-%d") if admission else ""
+                        discharge_date = discharge.strftime("%Y-%m-%d") if discharge else ""
+                    except Exception as cf2_exc:
+                        logger.warning(f"Could not fetch CF2 dates for claim {claim.get('id')}: {cf2_exc}")
                     rows.append({
                         "transmittal_id": transmittal.get("id"),
                         "claim_id": claim.get("id"),
@@ -960,6 +970,8 @@ def get_finalize_claims():
                         "claim_series": claim.get("claimSeriesLhio") or "",
                         "patient_name": form1.get("patientFullname") or "",
                         "member_name": form1.get("memberFullname") or "",
+                        "admission_date": admission_date,
+                        "discharge_date": discharge_date,
                         "status": claim.get("claimStatusDescription") or "",
                         "package": claim.get("phicPackageDescription") or "",
                     })

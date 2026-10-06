@@ -11,6 +11,10 @@ const transmitAllStatus = document.getElementById("transmitAllStatus");
 let activeEditClaim = null;
 let courseInWardRowIndex = 0;
 
+const EDIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+const TRANSMIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
+const TRANSMITTED_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
 function renderCourseInWardRows(entries = []) {
   const container = document.getElementById("courseInWardRows");
   container.replaceChildren();
@@ -90,7 +94,7 @@ function showMessage(message, error = false) {
   claimsBody.replaceChildren();
   const row = document.createElement("tr");
   const cell = document.createElement("td");
-  cell.colSpan = 8;
+  cell.colSpan = 9;
   cell.className = `message${error ? " error" : ""}`;
   cell.textContent = message;
   row.append(cell);
@@ -144,7 +148,38 @@ lookupForm.addEventListener("submit", async (event) => {
       row.dataset.claimRow = "";
       row.tabIndex = 0;
       row.setAttribute("aria-selected", "false");
-      [claim.transmittal_number, claim.claim_series, claim.patient_name, claim.member_name, claim.status].forEach((value) => {
+      const actionCell = document.createElement("td");
+      if (claim.transmittal_id && claim.claim_id && statusClass(claim.transmittal_status) === "status-draft") {
+        const actionButtons = document.createElement("div");
+        actionButtons.style.cssText = "display:flex;gap:6px;align-items:center";
+        const editButton = document.createElement("button");
+        editButton.className = "cyber-btn icon-btn";
+        editButton.type = "button";
+        editButton.innerHTML = EDIT_ICON_SVG;
+        editButton.title = "Edit";
+        editButton.dataset.transmittalId = claim.transmittal_id;
+        editButton.dataset.claimId = claim.claim_id;
+        editButton.dataset.action = "toggle-claim-menu";
+        editButton.setAttribute("aria-haspopup", "menu");
+        editButton.setAttribute("aria-expanded", "false");
+        editButton.setAttribute("aria-label", `Edit claim ${claim.claim_series || "in transmittal " + claim.transmittal_number}`);
+        const transmitButton = document.createElement("button");
+        transmitButton.className = "cyber-btn icon-btn";
+        transmitButton.type = "button";
+        transmitButton.innerHTML = TRANSMIT_ICON_SVG;
+        transmitButton.title = "Transmit";
+        transmitButton.dataset.transmittalId = claim.transmittal_id;
+        transmitButton.dataset.action = "transmit-claim";
+        transmitButton.dataset.state = "ready";
+        transmitButton.setAttribute("aria-label", `Transmit ${claim.transmittal_number}`);
+        actionButtons.append(editButton, transmitButton);
+        actionCell.append(actionButtons);
+      } else {
+        actionCell.textContent = "-";
+      }
+      row.append(actionCell);
+      row.dataset.transmittalNumber = claim.transmittal_number || "";
+      [claim.transmittal_number, claim.claim_series, claim.patient_name, claim.member_name, claim.admission_date, claim.discharge_date, claim.status].forEach((value) => {
         const cell = document.createElement("td");
         cell.textContent = value || "-";
         row.append(cell);
@@ -157,37 +192,6 @@ lookupForm.addEventListener("submit", async (event) => {
       badge.append(dot, document.createTextNode(claim.transmittal_status || "-"));
       transmittalStatusCell.append(badge);
       row.append(transmittalStatusCell);
-      const packageCell = document.createElement("td");
-      packageCell.textContent = claim.package || "-";
-      row.append(packageCell);
-
-      const actionCell = document.createElement("td");
-      if (claim.transmittal_id && claim.claim_id && statusClass(claim.transmittal_status) === "status-draft") {
-        const actionButtons = document.createElement("div");
-        actionButtons.style.cssText = "display:flex;gap:6px;align-items:center";
-        const editButton = document.createElement("button");
-        editButton.className = "cyber-btn";
-        editButton.type = "button";
-        editButton.textContent = "EDIT";
-        editButton.dataset.transmittalId = claim.transmittal_id;
-        editButton.dataset.claimId = claim.claim_id;
-        editButton.dataset.action = "toggle-claim-menu";
-        editButton.setAttribute("aria-haspopup", "menu");
-        editButton.setAttribute("aria-expanded", "false");
-        editButton.setAttribute("aria-label", `Edit claim ${claim.claim_series || "in transmittal " + claim.transmittal_number}`);
-        const transmitButton = document.createElement("button");
-        transmitButton.className = "cyber-btn";
-        transmitButton.type = "button";
-        transmitButton.textContent = "TRANSMIT";
-        transmitButton.dataset.transmittalId = claim.transmittal_id;
-        transmitButton.dataset.action = "transmit-claim";
-        transmitButton.setAttribute("aria-label", `Transmit ${claim.transmittal_number}`);
-        actionButtons.append(editButton, transmitButton);
-        actionCell.append(actionButtons);
-      } else {
-        actionCell.textContent = "-";
-      }
-      row.append(actionCell);
       claimsBody.append(row);
     });
   } catch (error) {
@@ -310,9 +314,11 @@ claimsBody.addEventListener("click", (event) => {
   const transmitButton = event.target.closest('[data-action="transmit-claim"]');
   if (transmitButton) {
     const transmittalId = transmitButton.dataset.transmittalId;
-    const transmittalNumber = transmitButton.closest("tr").firstElementChild.textContent;
+    const transmittalNumber = transmitButton.closest("tr").dataset.transmittalNumber;
+    showTransmitClaimConfirm(transmittalNumber, () => {
     transmitButton.disabled = true;
-    transmitButton.textContent = "TRANSMITTING...";
+    transmitButton.dataset.state = "transmitting";
+    transmitButton.title = "Transmitting...";
     (async () => {
       try {
         const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/transmit`, { method: "POST", body: "{}" });
@@ -321,21 +327,25 @@ claimsBody.addEventListener("click", (event) => {
         row.querySelector(".transmittal-status").lastChild.textContent = result.status || "TRANSMITTED";
         const details = [result.e_ticket_number && `eTicket ${result.e_ticket_number}`, result.control_number && `TCN ${result.control_number}`].filter(Boolean).join(" | ");
         if (details) row.querySelector(".transmittal-status").title = details;
-        transmitButton.textContent = "TRANSMITTED";
+        transmitButton.dataset.state = "transmitted";
+        transmitButton.innerHTML = TRANSMITTED_ICON_SVG;
+        transmitButton.title = "Transmitted";
         const feedback = document.createElement("div");
         feedback.className = "message";
         feedback.textContent = `Transmitted successfully.${details ? ` ${details}` : ""}`;
         transmitButton.parentElement.after(feedback);
       } catch (error) {
         transmitButton.disabled = false;
-        transmitButton.textContent = "TRANSMIT";
-        transmitButton.title = error.message;
+        transmitButton.dataset.state = "ready";
+        transmitButton.innerHTML = TRANSMIT_ICON_SVG;
+        transmitButton.title = error.message || "Transmit";
         const feedback = document.createElement("div");
         feedback.className = "message error";
         feedback.textContent = `Transmit failed: ${error.message}`;
         transmitButton.parentElement.after(feedback);
       }
     })();
+    });
     return;
   }
   const toggle = event.target.closest('[data-action="toggle-claim-menu"]');
@@ -551,7 +561,7 @@ function waitForRowTransmit(button) {
   const deadline = Date.now() + 120000;
   return new Promise((resolve) => {
     const timer = setInterval(() => {
-      if (button.textContent.trim() === "TRANSMITTED") {
+      if (button.dataset.state === "transmitted") {
         clearInterval(timer);
         resolve(true);
       } else if (!button.disabled || !button.isConnected || Date.now() > deadline) {
@@ -571,9 +581,11 @@ function markRowTransmitted(row, sourceRow) {
     badge.title = sourceBadge.title;
   }
   const button = row.querySelector('[data-action="transmit-claim"]');
-  if (button && button.textContent.trim() !== "TRANSMITTED") {
+  if (button && button.dataset.state !== "transmitted") {
     button.disabled = true;
-    button.textContent = "TRANSMITTED";
+    button.dataset.state = "transmitted";
+    button.innerHTML = TRANSMITTED_ICON_SVG;
+    button.title = "Transmitted";
   }
 }
 
@@ -582,7 +594,7 @@ function getReadyTransmittalGroups() {
   const groups = new Map();
   rows.forEach((row) => {
     const button = row.querySelector('[data-action="transmit-claim"]');
-    if (!button || button.disabled || button.textContent.trim() !== "TRANSMIT") return;
+    if (!button || button.disabled || button.dataset.state !== "ready") return;
     const transmittalId = button.dataset.transmittalId;
     if (!groups.has(transmittalId)) groups.set(transmittalId, []);
     groups.get(transmittalId).push(row);
@@ -593,6 +605,37 @@ function getReadyTransmittalGroups() {
 function closeTransmitAllConfirm(onKey) {
   document.removeEventListener("keydown", onKey);
   document.getElementById("modalRoot").innerHTML = "";
+}
+
+function showTransmitClaimConfirm(transmittalNumber, onConfirm) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Transmit</h3>
+        <p>Transmit transmittal ${String(transmittalNumber || "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]))} to PhilHealth now?\n\nThis action submits the claim for processing and cannot be undone.</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="transmitClaimCancelBtn" type="button">CANCEL</button>
+          <button class="cyber-btn danger" id="transmitClaimConfirmBtn" type="button">YES, TRANSMIT</button>
+        </div>
+      </div>
+    </div>`;
+  function close() {
+    closeTransmitAllConfirm(onKey);
+  }
+  function onKey(event) {
+    if (event.key === "Escape") close();
+  }
+  document.getElementById("transmitClaimCancelBtn").addEventListener("click", close);
+  document.getElementById("transmitClaimConfirmBtn").addEventListener("click", () => {
+    close();
+    onConfirm();
+  });
+  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.getElementById("transmitClaimCancelBtn").focus();
 }
 
 function showTransmitAllConfirm(transmittalCount, rowCount, onConfirm) {
@@ -645,9 +688,9 @@ async function runTransmitAll() {
       const [transmittalId, groupRows] = entries[index];
       const primaryRow = groupRows[0];
       const button = primaryRow.querySelector('[data-action="transmit-claim"]');
-      const transmittalNumber = primaryRow.firstElementChild.textContent;
+      const transmittalNumber = primaryRow.dataset.transmittalNumber;
       setTransmitAllStatus(`Transmitting ${index + 1} of ${entries.length}: ${transmittalNumber}...`);
-      if (!button || button.disabled || button.textContent.trim() !== "TRANSMIT") continue;
+      if (!button || button.disabled || button.dataset.state !== "ready") continue;
       button.click();
       const success = await waitForRowTransmit(button);
       if (success) {
