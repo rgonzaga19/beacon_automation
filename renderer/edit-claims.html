@@ -24,7 +24,7 @@
     button { min-height:38px; padding:0 16px; }
     .lookup-control-row > button { flex:none; }
     .page-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
-    .page-toolbar .cyber-btn { min-height:38px; }
+    .page-toolbar .solid-btn { min-height:30px; padding:5px 10px; font-size:10px; }
     .toolbar-status { color:var(--text-sec); font-size:11px; }
     .toolbar-status.error { color:var(--error); }
     .summary { display:flex; flex-wrap:wrap; gap:8px 20px; margin:18px 0 12px; color:var(--text-sec); font-size:11px; }
@@ -95,8 +95,10 @@
     .claim-menu-icon { width:21px; height:21px; display:grid; place-items:center; color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 45%,transparent); border-radius:5px; font-size:10px; font-weight:800; }
     .claim-menu-divider { height:1px; margin:5px 4px; background:var(--border); }
     table { width:100%; min-width:960px; border-collapse:collapse; font-size:11px; text-align:left; }
-    .icon-btn { min-height:30px; width:30px; padding:0; display:inline-grid; place-items:center; }
-    .icon-btn svg { width:13px; height:13px; display:block; }
+    .cell-copy-btn { margin-left:6px; padding:0 3px; min-height:20px; width:20px; vertical-align:middle; display:inline-grid; place-items:center; }
+    .cell-copy-btn svg { width:11px; height:11px; display:block; }
+    .icon-btn { min-height:38px; width:38px; padding:0; display:inline-grid; place-items:center; }
+    .icon-btn svg { width:16px; height:16px; display:block; }
     th { color:var(--text-sec); background:var(--bg-panel); font-weight:700; white-space:nowrap; }
     th,td { padding:11px 12px; border-bottom:1px solid var(--border); }
     td { color:var(--text-pri); }
@@ -129,13 +131,16 @@
   <div class="page">
     <header class="header"><h1>Edit Claims</h1><p>Search Beacon by transmittal number or patient name.</p></header>
     <main>
-      <div class="page-toolbar" aria-label="Claim actions toolbar">
-        <button class="cyber-btn" id="transmitAllButton" type="button">TRANSMIT ALL</button>
-        <span class="toolbar-status" id="transmitAllStatus" aria-live="polite"></span>
-      </div>
       <section class="lookup-card" aria-label="Transmittal claims lookup">
         <form id="lookupForm" class="lookup-form">
-          <div class="field"><label for="transmittalInput">Transmittal Number or Patient Name</label><div class="lookup-control-row"><input id="transmittalInput" type="text" autocomplete="off" placeholder="Enter transmittals or a patient name" required><button class="cyber-btn" id="lookupButton" type="submit">LOOK UP</button></div><span class="field-hint">Separate multiple transmittal numbers with spaces, or enter a full or partial patient name.</span></div>
+          <div class="field"><label for="transmittalInput">Transmittal Number or Patient Name</label><div class="lookup-control-row"><input id="transmittalInput" type="text" autocomplete="off" placeholder="Enter transmittals or a patient name"></div><span class="field-hint">Separate multiple transmittal numbers with spaces, or enter a full or partial patient name.</span></div>
+          <div class="lookup-control-row" style="margin-top:12px">
+            <div class="field"><label for="admissionFrom">Admission From</label><input id="admissionFrom" type="date"></div>
+            <div class="field"><label for="admissionTo">Admission To</label><input id="admissionTo" type="date"></div>
+            <button class="cyber-btn" id="lookupButton" type="submit" style="align-self:flex-end">LOOK UP</button>
+          </div>
+          <span class="field-hint">Or leave the text field empty and filter by admission date range (used only when the text field is empty).</span>
+          <div style="margin-top:10px;padding:9px 12px;border:1px solid color-mix(in srgb,#f0ad4e 45%,transparent);border-radius:var(--radius-md);background:color-mix(in srgb,#f0ad4e 10%,transparent);color:#f0ad4e;font-size:11px;line-height:1.5"><strong>NOTE:</strong> Using date filtering may take 5&ndash;10 minutes or more, depending on the number and age of the claims.</div>
         </form>
         <div class="status-legend" aria-label="Transmittal status legend">
           <span class="legend-title">STATUS LEGEND</span>
@@ -147,6 +152,12 @@
           <span class="legend-item status-on-queue"><i class="status-dot"></i>ON QUEUE</span>
         </div>
         <div class="summary" id="summary" hidden></div>
+        <div class="page-toolbar" aria-label="Claim actions toolbar" style="margin-top:12px;margin-bottom:10px">
+          <button class="solid-btn" id="transmitAllButton" type="button" title="Auto Transmit All" aria-label="Auto Transmit All">AUTO TRANSMIT ALL</button>
+          <button class="solid-btn" id="copyTransmittalsButton" type="button" title="Copy All Transmittals" aria-label="Copy All Transmittals">COPY ALL TRANSMITTALS</button>
+          <button class="solid-btn" id="copyDraftTransmittalsButton" type="button" title="Copy Draft Transmittals" aria-label="Copy Draft Transmittals">COPY DRAFT TRANSMITTALS</button>
+          <span class="toolbar-status" id="transmitAllStatus" aria-live="polite"></span>
+        </div>
         <div class="table-wrap">
           <table aria-label="Claims in transmittal">
             <thead><tr><th>Action</th><th>Transmittal</th><th>Claim Series</th><th>Patient</th><th>Member</th><th>Admission</th><th>Discharge</th><th>Claim Status</th><th>Transmittal Status</th></tr></thead>
@@ -242,6 +253,6 @@
   </div>
   <div id="modalRoot"></div>
   <script src="js/common.js"></script>
-  <script src="js/finalize-claims.js"></script>
+  <script src="js/edit-claims.js"></script>
 </body>
 </html>

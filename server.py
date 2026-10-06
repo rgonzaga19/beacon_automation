@@ -896,10 +896,40 @@ def beacon_validate():
 @app.route("/api/beacon/finalize-claims", methods=["GET"])
 @login_required
 def get_finalize_claims():
+    search_id = str(request.args.get("search_id") or "").strip()
+    progress_state = None
+    if search_id:
+        progress_state = {"user_id": current_user().id, "done": False, "current": 0, "total": 0, "message": "Connecting to Beacon..."}
+        with _finalize_claim_progress_lock:
+            _finalize_claim_progress[search_id] = progress_state
     patient_query = str(request.args.get("patient") or "").strip()
     transmittal_numbers = list(dict.fromkeys(str(request.args.get("transmittal") or "").split()))
-    if not patient_query and not transmittal_numbers:
-        return jsonify({"error": "Enter a transmittal number or patient name."}), 400
+    admission_from = str(request.args.get("admission_from") or "").strip()
+    admission_to = str(request.args.get("admission_to") or "").strip()
+    date_filter_requested = bool(admission_from or admission_to)
+    if not patient_query and not transmittal_numbers and not date_filter_requested:
+        return jsonify({"error": "Enter a transmittal number or patient name, or set at least one date filter."}), 400
+
+    def _parse_filter_date(value, label):
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError(f"{label} must be a valid date (YYYY-MM-DD).")
+
+    try:
+        admission_from_d = _parse_filter_date(admission_from, "Admission From")
+        admission_to_d = _parse_filter_date(admission_to, "Admission To")
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    if admission_from_d and admission_to_d:
+        if admission_from_d > admission_to_d:
+            return jsonify({"error": "Admission From must not be after Admission To."}), 400
+        if (admission_to_d - admission_from_d).days > 31:
+            return jsonify({"error": "Admission date range cannot exceed 31 days."}), 400
+    date_mode = bool(date_filter_requested) and not patient_query and not transmittal_numbers
 
     user = current_user()
     settings = get_or_create_user_settings(user)
@@ -924,10 +954,40 @@ def get_finalize_claims():
         patient_tokens = set(re.sub(r"[^a-z0-9]+", " ", patient_name.casefold()).split())
         return bool(query_tokens) and query_tokens.issubset(patient_tokens)
 
+    def claim_matches_dates(admission):
+        if admission_from_d or admission_to_d:
+            if admission is None:
+                return False
+            if admission_from_d and admission.date() < admission_from_d:
+                return False
+            if admission_to_d and admission.date() > admission_to_d:
+                return False
+        return True
+
     try:
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
-            if patient_query:
+            if date_mode:
+                today = datetime.now().date()
+                # The Beacon endpoint filters by transmittal creation date, while
+                # this screen filters by claim admission date. A transmittal can
+                # be created well after admission, so search candidates through
+                # today and apply the requested admission range below.
+                earliest_admission = admission_from_d or admission_to_d or (today - timedelta(days=7))
+                # A claim's transmittal is created on or after admission; starting
+                # earlier only adds unrelated rows and slows this claim lookup.
+                window_start = earliest_admission
+                window_end = today
+                candidates = beacon_api.get_transmittals_in_range(window_start, window_end)
+                if progress_state is not None:
+                    progress_state.update({"total": len(candidates), "message": f"Checking {len(candidates)} transmittals..."})
+                logger.info(
+                    f"Edit Claims admission-date search: requested={admission_from or '*'}.."
+                    f"{admission_to or '*'}, transmittal window={window_start}.."
+                    f"{window_end}, candidates={len(candidates)}"
+                )
+                not_found = []
+            elif patient_query:
                 candidates = beacon_api.search_transmittals(patient_query, search_days=93)
             else:
                 candidates = [
@@ -938,12 +998,42 @@ def get_finalize_claims():
                 found_numbers = {str(item.get("transmittalNumber") or "") for item in candidates}
                 not_found = [number for number in transmittal_numbers if number not in found_numbers]
 
-            for transmittal in candidates:
+            for candidate_index, transmittal in enumerate(candidates, start=1):
+                if progress_state is not None and date_mode:
+                    progress_state.update({
+                        "current": candidate_index,
+                        "total": len(candidates),
+                        "message": f"Checking transmittal {candidate_index} of {len(candidates)}... ({len(rows)} matching claims found)",
+                    })
                 transmittal_number = str(transmittal.get("transmittalNumber") or "")
                 transmittal_status = transmittal.get("transmittalStatusDescription") or ""
                 claims = beacon_api.get_claims(transmittal.get("id"))
                 if patient_query:
                     claims = [claim for claim in claims if patient_matches(claim)]
+                    if not claims:
+                        continue
+                if date_mode:
+                    matched_claims = []
+                    for claim in claims:
+                        admission = discharge = None
+                        embedded_admission = claim.get("admissionDateTime") or (claim.get("phiccF2") or {}).get("admissionDateTime")
+                        embedded_discharge = claim.get("dischargeDateTime") or (claim.get("phiccF2") or {}).get("dischargeDateTime")
+                        try:
+                            if embedded_admission:
+                                admission = _beacon_local_datetime(embedded_admission)
+                            if embedded_discharge:
+                                discharge = _beacon_local_datetime(embedded_discharge)
+                            if not admission or not discharge:
+                                cf2 = cf2_api.get_cf2(claim.get("id")) or {}
+                                admission = admission or _beacon_local_datetime(cf2.get("admissionDateTime"))
+                                discharge = discharge or _beacon_local_datetime(cf2.get("dischargeDateTime"))
+                        except Exception as cf2_exc:
+                            logger.warning(f"Could not fetch CF2 dates for claim {claim.get('id')}: {cf2_exc}")
+                        if claim_matches_dates(admission):
+                            claim["_admission"] = admission
+                            claim["_discharge"] = discharge
+                            matched_claims.append(claim)
+                    claims = matched_claims
                     if not claims:
                         continue
                 transmittals.append({
@@ -952,16 +1042,29 @@ def get_finalize_claims():
                 })
                 for claim in claims:
                     form1 = claim.get("phiccF1") or {}
-                    admission_date = ""
-                    discharge_date = ""
-                    try:
-                        cf2 = cf2_api.get_cf2(claim.get("id")) or {}
-                        admission = _beacon_local_datetime(cf2.get("admissionDateTime"))
-                        discharge = _beacon_local_datetime(cf2.get("dischargeDateTime"))
+                    admission = claim.get("_admission")
+                    discharge = claim.get("_discharge")
+                    if not date_mode:
+                        admission_date = ""
+                        discharge_date = ""
+                        try:
+                            embedded_admission = claim.get("admissionDateTime") or (claim.get("phiccF2") or {}).get("admissionDateTime")
+                            embedded_discharge = claim.get("dischargeDateTime") or (claim.get("phiccF2") or {}).get("dischargeDateTime")
+                            if embedded_admission:
+                                admission = _beacon_local_datetime(embedded_admission)
+                            if embedded_discharge:
+                                discharge = _beacon_local_datetime(embedded_discharge)
+                            if not admission or not discharge:
+                                cf2 = cf2_api.get_cf2(claim.get("id")) or {}
+                                admission = admission or _beacon_local_datetime(cf2.get("admissionDateTime"))
+                                discharge = discharge or _beacon_local_datetime(cf2.get("dischargeDateTime"))
+                            admission_date = admission.strftime("%Y-%m-%d") if admission else ""
+                            discharge_date = discharge.strftime("%Y-%m-%d") if discharge else ""
+                        except Exception as cf2_exc:
+                            logger.warning(f"Could not fetch CF2 dates for claim {claim.get('id')}: {cf2_exc}")
+                    else:
                         admission_date = admission.strftime("%Y-%m-%d") if admission else ""
                         discharge_date = discharge.strftime("%Y-%m-%d") if discharge else ""
-                    except Exception as cf2_exc:
-                        logger.warning(f"Could not fetch CF2 dates for claim {claim.get('id')}: {cf2_exc}")
                     rows.append({
                         "transmittal_id": transmittal.get("id"),
                         "claim_id": claim.get("id"),
@@ -977,6 +1080,8 @@ def get_finalize_claims():
                     })
             if patient_query and not rows:
                 not_found.append(patient_query)
+        if progress_state is not None:
+            progress_state.update({"done": True, "message": f"Search complete. {len(rows)} matching claims found."})
         return jsonify({
             "transmittals": transmittals,
             "not_found": not_found,
@@ -984,7 +1089,23 @@ def get_finalize_claims():
         })
     except Exception as exc:
         logger.error(f"Finalize Claims lookup failed for {patient_query or ', '.join(transmittal_numbers)}: {exc}")
+        if progress_state is not None:
+            progress_state.update({"done": True, "message": "Beacon lookup failed. See the server log for details."})
         return jsonify({"error": "Beacon lookup failed. Check your connection and Beacon settings, then try again."}), 502
+
+
+_finalize_claim_progress = {}
+_finalize_claim_progress_lock = threading.Lock()
+
+
+@app.route("/api/beacon/finalize-claims/progress/<search_id>", methods=["GET"])
+@login_required
+def get_finalize_claim_search_progress(search_id):
+    with _finalize_claim_progress_lock:
+        progress = _finalize_claim_progress.get(search_id)
+        if not progress or progress["user_id"] != current_user().id:
+            return jsonify({"error": "Search progress not found."}), 404
+        return jsonify({key: value for key, value in progress.items() if key != "user_id"})
 
 
 def _beacon_edit_settings(user):
@@ -1031,7 +1152,19 @@ def transmit_finalize_claims_transmittal(transmittal_id):
 def _beacon_local_datetime(value):
     if not value:
         return None
-    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    text = str(value).strip()
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        parsed = None
+        for date_format in ("%m-%d-%Y", "%m/%d/%Y", "%Y-%m-%d"):
+            try:
+                parsed = datetime.strptime(text, date_format)
+                break
+            except ValueError:
+                continue
+        if parsed is None:
+            raise
     if parsed.tzinfo is not None:
         parsed = parsed.astimezone(timezone(timedelta(hours=8))).replace(tzinfo=None)
     return parsed

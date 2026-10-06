@@ -292,6 +292,55 @@ def search_transmittals(query, client_id=None, search_days=93):
     return list(unique.values())
 
 
+def get_transmittals_in_range(date_from, date_to, client_id=None):
+    """List transmittals created within [date_from, date_to] (dates or ISO strings)."""
+    if client_id is None:
+        client_id = get_client_id()
+
+    date_from = date_from.strftime("%Y-%m-%d") if hasattr(date_from, "strftime") else str(date_from)
+    date_to = date_to.strftime("%Y-%m-%d") if hasattr(date_to, "strftime") else str(date_to)
+    # Beacon's transmittal table expects Philippine local day boundaries
+    # represented in UTC (same convention as the confirmed CF2 lookup).
+    start_day = datetime.strptime(date_from, "%Y-%m-%d").date() - timedelta(days=1)
+    api_date_from = f"{start_day:%Y-%m-%d}T16:00:00.000Z"
+    api_date_to = f"{date_to}T15:59:59.999Z"
+
+    rows = []
+    item_start = 0
+    page_size = 30
+    total = None
+    while total is None or item_start < total:
+        data = _get(
+            "/api/PHICTransmittal/GetAllPHICTransmittal",
+            params={
+                "clientId": client_id,
+                "dateFrom": api_date_from,
+                "dateTo": api_date_to,
+                "itemStart": item_start,
+                "itemEnd": item_start + page_size,
+                "que": "",
+                "transmittalPackageType": 7,
+            },
+        ) or {}
+        if isinstance(data, list):
+            page = data
+        else:
+            page = data.get("transmittalList") or data.get("items") or data.get("data") or []
+            if total is None and data.get("totalTransmittals") is not None:
+                total = int(data["totalTransmittals"])
+        rows.extend(page)
+        item_start += page_size
+        if not page or len(page) < page_size:
+            break
+
+    unique = {}
+    for row in rows:
+        identity = row.get("id") or row.get("transmittalNumber")
+        if identity is not None:
+            unique[str(identity)] = row
+    return list(unique.values())
+
+
 def get_transmittal_by_id(transmittal_id):
     return _get(
         "/api/PHICTransmittal/GetPHICTransmittalById",

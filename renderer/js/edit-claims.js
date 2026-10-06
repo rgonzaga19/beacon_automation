@@ -14,6 +14,17 @@ let courseInWardRowIndex = 0;
 const EDIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 const TRANSMIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
 const TRANSMITTED_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+const COPY_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const CHECK_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
+async function copyTextToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
 
 function renderCourseInWardRows(entries = []) {
   const container = document.getElementById("courseInWardRows");
@@ -104,27 +115,63 @@ function showMessage(message, error = false) {
 lookupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const searchValue = transmittalInput.value.trim();
-  if (!searchValue) return;
-  const isPatientSearch = /[a-z]/i.test(searchValue);
+  const admissionFrom = document.getElementById("admissionFrom").value;
+  const admissionTo = document.getElementById("admissionTo").value;
+  const dateMode = !searchValue && Boolean(admissionFrom || admissionTo);
+  if (!searchValue && !dateMode) {
+    showMessage("Enter a transmittal number, a patient name, or at least one date filter.", true);
+    return;
+  }
+  const isPatientSearch = !dateMode && /[a-z]/i.test(searchValue);
   const numbers = searchValue.split(/\s+/).filter(Boolean);
-  const searchParams = new URLSearchParams(isPatientSearch
-    ? { patient: searchValue }
-    : { transmittal: numbers.join(" ") });
+  const searchParams = new URLSearchParams(dateMode
+    ? {
+        ...(admissionFrom ? { admission_from: admissionFrom } : {}),
+        ...(admissionTo ? { admission_to: admissionTo } : {}),
+      }
+    : isPatientSearch
+      ? { patient: searchValue }
+      : { transmittal: numbers.join(" ") });
+  const searchId = dateMode
+    ? (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`)
+    : "";
+  if (searchId) searchParams.set("search_id", searchId);
+  let progressPoll = null;
 
   lookupButton.disabled = true;
   lookupButton.textContent = "SEARCHING...";
   summary.hidden = true;
-  showMessage(isPatientSearch
-    ? `Searching Beacon claims for patient name "${searchValue}"...`
-    : `Searching Beacon for ${numbers.length} transmittal${numbers.length === 1 ? "" : "s"}...`);
+  showMessage(dateMode
+    ? "Searching Beacon claims by admission date range..."
+    : isPatientSearch
+      ? `Searching Beacon claims for patient name "${searchValue}"...`
+      : `Searching Beacon for ${numbers.length} transmittal${numbers.length === 1 ? "" : "s"}...`);
+  if (searchId) {
+    progressPoll = window.setInterval(async () => {
+      try {
+        const progressResponse = await fetch(`${API_BASE}/api/beacon/finalize-claims/progress/${encodeURIComponent(searchId)}`);
+        if (!progressResponse.ok) return;
+        const progress = await progressResponse.json();
+        if (progress.message) showMessage(progress.message);
+        if (progress.done) {
+          window.clearInterval(progressPoll);
+          progressPoll = null;
+        }
+      } catch (_) {
+        // Keep the main lookup request running if a progress poll fails.
+      }
+    }, 1000);
+  }
   try {
     const response = await fetch(`${API_BASE}/api/beacon/finalize-claims?${searchParams}`);
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Unable to look up these transmittals.");
     if (!result.transmittals.length) {
-      showMessage(isPatientSearch
-        ? `No claims were found for patient name "${searchValue}".`
-        : `No matching transmittals were found: ${result.not_found.join(", ")}`);
+      showMessage(dateMode
+        ? "No claims were found in that date range."
+        : isPatientSearch
+          ? `No claims were found for patient name "${searchValue}".`
+          : `No matching transmittals were found: ${result.not_found.join(", ")}`);
       return;
     }
 
@@ -179,11 +226,32 @@ lookupForm.addEventListener("submit", async (event) => {
       }
       row.append(actionCell);
       row.dataset.transmittalNumber = claim.transmittal_number || "";
+      row.dataset.transmittalStatus = claim.transmittal_status || "";
       [claim.transmittal_number, claim.claim_series, claim.patient_name, claim.member_name, claim.admission_date, claim.discharge_date, claim.status].forEach((value) => {
         const cell = document.createElement("td");
         cell.textContent = value || "-";
         row.append(cell);
       });
+      const transmittalCell = row.children[1];
+      if (transmittalCell && claim.transmittal_number) {
+        const copyButton = document.createElement("button");
+        copyButton.className = "cyber-btn icon-btn cell-copy-btn";
+        copyButton.type = "button";
+        copyButton.innerHTML = COPY_ICON_SVG;
+        copyButton.title = "Copy transmittal";
+        copyButton.setAttribute("aria-label", `Copy transmittal ${claim.transmittal_number}`);
+        copyButton.addEventListener("click", async (event) => {
+          event.stopPropagation();
+          const copied = await copyTextToClipboard(claim.transmittal_number);
+          copyButton.innerHTML = copied ? CHECK_ICON_SVG : COPY_ICON_SVG;
+          copyButton.title = copied ? "Copied" : "Copy failed";
+          setTimeout(() => {
+            copyButton.innerHTML = COPY_ICON_SVG;
+            copyButton.title = "Copy transmittal";
+          }, 1500);
+        });
+        transmittalCell.append(copyButton);
+      }
       const transmittalStatusCell = document.createElement("td");
       const badge = document.createElement("span");
       badge.className = `transmittal-status ${statusClass(claim.transmittal_status)}`;
@@ -197,6 +265,7 @@ lookupForm.addEventListener("submit", async (event) => {
   } catch (error) {
     showMessage(error.message || "Beacon lookup failed. Try again.", true);
   } finally {
+    if (progressPoll) window.clearInterval(progressPoll);
     lookupButton.disabled = false;
     lookupButton.textContent = "LOOK UP";
   }
@@ -325,6 +394,7 @@ claimsBody.addEventListener("click", (event) => {
         const row = transmitButton.closest("tr");
         row.querySelector(".transmittal-status").className = `transmittal-status ${statusClass(result.status)}`;
         row.querySelector(".transmittal-status").lastChild.textContent = result.status || "TRANSMITTED";
+        row.dataset.transmittalStatus = result.status || "TRANSMITTED";
         const details = [result.e_ticket_number && `eTicket ${result.e_ticket_number}`, result.control_number && `TCN ${result.control_number}`].filter(Boolean).join(" | ");
         if (details) row.querySelector(".transmittal-status").title = details;
         transmitButton.dataset.state = "transmitted";
@@ -579,6 +649,7 @@ function markRowTransmitted(row, sourceRow) {
     badge.className = sourceBadge.className;
     badge.lastChild.textContent = sourceBadge.textContent;
     badge.title = sourceBadge.title;
+    row.dataset.transmittalStatus = sourceRow.dataset.transmittalStatus;
   }
   const button = row.querySelector('[data-action="transmit-claim"]');
   if (button && button.dataset.state !== "transmitted") {
@@ -678,7 +749,6 @@ async function runTransmitAll() {
 
   const entries = Array.from(groups.entries());
   transmitAllButton.disabled = true;
-  const originalText = transmitAllButton.textContent;
   transmitAllButton.textContent = "TRANSMITTING ALL...";
   let transmitted = 0;
   let failed = 0;
@@ -712,9 +782,42 @@ async function runTransmitAll() {
     }
   } finally {
     transmitAllButton.disabled = false;
-    transmitAllButton.textContent = originalText;
+    transmitAllButton.textContent = "AUTO TRANSMIT ALL";
   }
 }
+
+document.getElementById("copyTransmittalsButton").addEventListener("click", async () => {
+  const numbers = [];
+  claimsBody.querySelectorAll("tr[data-claim-row]").forEach((row) => {
+    const value = row.dataset.transmittalNumber;
+    if (value && !numbers.includes(value)) numbers.push(value);
+  });
+  if (!numbers.length) {
+    setTransmitAllStatus("No transmittal numbers to copy. Run a lookup first.", true);
+    return;
+  }
+  const copied = await copyTextToClipboard(numbers.join("\n"));
+  setTransmitAllStatus(copied
+    ? `Copied ${numbers.length} transmittal number${numbers.length === 1 ? "" : "s"}.`
+    : "Copy failed. Your browser blocked clipboard access.", !copied);
+});
+
+document.getElementById("copyDraftTransmittalsButton").addEventListener("click", async () => {
+  const numbers = [];
+  claimsBody.querySelectorAll("tr[data-claim-row]").forEach((row) => {
+    const value = row.dataset.transmittalNumber;
+    if (!value || numbers.includes(value)) return;
+    if (String(row.dataset.transmittalStatus || "").trim().toUpperCase() === "DRAFT") numbers.push(value);
+  });
+  if (!numbers.length) {
+    setTransmitAllStatus("No DRAFT transmittals to copy. Run a lookup first.", true);
+    return;
+  }
+  const copied = await copyTextToClipboard(numbers.join("\n"));
+  setTransmitAllStatus(copied
+    ? `Copied ${numbers.length} DRAFT transmittal number${numbers.length === 1 ? "" : "s"}.`
+    : "Copy failed. Your browser blocked clipboard access.", !copied);
+});
 
 transmitAllButton.addEventListener("click", () => {
   const { groups } = getReadyTransmittalGroups();
