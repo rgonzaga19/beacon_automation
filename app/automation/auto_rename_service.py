@@ -5,7 +5,7 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 
 
 def safe_component(value):
@@ -41,7 +41,7 @@ def build_template(group_size=4, num_groups=10):
     return workbook
 
 
-def create_preview(pdf_files, workbook_file, document_order):
+def create_preview(pdf_files, groups, assignments, document_order):
     order = [safe_component(item).upper() for item in document_order if safe_component(item)]
     if not order or len(order) > 20 or len(set(order)) != len(order):
         raise ValueError("Choose between 1 and 20 unique document types in the document order.")
@@ -54,62 +54,40 @@ def create_preview(pdf_files, workbook_file, document_order):
     basenames = [Path(item.filename).name.casefold() for item in pdfs]
     if len(basenames) != len(set(basenames)):
         raise ValueError("PDF filenames must be unique so each selected file can be matched safely.")
-    if not workbook_file or not workbook_file.filename or Path(workbook_file.filename).suffix.lower() not in {".xlsx", ".xlsm"}:
-        raise ValueError("Choose an Excel workbook (.xlsx or .xlsm).")
-
-    workbook_file.stream.seek(0)
-    workbook = load_workbook(workbook_file.stream, read_only=True, data_only=True)
-    try:
-        values = list(workbook.active.iter_rows(values_only=True))
-    finally:
-        workbook.close()
-    if not values:
-        raise ValueError("The Excel file is empty.")
-    headers = [re.sub(r"\s+", " ", str(value or "")).strip() or f"Column {i + 1}" for i, value in enumerate(values[0])]
-    rows = [list(row) for row in values[1:]]
-    if not rows:
-        raise ValueError("The Excel file has no data rows.")
-    name_index = next((i for i, header in enumerate(headers) if header.strip().upper() in {
-        "FILE NAME", "FILENAME", "LAST NAME", "LASTNAME", "SURNAME", "PATIENT NAME", "NAME"
-    }), 0)
-    group_index = next((i for i, header in enumerate(headers) if header.strip().upper() in {
-        "GROUP", "GROUP #", "GROUP NO", "GROUP NUMBER"
-    }), None)
-    folder_index = next((i for i, header in enumerate(headers) if header.strip().upper() in {
-        "FOLDER NAME", "FOLDER", "FOLDER NAME (OPTIONAL)", "OUTPUT FOLDER", "GROUP FOLDER", "FOLDER FILENAME"
-    }), None)
-
     group_size = len(order)
-    group_count = (len(pdfs) + group_size - 1) // group_size
+    if not isinstance(groups, list) or not groups or len(groups) > len(pdfs):
+        raise ValueError("Choose between one group and one group per PDF.")
+    if not isinstance(assignments, list) or len(assignments) != len(pdfs):
+        raise ValueError("Assign every PDF to a group.")
+    members = [[] for _ in groups]
+    for pdf, group_index in zip(pdfs, assignments):
+        if not isinstance(group_index, int) or isinstance(group_index, bool) or not 0 <= group_index < len(groups):
+            raise ValueError("A PDF has an invalid group assignment.")
+        members[group_index].append(pdf)
+    if any(not group for group in members):
+        raise ValueError("Each group must contain at least one PDF.")
     result = []
-    for group in range(group_count):
-        block = pdfs[group * group_size:(group + 1) * group_size]
-        excel_row = rows[group] if group < len(rows) else []
-        name = safe_component(excel_row[name_index] if name_index < len(excel_row) else "")
-        folder = safe_component(excel_row[folder_index] if folder_index is not None and folder_index < len(excel_row) else "") or name
-        first, last = group * group_size + 1, (group + 1) * group_size
-        group_status = "OK — Excel group" if name else "WARNING — blank Excel filename"
-        if group_index is not None and group < len(rows):
-            match = re.fullmatch(r"\s*(\d+)\s*[-–—]\s*(\d+)\s*", str(excel_row[group_index] or ""))
-            if not match or (int(match.group(1)), int(match.group(2))) != (first, last):
-                group_status = f"WARNING — expected Group {first}-{last}"
-        if len(block) < group_size:
-            group_status = "WARNING — incomplete PDF group"
+    for group, block in enumerate(members):
+        group_data = groups[group] if isinstance(groups[group], dict) else {}
+        name = safe_component(group_data.get("name", ""))
+        folder = safe_component(group_data.get("folder", "")) or name
+        group_status = "OK — named group" if name else "WARNING — blank group name"
+        if len(block) != group_size:
+            group_status = f"WARNING — group has {len(block)} PDF(s); expected {group_size}"
         for index, pdf in enumerate(block):
-            doc_type = order[index]
+            doc_type = order[index] if index < group_size else "EXTRA"
             new_name = f"{name} - {doc_type}.pdf" if name else ""
             target = f"RENAMED/{folder}/{new_name}" if new_name and folder else ""
+            row_status = group_status if index < group_size else "WARNING — too many PDFs in group"
             result.append({
                 "old": Path(pdf.filename).name, "group": name, "new": new_name,
-                "status": group_status, "group_no": group + 1, "doc_type": doc_type,
-                "excel_row": group + 2, "target": target,
+                "status": row_status, "group_no": group + 1, "doc_type": doc_type,
+                "excel_row": "", "target": target,
             })
-    if len(rows) < group_count:
-        result.append({"old": "", "group": "", "new": "", "status": f"WARNING — {group_count - len(rows)} PDF group(s) have no Excel row", "group_no": "", "doc_type": "", "excel_row": "", "target": ""})
     targets = [row["target"].lower() for row in result if row["status"].startswith("OK") and row["target"]]
     if len(targets) != len(set(targets)):
-        raise ValueError("The preview creates duplicate output filenames. Check the Excel filename values.")
-    return pdfs, result, group_count
+        raise ValueError("The preview creates duplicate output filenames. Check the group names and folder names.")
+    return pdfs, result, len(groups)
 
 
 def build_renamed_archive(pdfs, rows):

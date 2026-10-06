@@ -10,19 +10,19 @@
 </head>
 <body>
   <header class="rename-header">
-    <div><h1>PDF Auto Rename</h1><p>Organize claim PDFs using the filename groups in your Excel workbook.</p></div>
-    <button id="templateBtn" class="quiet-btn" type="button">Download Excel template</button>
+    <div><h1>PDF Auto Rename</h1><p>Organize claim PDFs by entering a name for each group.</p></div>
   </header>
   <main class="rename-body">
     <section class="card setup-card">
-      <div class="section-heading"><div><span class="step">01</span><h2>Choose your files</h2></div><p>Select PDFs in the order they should be grouped, plus an Excel filename mapping.</p></div>
+      <div class="section-heading"><div><span class="step">01</span><h2>Choose your files</h2></div><p>Select PDFs, then enter a name for each group.</p></div>
       <div class="upload-grid">
         <label class="field"><span>PDF files</span><input id="pdfFiles" type="file" accept=".pdf,application/pdf" multiple><small id="pdfHint">Choose the PDFs to rename. Files are sorted naturally by filename.</small></label>
-        <label class="field"><span>Excel mapping</span><input id="workbookFile" type="file" accept=".xlsx,.xlsm"><small>One row per patient group. Include a File Name or Last Name column.</small></label>
       </div>
-      <div class="order-head"><div><h3>Document order</h3><p>Each group follows this sequence.</p></div><button id="addType" class="quiet-btn small-btn" type="button">Add document type</button></div>
+      <div class="order-head"><div><h3>Document order</h3><p>Move types with the arrows. Your list saves automatically on this device.</p></div><button id="addType" class="quiet-btn small-btn" type="button">Add document type</button></div>
       <div id="documentOrder" class="order-list"></div>
-      <div class="actions"><button id="previewBtn" class="primary-btn" type="button">Analyze and preview</button><span id="status" role="status" aria-live="polite">Choose files to get started.</span></div>
+      <div class="group-head"><div><h3>Groups</h3><p>Edit each group’s PDF range. Document types follow the order above within each range.</p></div><div class="group-tools"><button id="pasteGroupNames" class="quiet-btn small-btn" type="button">Paste names from clipboard</button><button id="copyNamesToFolders" class="quiet-btn small-btn" type="button">Copy filenames to folder names</button></div></div>
+      <div id="groupNames" class="group-list"><p class="empty">Choose PDFs to create editable groups.</p></div>
+      <div class="actions"><button id="previewBtn" class="primary-btn" type="button">Analyze and preview</button><button id="clearBtn" class="quiet-btn" type="button">Clear</button><span id="status" role="status" aria-live="polite">Choose files to get started.</span></div>
     </section>
     <section class="card preview-card">
       <div class="preview-heading"><div><span class="step">02</span><div><h2>Review output</h2><p id="summary">Your proposed filenames will appear here.</p></div></div><button id="downloadBtn" class="primary-btn" type="button" disabled>Rename and download ZIP</button></div>
@@ -30,24 +30,9 @@
       <p class="privacy-note">The download contains files in <strong>RENAMED / group folder / filename</strong>. Your selected originals remain unchanged.</p>
     </section>
   </main>
-  <footer class="credits-marquee" role="contentinfo" aria-label="Credits">
-    <div class="credits-track">
-      <span class="credits-group">
-        <span class="credits-kicker">Special thanks to the creators</span>
-        <strong class="credits-name">LLOYD CAJUIGAN</strong>
-        <span class="credits-amp">and</span>
-        <strong class="credits-name">JOMS MANGARIN</strong>
-        <span class="credits-dot" aria-hidden="true">&#10022;</span>
-      </span>
-      <span class="credits-group" aria-hidden="true">
-        <span class="credits-kicker">Special thanks to the creators</span>
-        <strong class="credits-name">LLOYD CAJUIGAN</strong>
-        <span class="credits-amp">and</span>
-        <strong class="credits-name">JOMS MANGARIN</strong>
-        <span class="credits-dot" aria-hidden="true">&#10022;</span>
-      </span>
-    </div>
+  <footer class="credits-footer" role="contentinfo" aria-label="Credits">
+    <p>Credits to <strong>LLOYD CAJUIGAN</strong> and <strong>JOMS MANGARIN</strong></p>
   </footer>
-  <script src="js/auto-rename.js"></script>
+  <script src="js/auto-rename.js?v=group-ranges-paste-20261006"></script>
 </body>
 </html>

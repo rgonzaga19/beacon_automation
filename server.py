@@ -15,6 +15,7 @@ import threading
 import tempfile
 import uuid
 import re
+import json
 from io import BytesIO
 from datetime import datetime, timedelta, timezone
 from contextvars import ContextVar
@@ -600,9 +601,13 @@ def soa_excel_save_generated():
 def auto_rename_process():
     try:
         uploads = request.files.getlist("pdfs")
-        workbook = request.files.get("workbook")
+        try:
+            groups = json.loads(request.form.get("groups", "[]"))
+            assignments = json.loads(request.form.get("assignments", "[]"))
+        except json.JSONDecodeError as exc:
+            raise ValueError("Group details are not valid. Please review the group entries.") from exc
         document_order = request.form.get("document_order", "CSF,CF4,PBEF,AF").split(",")
-        pdfs, rows, group_count = create_preview(uploads, workbook, document_order)
+        pdfs, rows, group_count = create_preview(uploads, groups, assignments, document_order)
         if request.path.endswith("/preview"):
             return jsonify({"rows": rows, "pdf_count": len(pdfs), "group_count": group_count})
         archive, renamed = build_renamed_archive(pdfs, rows)
@@ -616,7 +621,7 @@ def auto_rename_process():
         return jsonify({"error": str(exc)}), 400
     except Exception:
         logger.exception("PDF auto rename failed")
-        return jsonify({"error": "Unable to process the PDFs and Excel workbook."}), 500
+        return jsonify({"error": "Unable to process the PDFs and group names."}), 500
 
 
 @app.route("/api/auto-rename/template", methods=["GET"])
