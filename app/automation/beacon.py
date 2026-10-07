@@ -12,7 +12,7 @@ from datetime import date as _date, datetime as _datetime
 from app.api import beacon as beacon_api
 from app.api import cf2 as cf2_api
 from app.core.logger import logger
-from app.domain.reports import report
+from app.domain.reports import ReportManager
 
 
 # Keep these values in lockstep with DEFAULT_CF4_SETTINGS in server.py /
@@ -676,6 +676,7 @@ def _process_transmittal(
     transmittals,
     auto_encode_cf4,
     cf4_data,
+    run_report,
 ):
     """Process one transmittal end-to-end using only Beacon APIs."""
     transmittal_no = str(transmittal_no).strip()
@@ -690,7 +691,7 @@ def _process_transmittal(
     transmittal = beacon_api.get_transmittal(transmittal_no)
     if not transmittal:
         logger.warning(f"TRANSMITTAL NOT FOUND: {transmittal_no}")
-        report.skipped(
+        run_report.skipped(
             transmittal=transmittal_no,
             remarks="Transmittal not found",
         )
@@ -748,7 +749,7 @@ def _process_transmittal(
         logger.error(
             "No medicine found, no uploaded SOA, skipping patient."
         )
-        report.skipped(
+        run_report.skipped(
             transmittal=transmittal_no,
             remarks=(
                 "No medicine found, no uploaded SOA, skipping patient"
@@ -792,7 +793,7 @@ def _process_transmittal(
     )
 
     logger.success(f"TRANSMITTAL SUCCESS: {transmittal_no}")
-    report.success(
+    run_report.success(
         transmittal=transmittal_no,
         mapped=len(medicines),
     )
@@ -802,7 +803,7 @@ def run(transmittals, auto_encode_cf4=False, cf4_data=None, should_stop=None):
     """Run CF4 automation for all transmittals using API calls only."""
     cf4_data = {**DEFAULT_CF4_DATA, **(cf4_data or {})}
     should_stop = should_stop or (lambda: False)
-    report.results.clear()
+    run_report = ReportManager()
 
     # Preserve original recovery semantics: initial attempt + one retry.
     max_recovery_retries = 1
@@ -832,6 +833,7 @@ def run(transmittals, auto_encode_cf4=False, cf4_data=None, should_stop=None):
                     transmittals,
                     auto_encode_cf4,
                     cf4_data,
+                    run_report,
                 )
                 last_error = None
                 break
@@ -868,12 +870,12 @@ def run(transmittals, auto_encode_cf4=False, cf4_data=None, should_stop=None):
             )
             logger.warning("Skipping to next patient...")
             logger.error(f"TRANSMITTAL FAILED: {transmittal_no}")
-            report.failed(
+            run_report.failed(
                 transmittal=transmittal_no,
                 remarks=str(last_error),
             )
 
-    summary = report.summary()
+    summary = run_report.summary()
 
     logger.info("\n")
     logger.info("=" * 60)
@@ -884,3 +886,4 @@ def run(transmittals, auto_encode_cf4=False, cf4_data=None, should_stop=None):
     logger.info(f"Skipped    : {summary['skipped']}")
     logger.info(f"Failed     : {summary['failed']}")
     logger.info("=" * 60)
+    return run_report.results

@@ -66,7 +66,6 @@ from app.api import beacon as beacon_api
 from app.api import cf2 as cf2_api
 from app.api import soa as soa_api
 from app.domain.time_parser import format_beacon_time
-from app.domain.reports import report
 from app.domain.soa_excel import batch_workbooks, build_batch_template, generate_workbook
 from app.core.security import decrypt_field, encrypt_field
 
@@ -2027,6 +2026,7 @@ def soa_stop():
 # ---------------------------------------------------------------------------
 def _run_beacon_automation(user_id, beacon_settings, transmittals, auto_encode_cf4, cf4_settings, stop_event):
     stopped = False
+    results = []
     room_token = _emit_room.set(user_room(user_id))
     try:
         auth_key = browser_session.auth_context_key(
@@ -2035,7 +2035,7 @@ def _run_beacon_automation(user_id, beacon_settings, transmittals, auto_encode_c
         )
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
-            beacon_run(
+            results = beacon_run(
                 transmittals,
                 auto_encode_cf4=auto_encode_cf4,
                 cf4_data=cf4_settings,
@@ -2046,7 +2046,7 @@ def _run_beacon_automation(user_id, beacon_settings, transmittals, auto_encode_c
         emit_to_current_room("log", {"message": f"ERROR: {ex}", "level": "ERROR"})
     finally:
         _beacon_runs.pop(user_id, None)
-        emit_to_current_room("beacon_done", {"results": report.results, "stopped": stopped})
+        emit_to_current_room("beacon_done", {"results": results, "stopped": stopped})
         _emit_room.reset(room_token)
 
 
