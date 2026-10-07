@@ -1,9 +1,6 @@
-import os
 import re
 import sys
 from datetime import datetime, time
-from pathlib import Path
-import openpyxl
 from app.domain.cf2_mapper import build_cf2_data
 from app.api import cf2 as cf2_api
 from app.domain.time_parser import format_beacon_time
@@ -57,19 +54,6 @@ def print(message="", *args, **kwargs):
 
 
 
-def resource_path(relative_path):
-    project_root = Path(__file__).resolve().parents[2]
-    return str(project_root / relative_path)
-
-
-CF2_TEMPLATE_PATH = resource_path(
-    os.path.join(
-        "templates",
-        "CF2_Template.xlsx"
-    )
-)
-
-
 class TransmittalNotFoundError(Exception):
     """
     Raised when mode="existing_draft" and the transmittal number from the
@@ -87,11 +71,12 @@ class TransmittalNotFoundError(Exception):
 
 class CF2Automation:
 
-    def __init__(self, uploaded_excel_path=None, mode="new_draft", progress_callback=None):
-        # Path to the workbook the user actually uploaded. Sheet2 (Billing
-        # Clerk / Accountant name, contact no., official capacity) must be
-        # read from THIS file, not from the bundled CF2_TEMPLATE_PATH.
-        self.uploaded_excel_path = uploaded_excel_path or CF2_TEMPLATE_PATH
+    def __init__(self, mode="new_draft", progress_callback=None,
+                 account_receivable_name="", account_receivable_designation="",
+                 account_receivable_number=""):
+        self.account_receivable_name = str(account_receivable_name or "").strip()
+        self.account_receivable_designation = str(account_receivable_designation or "").strip()
+        self.account_receivable_number = str(account_receivable_number or "").strip()
         # "new_draft" (default): fill_cf2() creates a brand-new Beacon
         # draft via Create Draft + Add Claims, using each row's Member
         # PIN — the original behavior, unchanged.
@@ -187,34 +172,16 @@ class CF2Automation:
         return None
 
     # ------------------------------------------------------------------
-    # Excel lookup — "Prepared by" (Billing Clerk / Accountant) name
+    # Account Receivable details entered in the CF2 page header modal
     # ------------------------------------------------------------------
     def _get_billing_clerk_name(self):
-        """Reads the Billing Clerk / Accountant name from Sheet2!A1 of the
-        UPLOADED workbook (falls back to CF2_TEMPLATE_PATH only if no file
-        was uploaded)."""
-        wb = openpyxl.load_workbook(self.uploaded_excel_path, data_only=True)
-        sheet2 = wb["Sheet2"]
-        value = sheet2["A1"].value
-        wb.close()
-        return str(value).strip() if value is not None else ""
+        return self.account_receivable_name
 
     def _get_billing_clerk_cp(self):
-        wb = openpyxl.load_workbook(self.uploaded_excel_path, data_only=True)
-        sheet2 = wb["Sheet2"]
-        value = sheet2["A2"].value
-        wb.close()
-        return str(value).strip() if value else ""
+        return self.account_receivable_number
 
     def _get_official_capacity_designation(self):
-        """Reads the Official Capacity/Designation from Sheet2!B1 of the
-        UPLOADED workbook (falls back to CF2_TEMPLATE_PATH only if no file
-        was uploaded)."""
-        wb = openpyxl.load_workbook(self.uploaded_excel_path, data_only=True)
-        sheet2 = wb["Sheet2"]
-        value = sheet2["B1"].value
-        wb.close()
-        return str(value).strip() if value is not None else ""
+        return self.account_receivable_designation
 
     def _get_ids(self):
         """Return API-resolved IDs for the patient currently being processed."""

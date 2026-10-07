@@ -635,6 +635,31 @@ document.getElementById("guideCard").addEventListener("click", () => {
 const startBtn = document.getElementById("startBtn");
 const startBtnLabel = document.getElementById("startBtnLabel");
 const clearBtn = document.getElementById("clearBtn");
+const accountReceivableBtn = document.getElementById("accountReceivableBtn");
+const accountReceivable = { name: "", designation: "", number: "" };
+accountReceivableBtn.addEventListener("click", () => {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box guide-modal">
+        <h3>Account Receivable</h3>
+        <div class="field-group"><label for="arName">Name</label><input id="arName" type="text" value="${escapeHtml(accountReceivable.name)}"></div>
+        <div class="field-group"><label for="arDesignation">Designation</label><input id="arDesignation" type="text" value="${escapeHtml(accountReceivable.designation)}"></div>
+        <div class="field-group"><label for="arNumber">Number</label><input id="arNumber" type="text" value="${escapeHtml(accountReceivable.number)}"></div>
+        <div class="modal-actions" style="margin-top:18px">
+          <button class="cyber-btn" id="arCancelBtn" type="button">Cancel</button>
+          <button class="solid-btn" id="arSaveBtn" type="button">Save</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById("arCancelBtn").addEventListener("click", () => { root.innerHTML = ""; });
+  document.getElementById("arSaveBtn").addEventListener("click", () => {
+    accountReceivable.name = document.getElementById("arName").value.trim();
+    accountReceivable.designation = document.getElementById("arDesignation").value.trim();
+    accountReceivable.number = document.getElementById("arNumber").value.trim();
+    root.innerHTML = "";
+  });
+});
 let cf2StopRequested = false;
 
 copyTransmittalsBtn.addEventListener("click", async () => {
@@ -697,7 +722,14 @@ startBtn.addEventListener("click", async () => {
   summaryLogBox.scrollTop = summaryLogBox.scrollHeight;
   setControlsRunning(true);
 
-  const result = await fetchJSON("/api/cf2/start", { method: "POST" });
+  const result = await fetchJSON("/api/cf2/start", {
+    method: "POST",
+    body: JSON.stringify({
+      account_receivable_name: accountReceivable.name,
+      account_receivable_designation: accountReceivable.designation,
+      account_receivable_number: accountReceivable.number,
+    }),
+  });
   if (result.error) {
     log("");
     log(`ERROR: ${result.error}`);

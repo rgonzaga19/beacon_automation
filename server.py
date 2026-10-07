@@ -1801,8 +1801,10 @@ def _run_cf2_automation(user_id, beacon_settings, state, stop_event):
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             automation = CF2Automation(
-                uploaded_excel_path=state["selected_file"],
                 mode=mode,
+                account_receivable_name=state.get("account_receivable_name", ""),
+                account_receivable_designation=state.get("account_receivable_designation", ""),
+                account_receivable_number=state.get("account_receivable_number", ""),
                 progress_callback=lambda phase, message="": emit_progress(
                     automation._progress_record,
                     automation._progress_current,
@@ -1887,6 +1889,11 @@ def cf2_start():
         return jsonify({"error": "No patients loaded."}), 400
     if user.id in _cf2_runs:
         return jsonify({"error": "Automation already running."}), 409
+
+    settings = request.get_json(silent=True) or {}
+    state["account_receivable_name"] = str(settings.get("account_receivable_name") or "").strip()
+    state["account_receivable_designation"] = str(settings.get("account_receivable_designation") or "").strip()
+    state["account_receivable_number"] = str(settings.get("account_receivable_number") or "").strip()
 
     stop_event = threading.Event()
     _cf2_runs[user.id] = {"stop_event": stop_event}
