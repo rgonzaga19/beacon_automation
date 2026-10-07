@@ -828,7 +828,8 @@ def update_check_route():
 @app.route("/api/update/apply", methods=["POST"])
 @login_required
 def update_apply_route():
-    return jsonify({"started": apply_downloaded_update()})
+    data = request.get_json(silent=True) or {}
+    return jsonify({"started": apply_downloaded_update(force=bool(data.get("retry")))})
 
 
 @app.route("/api/beacon/validate", methods=["POST"])

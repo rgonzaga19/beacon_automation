@@ -186,7 +186,24 @@ if (window.parent === window && document.querySelector(".sidebar-bottom")) {
         const progress = document.createElement("progress");
         progress.max = 100;
         progress.setAttribute("aria-label", "Update download progress");
-        updateStrip.append(viewport, progress);
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "desktop-update-retry";
+        retry.textContent = "Retry update";
+        retry.addEventListener("click", async () => {
+          retry.disabled = true;
+          try {
+            await fetchJSON("/api/update/apply", {
+              method: "POST",
+              body: JSON.stringify({ retry: true }),
+            });
+          } catch (error) {
+            updateStrip.title = `Update retry failed: ${error.message}`;
+          } finally {
+            retry.disabled = false;
+          }
+        });
+        updateStrip.append(viewport, progress, retry);
         document.querySelector(".sidebar-bottom").appendChild(updateStrip);
         new ResizeObserver(sizeUpdateMessage).observe(viewport);
       }
@@ -198,7 +215,9 @@ if (window.parent === window && document.querySelector(".sidebar-bottom")) {
         updateStrip.title = text;
         sizeUpdateMessage();
       }
-      const progress = updateStrip.lastChild;
+      const progress = updateStrip.querySelector("progress");
+      const retry = updateStrip.querySelector(".desktop-update-retry");
+      retry.classList.toggle("visible", Boolean(status.retry_available));
       progress.hidden = !["checking", "downloading", "verifying"].includes(status.phase);
       if (status.percent == null) progress.removeAttribute("value");
       else progress.value = status.percent;

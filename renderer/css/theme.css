@@ -90,6 +90,20 @@ html[data-theme="light"] {
 }
 .desktop-update-status progress { display: block; width: 100%; height: 5px; margin-top: 7px; accent-color: var(--accent); }
 .desktop-update-status progress[hidden] { display: none; }
+.desktop-update-retry {
+  display: none;
+  margin-top: 6px;
+  padding: 2px 0;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 10px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.desktop-update-retry.visible { display: inline-block; }
+.desktop-update-retry:disabled { opacity: .55; cursor: wait; }
 .desktop-update-status[data-phase="error"] { color: var(--error); }
 .desktop-update-status[data-phase="installing"],
 .desktop-update-status[data-phase="waiting"] { color: var(--accent); }
