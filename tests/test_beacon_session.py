@@ -3,7 +3,7 @@ import importlib.util
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from threading import Thread
+from threading import Barrier, Thread
 from types import SimpleNamespace
 import unittest
 import requests  # Load transport dependencies before temporary module stubs.
@@ -17,7 +17,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(getattr(self.server, 'landing_status', 200) if self.path == '/' else 200)
         if self.path == '/':
-            self.send_header('Set-Cookie', 'ARRAffinity=test-worker; Path=/; HttpOnly')
+            account = self.headers.get('X-Test-User', 'test-worker')
+            self.send_header('Set-Cookie', f'ARRAffinity={account}; Path=/; HttpOnly')
         self.end_headers()
         self.wfile.write(json.dumps({'cookie': self.headers.get('Cookie')}).encode())
 
@@ -72,6 +73,37 @@ class SessionTests(unittest.TestCase):
         with self.auth.use_auth_context({'username': 'a'}, 'a'):
             self.assertEqual(self.auth.http_request('GET', self.url+'/read').json()['cookie'],
                              'ARRAffinity=test-worker')
+
+    def test_concurrent_accounts_keep_their_own_routing_cookies(self):
+        barrier = Barrier(2)
+        observed = {}
+        errors = []
+
+        def account_request(account):
+            try:
+                with self.auth.use_auth_context(
+                    {'username': account, 'password': 'p'},
+                    key=f'user:{account}',
+                ):
+                    self.auth.http_request(
+                        'GET', self.url + '/', headers={'X-Test-User': account}
+                    )
+                    barrier.wait(timeout=5)
+                    observed[account] = self.auth.http_request(
+                        'GET', self.url + '/read', headers={'X-Test-User': account}
+                    ).json()['cookie']
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [Thread(target=account_request, args=(account,)) for account in ('a', 'b')]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=10)
+
+        self.assertFalse(any(thread.is_alive() for thread in threads), 'account requests did not finish')
+        self.assertEqual(errors, [])
+        self.assertEqual(observed, {'a': 'ARRAffinity=a', 'b': 'ARRAffinity=b'})
 
     def test_landing_500_does_not_block_token_login(self):
         self.server.landing_status = 500

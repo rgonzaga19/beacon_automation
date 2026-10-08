@@ -399,6 +399,14 @@ def decrypt_user_settings(settings):
 def sync_legacy_settings_for_user(user):
     settings = get_or_create_user_settings(user)
     decrypted = decrypt_user_settings(settings)
+    if HOSTED_MODE:
+        auth_key = browser_session.auth_context_key(
+            decrypted,
+            user_key=f"user:{user.id}",
+        )
+        browser_session.invalidate_auth_token(auth_key)
+        return decrypted
+
     legacy = load_login_settings()
     legacy.update(decrypted)
     save_login_settings(legacy)
@@ -757,6 +765,10 @@ def post_settings():
     user = current_user()
     if user:
         settings = get_or_create_user_settings(user)
+        old_auth_key = browser_session.auth_context_key(
+            decrypt_user_settings(settings),
+            user_key=f"user:{user.id}",
+        )
         auth_changed = False
 
         if "username" in data:
@@ -780,7 +792,10 @@ def post_settings():
         if auth_changed:
             settings.beacon_user_id = None
             settings.beacon_validated_at = None
-            browser_session.invalidate_auth_token()
+            if HOSTED_MODE:
+                browser_session.invalidate_auth_token(old_auth_key)
+            else:
+                browser_session.invalidate_auth_token()
 
         db.session.commit()
         return jsonify(user_settings_payload(settings))
@@ -877,32 +892,43 @@ def beacon_validate():
 
     token_data = None
     current_user_info = None
-    try:
-        token_data = browser_session.login_via_api(username, password, server=server)
-    except Exception as ex:
-        status_code = (
-            ex.response.status_code
-            if isinstance(ex, requests.HTTPError) and ex.response is not None
-            else None
-        )
-        if status_code is not None and status_code < 500:
-            settings.beacon_user_id = None
-            settings.beacon_validated_at = None
-            db.session.commit()
-            return jsonify({
-                "valid": False,
-                "error": f"Beacon login failed. Please check the username, password, and server. ({ex})",
-            }), 401
+    validation_settings = {
+        "username": username,
+        "password": password,
+        "server": server,
+    }
+    auth_key = browser_session.auth_context_key(
+        validation_settings,
+        user_key=f"user:{user.id}",
+    )
+    with browser_session.use_auth_context(validation_settings, key=auth_key):
+        browser_session.invalidate_auth_token(auth_key)
         try:
-            current_user_info = browser_session.get_current_user_information(server=server)
-        except Exception:
-            settings.beacon_user_id = None
-            settings.beacon_validated_at = None
-            db.session.commit()
-            return jsonify({
-                "valid": False,
-                "error": f"Beacon login failed. Please check the username, password, and server. ({ex})",
-            }), 401
+            token_data = browser_session.login_via_api(username, password, server=server)
+        except Exception as ex:
+            status_code = (
+                ex.response.status_code
+                if isinstance(ex, requests.HTTPError) and ex.response is not None
+                else None
+            )
+            if status_code is not None and status_code < 500:
+                settings.beacon_user_id = None
+                settings.beacon_validated_at = None
+                db.session.commit()
+                return jsonify({
+                    "valid": False,
+                    "error": f"Beacon login failed. Please check the username, password, and server. ({ex})",
+                }), 401
+            try:
+                current_user_info = browser_session.get_current_user_information(server=server)
+            except Exception:
+                settings.beacon_user_id = None
+                settings.beacon_validated_at = None
+                db.session.commit()
+                return jsonify({
+                    "valid": False,
+                    "error": f"Beacon login failed. Please check the username, password, and server. ({ex})",
+                }), 401
 
     settings.beacon_username = username
     settings.beacon_password_encrypted = encrypt_field(password)
@@ -1573,6 +1599,7 @@ def generate_finalize_claim_cf4(transmittal_id, claim_id):
 
 
 @app.route("/api/cf4/settings", methods=["GET"])
+@hosted_login_required
 def get_cf4_settings():
     """Backs the CF4 screen's initial load — same values beacon.py's
     Auto Encode CF4 step will use on the next run."""
@@ -1584,6 +1611,7 @@ def get_cf4_settings():
 
 
 @app.route("/api/cf4/settings", methods=["POST"])
+@hosted_login_required
 def post_cf4_settings():
     """
     Body: any subset of DEFAULT_CF4_SETTINGS' keys. Merged over the
