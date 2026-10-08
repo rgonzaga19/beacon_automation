@@ -75,11 +75,13 @@ function renderLicenseStatus(status) {
 
 async function loadSettings() {
   try {
-    const [settings, theme, license] = await Promise.all([
+    const [settings, theme, license, appConfig] = await Promise.all([
       fetchJSON("/api/settings"),
       window.beabots?.getTheme(),
       fetchJSON("/api/license/status"),
+      fetchJSON("/api/app/config"),
     ]);
+    if (appConfig.hosted) document.getElementById("licenseSettingsCard").hidden = true;
     beaconUsernameInput.value = settings.username || "";
     beaconPasswordInput.value = settings.password || "";
     currentServer = settings.server === "s2" ? "s2" : "s4";

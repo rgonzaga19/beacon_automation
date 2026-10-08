@@ -209,20 +209,25 @@ Beacon passwords. Keep both stable once users start saving credentials.
 
 ## Web Deployment
 
-The app can run as a hosted web service with:
-
-```bash
-python server.py
-```
-
-Recommended temporary cloud setup:
+The repository includes a Render Blueprint for the free web service. Before
+deploying, create a Neon Postgres project and copy its pooled connection string
+with SSL enabled. In Render, create a Blueprint from this repository and enter
+that value for `DATABASE_URL`; Render generates stable values for the session
+and Beacon credential encryption keys.
 
 ```text
-Render web service + Neon Postgres
+Render free web service + Neon Postgres
 ```
 
-Set `DATABASE_URL`, `SECRET_KEY`, `FIELD_ENCRYPTION_KEY`, and
-`BEABOTS_UPLOAD_DIR` in the hosting provider.
+The hosted service uses `BEABOTS_HOSTED=1`, so app accounts replace desktop
+license checks only in the hosted instance. Uploads and active automation state
+are temporary; Render can suspend the free service after inactivity or restart
+it, which ends active jobs. Postgres retains user accounts and settings across
+those restarts. Keep the generated `SECRET_KEY` and `FIELD_ENCRYPTION_KEY`
+unchanged after launch so sessions and saved Beacon passwords remain usable.
+
+The web start command uses one Gunicorn worker with threaded requests because
+Socket.IO rooms and active automation state currently live in process memory.
 
 ## Main Files
 

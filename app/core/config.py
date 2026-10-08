@@ -46,3 +46,6 @@ class AppConfig:
     SECRET_KEY = get_secret_key()
     SQLALCHEMY_DATABASE_URI = get_database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = os.getenv("BEABOTS_HOSTED", "").strip().lower() in {"1", "true", "yes"}

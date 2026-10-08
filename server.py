@@ -80,6 +80,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app = Flask(__name__, static_folder=str(BASE_DIR / "renderer"), static_url_path="")
 app.config.from_object(AppConfig)
 app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("BEABOTS_MAX_UPLOAD_MB", "100")) * 1024 * 1024
+HOSTED_MODE = os.environ.get("BEABOTS_HOSTED", "").strip().lower() in {"1", "true", "yes"}
 db.init_app(app)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
@@ -348,6 +349,19 @@ def login_required(handler):
     return wrapper
 
 
+def hosted_login_required(handler):
+    """Require an account for routes that were local-only in the desktop app."""
+    @wraps(handler)
+    def wrapper(*args, **kwargs):
+        if HOSTED_MODE:
+            user = current_user()
+            if not user or not user.is_active:
+                return jsonify({"error": "Authentication required."}), 401
+        return handler(*args, **kwargs)
+
+    return wrapper
+
+
 def get_or_create_user_settings(user):
     settings = user.settings
     if settings is None:
@@ -421,6 +435,8 @@ def license_error_response(status=None):
 
 
 def require_license_connection():
+    if HOSTED_MODE:
+        return None
     status = require_valid_license()
     if status is None:
         return None
@@ -519,6 +535,7 @@ def health_check():
 
 
 @app.route("/api/soa-excel/generate", methods=["POST"])
+@hosted_login_required
 def soa_excel_generate():
     license_response = require_license_connection()
     if license_response:
@@ -541,6 +558,7 @@ def soa_excel_generate():
 
 @app.route("/api/soa-excel/batch", methods=["POST"])
 @app.route("/api/soa-excel/batch/validate", methods=["POST"])
+@hosted_login_required
 def soa_excel_batch():
     license_response = require_license_connection()
     if license_response:
@@ -567,6 +585,7 @@ def soa_excel_batch():
 
 
 @app.route("/api/soa-excel/download-template", methods=["GET"])
+@hosted_login_required
 def soa_excel_download_template():
     try:
         workbook = build_batch_template()
@@ -582,6 +601,7 @@ def soa_excel_download_template():
 
 
 @app.route("/api/soa-excel/save-generated", methods=["POST"])
+@hosted_login_required
 def soa_excel_save_generated():
     try:
         data = request.get_json(force=True)
@@ -716,6 +736,7 @@ def auth_logout():
 # Auth tokens are invalidated when Beacon credentials or server change.
 # ---------------------------------------------------------------------------
 @app.route("/api/settings", methods=["GET"])
+@hosted_login_required
 def get_settings():
     user = current_user()
     if user:
@@ -725,6 +746,7 @@ def get_settings():
 
 
 @app.route("/api/settings", methods=["POST"])
+@hosted_login_required
 def post_settings():
     """
     Body: username, password, access key, and/or Beacon server settings.
@@ -807,6 +829,11 @@ def license_deactivate_route():
 @app.route("/api/app/version", methods=["GET"])
 def app_version_route():
     return jsonify({"version": APP_VERSION})
+
+
+@app.route("/api/app/config", methods=["GET"])
+def app_config_route():
+    return jsonify({"hosted": HOSTED_MODE})
 
 
 @app.route("/api/update/status", methods=["GET"])
