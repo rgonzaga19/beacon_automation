@@ -9,10 +9,9 @@ Run directly for local testing:
 """
 
 import os
-import sys
-import base64
 import threading
 import tempfile
+import shutil
 import uuid
 import re
 import json
@@ -37,21 +36,7 @@ from app.core.database import db
 import app.models  # noqa: F401 - imported so SQLAlchemy registers the tables
 from app.models import User, UserSetting, utc_now
 from app.core import browser_session
-from app.core.license import (
-    clear_license,
-    get_license_status,
-    require_valid_license,
-    start_background_license_checker,
-    verify_license,
-)
-from app.core.login import load_login_settings, save_login_settings
 from app.core.logger import logger
-from app.core.updater import (
-    apply_downloaded_update,
-    check_for_update,
-    get_update_status,
-    start_background_updater,
-)
 from app.core.version import APP_VERSION
 from app.domain.patient_record import PatientRecord
 from app.domain.date_parser import parse_dates
@@ -69,7 +54,7 @@ from app.domain.time_parser import format_beacon_time
 from app.domain.soa_excel import batch_workbooks, build_batch_template, generate_workbook
 from app.core.security import decrypt_field, encrypt_field
 
-BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+BASE_DIR = Path(__file__).resolve().parent
 APP_ICON_PATH = BASE_DIR / "renderer" / "assets" / "bot.ico"
 UPLOAD_DIR = Path(
     os.environ.get("BEABOTS_UPLOAD_DIR")
@@ -80,7 +65,6 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app = Flask(__name__, static_folder=str(BASE_DIR / "renderer"), static_url_path="")
 app.config.from_object(AppConfig)
 app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("BEABOTS_MAX_UPLOAD_MB", "100")) * 1024 * 1024
-HOSTED_MODE = os.environ.get("BEABOTS_HOSTED", "").strip().lower() in {"1", "true", "yes"}
 db.init_app(app)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
@@ -102,31 +86,10 @@ _cf2_runs = {}
 _soa_runs = {}
 _beacon_runs = {}
 _job_start_lock = threading.RLock()
-_update_installing = False
-
-
-def claim_update_installation():
-    """Prevent new jobs only when every existing automation has finished."""
-    global _update_installing
-    with _job_start_lock:
-        if _update_installing or _cf2_runs or _soa_runs or _beacon_runs:
-            return False
-        _update_installing = True
-        return True
-
-
-def release_update_installation():
-    global _update_installing
-    with _job_start_lock:
-        _update_installing = False
-
-
 def serialize_job_start(fn):
     @wraps(fn)
     def wrapped(*args, **kwargs):
         with _job_start_lock:
-            if _update_installing:
-                return jsonify({"error": "Beabots is updating and will reopen automatically."}), 503
             return fn(*args, **kwargs)
     return wrapped
 
@@ -279,14 +242,6 @@ DEFAULT_CF4_SETTINGS = {
 }
 
 
-def _load_cf4_settings():
-    """Current CF4 defaults, merged over DEFAULT_CF4_SETTINGS so a
-    settings.json saved before some new field existed doesn't come back
-    with that field missing."""
-    settings = load_login_settings()
-    return {**DEFAULT_CF4_SETTINGS, **settings.get("cf4", {})}
-
-
 # ---------------------------------------------------------------------------
 # Logging bridge. Automation modules still call logger.<level>(...); the web
 # server emits those messages to the current user's Socket.IO room.
@@ -349,19 +304,6 @@ def login_required(handler):
     return wrapper
 
 
-def hosted_login_required(handler):
-    """Require an account for routes that were local-only in the desktop app."""
-    @wraps(handler)
-    def wrapper(*args, **kwargs):
-        if HOSTED_MODE:
-            user = current_user()
-            if not user or not user.is_active:
-                return jsonify({"error": "Authentication required."}), 401
-        return handler(*args, **kwargs)
-
-    return wrapper
-
-
 def get_or_create_user_settings(user):
     settings = user.settings
     if settings is None:
@@ -376,7 +318,6 @@ def user_settings_payload(settings, include_secret_placeholders=True):
         "username": settings.beacon_username or "",
         "password": "********" if include_secret_placeholders and settings.beacon_password_encrypted else "",
         "server": settings.server or "s4",
-        "soa_folder": settings.soa_folder or "",
         "cf4": settings.cf4_settings or {},
         "beacon_connected": bool(settings.beacon_validated_at),
         "beacon_user_id": settings.beacon_user_id,
@@ -391,27 +332,8 @@ def decrypt_user_settings(settings):
         "password": decrypt_field(settings.beacon_password_encrypted),
         "server": settings.server or "s4",
         "beacon_user_id": settings.beacon_user_id or "",
-        "soa_folder": settings.soa_folder or "",
         "cf4": settings.cf4_settings or {},
     }
-
-
-def sync_legacy_settings_for_user(user):
-    settings = get_or_create_user_settings(user)
-    decrypted = decrypt_user_settings(settings)
-    if HOSTED_MODE:
-        auth_key = browser_session.auth_context_key(
-            decrypted,
-            user_key=f"user:{user.id}",
-        )
-        browser_session.invalidate_auth_token(auth_key)
-        return decrypted
-
-    legacy = load_login_settings()
-    legacy.update(decrypted)
-    save_login_settings(legacy)
-    browser_session.invalidate_auth_token()
-    return decrypted
 
 
 def require_beacon_connection():
@@ -428,27 +350,6 @@ def require_beacon_connection():
         }), 403)
 
     return user, decrypted, None
-
-
-def license_error_response(status=None):
-    status = status or get_license_status()
-    message = status.get("reason") or "Please activate a valid Beabots license before running automation."
-    if status.get("code") == "UPDATE_REQUIRED":
-        message = "This Beabots version must be updated before automation can run."
-    return jsonify({
-        "error": message,
-        "requires_license": True,
-        "license": status,
-    }), 403
-
-
-def require_license_connection():
-    if HOSTED_MODE:
-        return None
-    status = require_valid_license()
-    if status is None:
-        return None
-    return license_error_response(status)
 
 
 def resource_path(relative_path):
@@ -488,34 +389,6 @@ def _prepare_upload_folder(files, allowed_extensions):
     return folder, saved
 
 
-def _save_generated_download(filename, data_url):
-    safe_name = secure_filename(str(filename or "").strip())
-    if not safe_name:
-        safe_name = "generated.xlsx"
-
-    suffix = Path(safe_name).suffix.lower()
-    if suffix not in {".xlsx", ".zip"}:
-        raise ValueError("Unsupported generated file type.")
-
-    header, separator, encoded = str(data_url or "").partition(",")
-    if not separator or ";base64" not in header:
-        raise ValueError("Generated file data is invalid.")
-
-    downloads = Path.home() / "Downloads"
-    target_dir = downloads if downloads.is_dir() else Path(tempfile.gettempdir()) / "beabots_downloads"
-    target_dir.mkdir(parents=True, exist_ok=True)
-
-    target = target_dir / safe_name
-    stem = target.stem
-    for index in range(1, 1000):
-        if not target.exists():
-            break
-        target = target_dir / f"{stem} ({index}){suffix}"
-
-    target.write_bytes(base64.b64decode(encoded))
-    return target
-
-
 @app.route("/")
 def web_index():
     return send_from_directory(app.static_folder, "login.html")
@@ -543,12 +416,8 @@ def health_check():
 
 
 @app.route("/api/soa-excel/generate", methods=["POST"])
-@hosted_login_required
+@login_required
 def soa_excel_generate():
-    license_response = require_license_connection()
-    if license_response:
-        return license_response
-
     try:
         workbook = generate_workbook(request.get_json(force=True), validate_epo_quantity=True, validate_laboratory=True)
         return send_file(
@@ -566,12 +435,8 @@ def soa_excel_generate():
 
 @app.route("/api/soa-excel/batch", methods=["POST"])
 @app.route("/api/soa-excel/batch/validate", methods=["POST"])
-@hosted_login_required
+@login_required
 def soa_excel_batch():
-    license_response = require_license_connection()
-    if license_response:
-        return license_response
-
     upload = request.files.get("file")
     if not upload or not upload.filename:
         return jsonify({"error": "Upload an Excel workbook to generate a batch."}), 400
@@ -593,7 +458,7 @@ def soa_excel_batch():
 
 
 @app.route("/api/soa-excel/download-template", methods=["GET"])
-@hosted_login_required
+@login_required
 def soa_excel_download_template():
     try:
         workbook = build_batch_template()
@@ -606,20 +471,6 @@ def soa_excel_download_template():
     except Exception:
         logger.exception("SOA Excel template generation failed")
         return jsonify({"error": "Unable to generate the SOA batch template."}), 500
-
-
-@app.route("/api/soa-excel/save-generated", methods=["POST"])
-@hosted_login_required
-def soa_excel_save_generated():
-    try:
-        data = request.get_json(force=True)
-        target = _save_generated_download(data.get("filename"), data.get("data_url"))
-        return jsonify({"ok": True, "path": str(target)})
-    except (TypeError, ValueError) as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 400
-    except Exception:
-        logger.exception("SOA Excel generated file save failed")
-        return jsonify({"ok": False, "error": "Unable to save generated file."}), 500
 
 
 @app.route("/api/auto-rename/preview", methods=["POST"])
@@ -744,17 +595,14 @@ def auth_logout():
 # Auth tokens are invalidated when Beacon credentials or server change.
 # ---------------------------------------------------------------------------
 @app.route("/api/settings", methods=["GET"])
-@hosted_login_required
+@login_required
 def get_settings():
-    user = current_user()
-    if user:
-        settings = get_or_create_user_settings(user)
-        return jsonify(user_settings_payload(settings))
-    return jsonify(load_login_settings())
+    settings = get_or_create_user_settings(current_user())
+    return jsonify(user_settings_payload(settings))
 
 
 @app.route("/api/settings", methods=["POST"])
-@hosted_login_required
+@login_required
 def post_settings():
     """
     Body: username, password, access key, and/or Beacon server settings.
@@ -786,91 +634,18 @@ def post_settings():
             auth_changed = auth_changed or server != settings.server
             settings.server = server
 
-        if "soa_folder" in data:
-            settings.soa_folder = str(data.get("soa_folder") or "").strip()
-
         if auth_changed:
             settings.beacon_user_id = None
             settings.beacon_validated_at = None
-            if HOSTED_MODE:
-                browser_session.invalidate_auth_token(old_auth_key)
-            else:
-                browser_session.invalidate_auth_token()
+            browser_session.invalidate_auth_token(old_auth_key)
 
         db.session.commit()
         return jsonify(user_settings_payload(settings))
-
-    settings = load_login_settings()
-    auth_changed = any(
-        key in data and data[key] != settings.get(key)
-        for key in ("username", "password", "server")
-    )
-    settings.update(data)
-    save_login_settings(settings)
-    if auth_changed:
-        browser_session.invalidate_auth_token()
-    return jsonify(settings)
-
-
-@app.route("/api/license/status", methods=["GET"])
-@login_required
-def license_status_route():
-    return jsonify(get_license_status())
-
-
-@app.route("/api/license/activate", methods=["POST"])
-@login_required
-def license_activate_route():
-    data = request.get_json(force=True)
-    license_key = str(data.get("license_key", "")).strip()
-    if not license_key:
-        return jsonify({"error": "Please enter a license key."}), 400
-
-    status = verify_license(license_key=license_key, force=True)
-    if not status.get("valid"):
-        return jsonify({
-            "error": status.get("reason") or "Invalid license.",
-            "license": status,
-        }), 400
-    return jsonify(status)
-
-
-@app.route("/api/license/deactivate", methods=["POST"])
-@login_required
-def license_deactivate_route():
-    return jsonify(clear_license())
 
 
 @app.route("/api/app/version", methods=["GET"])
 def app_version_route():
     return jsonify({"version": APP_VERSION})
-
-
-@app.route("/api/app/config", methods=["GET"])
-def app_config_route():
-    return jsonify({"hosted": HOSTED_MODE})
-
-
-@app.route("/api/update/status", methods=["GET"])
-@login_required
-def update_status_route():
-    return jsonify(get_update_status())
-
-
-@app.route("/api/update/check", methods=["POST"])
-@login_required
-def update_check_route():
-    try:
-        return jsonify(check_for_update())
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 502
-
-
-@app.route("/api/update/apply", methods=["POST"])
-@login_required
-def update_apply_route():
-    data = request.get_json(silent=True) or {}
-    return jsonify({"started": apply_downloaded_update(force=bool(data.get("retry")))})
 
 
 @app.route("/api/beacon/validate", methods=["POST"])
@@ -941,8 +716,6 @@ def beacon_validate():
     settings.beacon_user_id = str(beacon_user_id or settings.beacon_user_id or "")
     settings.beacon_validated_at = utc_now()
     db.session.commit()
-    sync_legacy_settings_for_user(user)
-
     return jsonify({
         "valid": True,
         "beacon_connected": True,
@@ -1599,38 +1372,26 @@ def generate_finalize_claim_cf4(transmittal_id, claim_id):
 
 
 @app.route("/api/cf4/settings", methods=["GET"])
-@hosted_login_required
+@login_required
 def get_cf4_settings():
     """Backs the CF4 screen's initial load — same values beacon.py's
     Auto Encode CF4 step will use on the next run."""
-    user = current_user()
-    if user:
-        settings = get_or_create_user_settings(user)
-        return jsonify({**DEFAULT_CF4_SETTINGS, **(settings.cf4_settings or {})})
-    return jsonify(_load_cf4_settings())
+    settings = get_or_create_user_settings(current_user())
+    return jsonify({**DEFAULT_CF4_SETTINGS, **(settings.cf4_settings or {})})
 
 
 @app.route("/api/cf4/settings", methods=["POST"])
-@hosted_login_required
+@login_required
 def post_cf4_settings():
     """
     Body: any subset of DEFAULT_CF4_SETTINGS' keys. Merged over the
-    current saved values (not replaced wholesale), then written into
-    settings.json under "cf4" via the existing save_login_settings().
+    current saved values (not replaced wholesale), then stored for this user.
     """
     data = request.get_json(force=True)
-    user = current_user()
-    if user:
-        settings = get_or_create_user_settings(user)
-        cf4 = {**DEFAULT_CF4_SETTINGS, **(settings.cf4_settings or {}), **data}
-        settings.cf4_settings = cf4
-        db.session.commit()
-        return jsonify(cf4)
-
-    settings = load_login_settings()
-    cf4 = {**DEFAULT_CF4_SETTINGS, **settings.get("cf4", {}), **data}
-    settings["cf4"] = cf4
-    save_login_settings(settings)
+    settings = get_or_create_user_settings(current_user())
+    cf4 = {**DEFAULT_CF4_SETTINGS, **(settings.cf4_settings or {}), **data}
+    settings.cf4_settings = cf4
+    db.session.commit()
     return jsonify(cf4)
 
 
@@ -1747,45 +1508,37 @@ def _record_to_dict(record, cf2, mode="new_draft"):
 @app.route("/api/cf2/upload", methods=["POST"])
 @login_required
 def cf2_upload():
-    """
-    Body: {"path": "<file path>", "claim_year": 2026, "claim_month": "June",
-           "mode": "new_draft" | "existing_draft"}
-    Browser clients upload the workbook as multipart form data. The path
-    fallback is kept for trusted local deployments.
-    """
-    if request.content_type and request.content_type.startswith("multipart/form-data"):
-        data = request.form
-        uploaded = request.files.get("file")
-        if not uploaded:
-            return jsonify({"error": "No Excel file uploaded."}), 400
-        try:
-            filename = str(_save_upload(uploaded, "cf2", {".xlsx", ".xlsm", ".xls"}))
-        except ValueError as ex:
-            return jsonify({"error": str(ex)}), 400
-    else:
-        data = request.get_json(force=True)
-        filename = data.get("path")
-    claim_year = int(data.get("claim_year"))
-    claim_month_name = data.get("claim_month")
-    claim_month = MONTH_NAMES.index(claim_month_name) + 1 if claim_month_name else None
-    mode = data.get("mode") if data.get("mode") in ("new_draft", "existing_draft") else "new_draft"
-
-    if not filename or not Path(filename).is_file():
-        return jsonify({"error": "File not found."}), 400
-
+    """Accept a browser-uploaded workbook and analyze its claims."""
+    if not request.content_type or not request.content_type.startswith("multipart/form-data"):
+        return jsonify({"error": "Upload the Excel workbook from your browser."}), 400
+    data = request.form
+    uploaded = request.files.get("file")
+    if not uploaded:
+        return jsonify({"error": "No Excel file uploaded."}), 400
     try:
+        filename = str(_save_upload(uploaded, "cf2", {".xlsx", ".xlsm", ".xls"}))
+    except ValueError as ex:
+        return jsonify({"error": str(ex)}), 400
+    try:
+        claim_year = int(data.get("claim_year"))
+        claim_month_name = data.get("claim_month")
+        claim_month = MONTH_NAMES.index(claim_month_name) + 1 if claim_month_name else None
+        mode = data.get("mode") if data.get("mode") in ("new_draft", "existing_draft") else "new_draft"
         workbook = load_workbook(filename, data_only=True)
+        try:
+            sheet_names = workbook.sheetnames
+            records = _analyze_workbook(workbook, claim_year, claim_month, mode)
+        finally:
+            workbook.close()
+    except (TypeError, ValueError) as ex:
+        return jsonify({"error": str(ex)}), 400
     except Exception as ex:
         return jsonify({"error": str(ex)}), 400
+    finally:
+        Path(filename).unlink(missing_ok=True)
 
-    try:
-        records = _analyze_workbook(workbook, claim_year, claim_month, mode)
-    except ValueError as ex:
-        workbook.close()
-        return jsonify({"error": str(ex)}), 400
     user = current_user()
     _cf2_states[user.id] = {
-        "selected_file": filename,
         "patient_records": records,
         "cf2_mode": mode,
     }
@@ -1793,7 +1546,7 @@ def cf2_upload():
     payload_records = [_record_to_dict(r, build_cf2_data(r), mode) for r in records]
 
     return jsonify({
-        "sheets": workbook.sheetnames,
+        "sheets": sheet_names,
         "patient_count": len(records),
         "records": payload_records,
     })
@@ -1936,9 +1689,6 @@ def cf2_start():
     user, beacon_settings, error_response = require_beacon_connection()
     if error_response:
         return error_response
-    license_response = require_license_connection()
-    if license_response:
-        return license_response
     state = _cf2_states.get(user.id)
     if not state or not state["patient_records"]:
         return jsonify({"error": "No patients loaded."}), 400
@@ -1997,6 +1747,7 @@ def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop
         emit_to_current_room("log", {"message": f"FATAL ERROR: {ex}", "level": "ERROR"})
     finally:
         results = soa_automation.get_results() if soa_automation is not None else []
+        shutil.rmtree(soa_folder, ignore_errors=True)
         _soa_runs.pop(user_id, None)
         emit_to_current_room("soa_done", {"results": results, "stopped": stopped})
         _emit_room.reset(room_token)
@@ -2009,44 +1760,25 @@ def soa_start():
     user, beacon_settings, error_response = require_beacon_connection()
     if error_response:
         return error_response
-    license_response = require_license_connection()
-    if license_response:
-        return license_response
-    is_multipart = request.content_type and request.content_type.startswith("multipart/form-data")
-    if is_multipart:
-        data = request.form
-        transmittals = [
-            line.strip()
-            for line in data.get("transmittals", "").splitlines()
-            if line.strip()
-        ]
-        soa_folder_path, soa_files = _prepare_upload_folder(
-            request.files.getlist("soa_files"),
-            {".xlsx", ".xls"},
-        )
-        soa_folder = str(soa_folder_path)
-        if not soa_files:
-            return jsonify({"error": "Please upload at least one SOA Excel file."}), 400
-    else:
-        data = request.get_json(force=True)
-        transmittals = data.get("transmittals", [])
-        soa_folder = data.get("soa_folder", "").strip()
+    if not request.content_type or not request.content_type.startswith("multipart/form-data"):
+        return jsonify({"error": "Upload the SOA Excel files from your browser."}), 400
+    data = request.form
+    transmittals = [line.strip() for line in data.get("transmittals", "").splitlines() if line.strip()]
+    soa_folder_path, soa_files = _prepare_upload_folder(
+        request.files.getlist("soa_files"),
+        {".xlsx", ".xls"},
+    )
+    soa_folder = str(soa_folder_path)
+    if not soa_files:
+        shutil.rmtree(soa_folder_path, ignore_errors=True)
+        return jsonify({"error": "Please upload at least one SOA Excel file."}), 400
 
     if not transmittals:
+        shutil.rmtree(soa_folder_path, ignore_errors=True)
         return jsonify({"error": "Please enter at least one transmittal number."}), 400
-    if not soa_folder:
-        return jsonify({"error": "Please select the folder where your SOA files are located."}), 400
-    if not Path(soa_folder).is_dir():
-        return jsonify({"error": f"The selected SOA folder does not exist:\n\n{soa_folder}"}), 400
     if user.id in _soa_runs:
+        shutil.rmtree(soa_folder_path, ignore_errors=True)
         return jsonify({"error": "Automation already running."}), 409
-
-    # Remember the folder choice for next time — same as the old
-    # browse_soa_folder()'s settings["soa_folder"] = chosen; save_login_settings(settings)
-    if not is_multipart:
-        user_settings = get_or_create_user_settings(user)
-        user_settings.soa_folder = soa_folder
-        db.session.commit()
 
     stop_event = threading.Event()
     _soa_runs[user.id] = {"stop_event": stop_event}
@@ -2112,9 +1844,6 @@ def beacon_start():
     user, beacon_settings, error_response = require_beacon_connection()
     if error_response:
         return error_response
-    license_response = require_license_connection()
-    if license_response:
-        return license_response
     data = request.get_json(force=True)
     transmittals = data.get("transmittals", [])
     auto_encode_cf4 = bool(data.get("auto_encode_cf4", False))
@@ -2158,8 +1887,6 @@ def beacon_stop():
 
 if __name__ == "__main__":
     init_database()
-    start_background_license_checker()
-    start_background_updater()
     port = int(os.environ.get("PORT") or os.environ.get("BEABOTS_PORT", 5417))
     host = os.environ.get("HOST", "0.0.0.0")
     socketio.run(app, host=host, port=port, allow_unsafe_werkzeug=True)

@@ -8,8 +8,8 @@ services:
     startCommand: gunicorn --worker-class gthread --workers 1 --threads 20 --timeout 0 --bind 0.0.0.0:$PORT web_entry:app
     healthCheckPath: /api/health
     envVars:
-      - key: BEABOTS_HOSTED
-        value: "1"
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
       - key: DATABASE_URL
         sync: false
       - key: SECRET_KEY

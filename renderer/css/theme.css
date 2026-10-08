@@ -70,47 +70,7 @@ html[data-theme="light"] {
   box-sizing: border-box;
 }
 
-.desktop-update-status {
-  min-width: 0;
-  margin: 10px 3px 0;
-  padding: 8px 0;
-  color: var(--text-sec);
-  font-size: 11px;
-  line-height: 1.4;
-}
-.update-message-viewport { width: 100%; overflow: hidden; }
-.update-message-viewport span { display: block; width: max-content; white-space: nowrap; }
-.update-message-viewport span.scrolling {
-  animation: update-message-scroll var(--update-scroll-duration, 12s) linear infinite alternate;
-}
-.desktop-update-status:hover .scrolling { animation-play-state: paused; }
-@keyframes update-message-scroll {
-  0%, 15% { transform: translateX(0); }
-  85%, 100% { transform: translateX(var(--update-scroll-distance)); }
-}
-.desktop-update-status progress { display: block; width: 100%; height: 5px; margin-top: 7px; accent-color: var(--accent); }
-.desktop-update-status progress[hidden] { display: none; }
-.desktop-update-retry {
-  display: none;
-  margin-top: 6px;
-  padding: 2px 0;
-  color: var(--accent);
-  background: transparent;
-  border: 0;
-  font: inherit;
-  font-size: 10px;
-  text-decoration: underline;
-  cursor: pointer;
-}
-.desktop-update-retry.visible { display: inline-block; }
-.desktop-update-retry:disabled { opacity: .55; cursor: wait; }
-.desktop-update-status[data-phase="error"] { color: var(--error); }
-.desktop-update-status[data-phase="installing"],
-.desktop-update-status[data-phase="waiting"] { color: var(--accent); }
-@media (prefers-reduced-motion: reduce) {
-  .update-message-viewport { overflow-x: auto; }
-  .update-message-viewport span.scrolling { animation: none; }
-}
+
 
 html, body {
   margin: 0;
@@ -213,37 +173,6 @@ body::before {
 
 .titlebar .spacer {
   flex: 1;
-}
-
-#btnMinimize,
-#btnMaximize,
-#btnClose {
-  display: none !important;
-}
-
-.titlebar-btn {
-  -webkit-app-region: no-drag;
-  width: 46px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-sec);
-  font-size: 15px;
-  line-height: 1;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.12s ease, color 0.12s ease;
-}
-
-.titlebar-btn:hover {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.titlebar-btn.close:hover {
-  background: var(--error);
-  color: var(--bg-dark);
 }
 
 .titlebar-btn#btnThemeToggle {

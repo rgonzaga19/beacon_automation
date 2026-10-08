@@ -194,71 +194,7 @@ function syncClaimCount() {
   renderClaims();
 }
 
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error || new Error("Unable to read generated file."));
-    reader.readAsDataURL(blob);
-  });
-}
-
-function getDesktopApi() {
-  for (const candidate of [window, window.parent, window.top]) {
-    try {
-      if (candidate?.pywebview?.api?.save_generated_file) {
-        return candidate.pywebview.api;
-      }
-    } catch (error) {
-      // Cross-frame access can throw in browsers; ignore and use normal download.
-    }
-  }
-  return null;
-}
-
-function isDesktopRuntime() {
-  return [window, window.parent, window.top].some((candidate) => {
-    try {
-      return Boolean(candidate?.pywebview);
-    } catch (error) {
-      return false;
-    }
-  });
-}
-
-async function waitForDesktopApi() {
-  const api = getDesktopApi();
-  if (api) return api;
-
-  await new Promise((resolve) => setTimeout(resolve, 150));
-  return getDesktopApi();
-}
-
 async function download(blob, filename) {
-  const desktopApi = await waitForDesktopApi();
-  const dataUrl = isDesktopRuntime() || desktopApi ? await blobToDataUrl(blob) : null;
-
-  if (desktopApi) {
-    const result = await desktopApi.save_generated_file(filename, dataUrl);
-    if (result?.cancelled) return null;
-    if (!result?.ok) throw new Error(result?.error || "Unable to save generated file.");
-    return result.path || filename;
-  }
-
-  if (dataUrl) {
-    const response = await fetch("/api/soa-excel/save-generated", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename, data_url: dataUrl }),
-    });
-    const result = await response.json().catch(() => ({}));
-    if (result?.cancelled) return null;
-    if (!response.ok || !result?.ok) {
-      throw new Error(result.error || "Unable to save generated file.");
-    }
-    return result.path || filename;
-  }
-
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

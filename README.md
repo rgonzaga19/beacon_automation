@@ -1,249 +1,48 @@
 # Beabots
 
-Beabots is a Flask and Socket.IO web application for Beacon automation workflows.
-It serves the browser UI, app accounts, per-user Beacon credentials, workbook
-uploads, CF2/SOA/CF4 automation endpoints, and live progress logs.
+Beabots is a Flask and Socket.IO web application for Beacon automation. It serves browser pages, account authentication, per-user encrypted Beacon credentials, workbook uploads, automation endpoints, and live progress events.
 
-## Current Runtime
-
-- `server.py` hosts the app and API.
-- `beabots_launcher.py` is the packaged Windows entry point. It starts the
-  local server and opens Beabots in a lightweight desktop webview window.
-- `renderer/` contains the browser UI.
-- `renderer/assets/` contains frontend images and icons.
-- `templates/` contains the CF2 Excel templates.
-- `Beabots.spec` defines the PyInstaller build.
-- `BeaconInstaller.iss` defines the Inno Setup installer. Keep its `AppId`
-  unchanged so new installers upgrade existing installs.
-- `docs/` contains project notes, including the current structure map.
-- The dashboard's `SOA Excel` workspace generates individual claim workbooks
-  and batch ZIP files from uploaded Excel sheets. Its workbook template is
-  `templates/soa_master.xlsx`; the standalone `nephro_soa_excelgenerator`
-  project is not required at runtime.
-- Local user/account data defaults to `%LOCALAPPDATA%\Beabots\beabots.sqlite3`.
-- Uploaded workbooks default to the system temp directory unless
-  `BEABOTS_UPLOAD_DIR` is set.
-
-## Local Network Use
-
-Run the app on one host PC:
-
-```powershell
-cd "C:\Users\Nephro\Desktop\ROMEL\VS Code\beacon_automation"
-.\venv\Scripts\Activate.ps1
-python server.py
-```
-
-Other users on the same Wi-Fi/LAN can open:
-
-```text
-http://<host-pc-ip>:5417
-```
-
-If Windows blocks access, allow TCP port `5417` through the firewall:
-
-```powershell
-New-NetFirewallRule -DisplayName "Beabots Local Web" -Direction Inbound -Protocol TCP -LocalPort 5417 -Action Allow
-```
-
-Do not expose the local server to the public internet with router port
-forwarding.
-
-## Setup
+## Run locally
 
 ```powershell
 py -m venv venv
 .\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python server.py
 ```
 
-Open:
+Open `http://127.0.0.1:5417`, create an account, and configure Beacon credentials in Settings. The server binds to `0.0.0.0` by default, so other devices on the same trusted LAN can use `http://<host-pc-ip>:5417`. Allow inbound TCP port 5417 in the host firewall if needed. Do not expose a local server directly to the public internet.
 
-```text
-http://127.0.0.1:5417
-```
+Local data uses SQLite under the current user's application data directory by default. Set `DATABASE_URL` to use PostgreSQL instead. Uploaded files and active automation data are temporary and may be lost on restart.
 
-On Windows, you can also double-click `start_beabots.bat`. It starts the
-server, waits until the health check responds, then opens Beabots in your
-default browser.
+## Web deployment
 
-## License Activation
+The repository includes a Render Blueprint. It uses Gunicorn with one threaded worker and PostgreSQL; provide `DATABASE_URL` and retain stable `SECRET_KEY` and `FIELD_ENCRYPTION_KEY` values. `SESSION_COOKIE_SECURE=true` is set for the HTTPS hosted service. For local HTTP/LAN operation, leave that variable unset.
 
-Automation start endpoints require an active Beabots license. The license is
-managed in Settings and validated against:
+The Flask/Socket.IO process owns active automation jobs and progress state. A process restart ends active jobs, so deployment services must be configured to allow long-running requests.
 
-```text
-https://beabot-license.gonzagaromel19.workers.dev/
-```
+## Configuration
 
-For local testing, sign in to Beabots, open Settings, and activate a test
-license key. The app checks the license on activation and then re-checks in the
-background every 30 minutes.
+- `HOST` (default `0.0.0.0`) and `PORT` (default `5417`) select the bind address and port.
+- `DATABASE_URL` selects PostgreSQL; without it, local SQLite is used.
+- `SECRET_KEY` signs web sessions.
+- `FIELD_ENCRYPTION_KEY` encrypts saved Beacon passwords.
+- `BEABOTS_UPLOAD_DIR` selects temporary upload storage.
+- `BEABOTS_MAX_UPLOAD_MB` sets the upload limit (default `100`).
 
-The app sends:
+Keep the session and encryption keys stable after users save credentials.
 
-```json
-{
-  "license": "<license key>",
-  "app_version": "4.0.5",
-  "machine_id": "<hashed machine id>"
-}
-```
-
-If the license is invalid, expired, or the Worker returns `UPDATE_REQUIRED`,
-CF2, SOA, and CF4 automation starts are blocked until the issue is fixed.
-
-## Windows EXE and Installer
-
-The distributable Windows app is built in two steps:
-
-1. PyInstaller creates `dist\Beabots\Beabots.exe`.
-2. Inno Setup packages that folder as `Output\Beabots_Setup_vX.X.X.exe`.
-
-Build everything with:
-
-```powershell
-.\venv\Scripts\Activate.ps1
-powershell -ExecutionPolicy Bypass -File .\build_installer.ps1
-```
-
-If Inno Setup is installed somewhere else, pass the compiler path:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\build_installer.ps1 -InnoCompiler "C:\Path\To\ISCC.exe"
-```
-
-To build only the packaged EXE folder:
-
-```powershell
-.\venv\Scripts\Activate.ps1
-python -m PyInstaller --clean Beabots.spec
-```
-
-To compile only the installer after `dist\Beabots` exists:
-
-```powershell
-& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "BeaconInstaller.iss"
-```
-
-Test the packaged EXE directly. It should open a Beabots desktop window:
-
-```powershell
-.\dist\Beabots\Beabots.exe
-```
-
-Test the installer:
-
-```powershell
-.\Output\Beabots_Setup_v4.0.5.exe
-```
-
-Installed user data remains in:
-
-```text
-%LOCALAPPDATA%\Beabots
-```
-
-## Releasing a New Version
-
-When preparing a release:
-
-1. Update `APP_VERSION` in `app/core/version.py`.
-2. Update `MyAppVersion` in `BeaconInstaller.iss`.
-3. Build the installer:
-
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File .\build_installer.ps1
-   ```
-
-4. Compute the installer checksum:
-
-   ```powershell
-   Get-FileHash .\Output\Beabots_Setup_v0.0.0.exe -Algorithm SHA256
-   ```
-
-5. Upload the installer to the release location used by the Cloudflare Worker.
-6. Update the Worker `/update` response with the new version, download URL, and
-   `sha256`.
-
-Example Worker update payload:
-
-```js
-const UPDATE_INFO = {
-  version: "4.0.5",
-  minimum_version: "4.0.5",
-  mandatory: false,
-  download: "https://github.com/rgonzaga19/beacon_automation/releases/download/Beabots/Beabots_Setup_v4.0.5.exe",
-  sha256: "4930215CF473DB4A564F0191E8EAE1E3DD0E609AD8796FE766C1EFA0AC799248",
-};
-```
-
-The updater downloads newer installers in the background and verifies `sha256`
-before applying them. The current installer uses `PrivilegesRequired=admin`, so
-silent updates may still require Windows UAC on some machines.
-
-## Environment Variables
-
-```text
-PORT=5417
-HOST=0.0.0.0
-DATABASE_URL=postgresql://...
-SECRET_KEY=<long random secret>
-FIELD_ENCRYPTION_KEY=<long random secret or Fernet key>
-BEABOTS_UPLOAD_DIR=/tmp/beabots_uploads
-BEABOTS_MAX_UPLOAD_MB=100
-BEABOTS_LICENSE_URL=https://beabot-license.gonzagaromel19.workers.dev/
-BEABOTS_LICENSE_CHECK_SECONDS=1800
-BEABOTS_UPDATE_URL=https://beabot-license.gonzagaromel19.workers.dev/update
-BEABOTS_UPDATE_CHECK_SECONDS=21600
-BEABOTS_VERSION=4.0.5
-```
-
-`DATABASE_URL` is optional for local use. If it is not set, Beabots uses local
-SQLite. For hosted or multi-machine deployment, use Postgres.
-
-`SECRET_KEY` signs browser sessions. `FIELD_ENCRYPTION_KEY` encrypts saved
-Beacon passwords. Keep both stable once users start saving credentials.
-
-## Web Deployment
-
-The repository includes a Render Blueprint for the free web service. Before
-deploying, create a Neon Postgres project and copy its pooled connection string
-with SSL enabled. In Render, create a Blueprint from this repository and enter
-that value for `DATABASE_URL`; Render generates stable values for the session
-and Beacon credential encryption keys.
-
-```text
-Render free web service + Neon Postgres
-```
-
-The hosted service uses `BEABOTS_HOSTED=1`, so app accounts replace desktop
-license checks only in the hosted instance. Uploads and active automation state
-are temporary; Render can suspend the free service after inactivity or restart
-it, which ends active jobs. Postgres retains user accounts and settings across
-those restarts. Keep the generated `SECRET_KEY` and `FIELD_ENCRYPTION_KEY`
-unchanged after launch so sessions and saved Beacon passwords remain usable.
-
-The web start command uses one Gunicorn worker with threaded requests because
-Socket.IO rooms and active automation state currently live in process memory.
-
-## Main Files
+## Main files
 
 ```text
 server.py                 Flask/Socket.IO entry point
-beabots_launcher.py       Packaged Windows app entry point
-Beabots.spec              PyInstaller build definition
-BeaconInstaller.iss       Inno Setup installer definition
-build_installer.ps1       Rebuilds EXE folder and installer
-app/core/                 configuration, database, security, license, updater
+web_entry.py              WSGI entry point for hosting
+app/core/                 web configuration, database, security, sessions
 app/api/                  Beacon, CF2, SOA, and draft API clients
-app/automation/           CF2, SOA, CF4, and draft automation runners
+app/automation/           automation runners
 app/domain/               parsers, mappers, data objects, and reports
-app/models.py             users, settings, and automation job models
+app/models.py             accounts, settings, and automation job models
 renderer/                 browser pages, CSS, and JavaScript
-renderer/assets/          browser images and icons
 templates/                Excel templates
-docs/                     project notes
+render.yaml               Render web-service blueprint
 ```

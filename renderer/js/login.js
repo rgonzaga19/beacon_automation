@@ -1,85 +1,138 @@
-/* SaaS account login/register. Beacon credentials are configured separately. */
+/* Beabots account access. Beacon credentials are connected separately. */
 
-document.getElementById("btnMinimize").addEventListener("click", () => window.beabots?.minimize());
-document.getElementById("btnMaximize").addEventListener("click", () => window.beabots?.maximize());
-document.getElementById("btnClose").addEventListener("click", () => window.beabots?.close());
 
 const loginForm = document.getElementById("loginForm");
 const loginBtn = document.getElementById("loginBtn");
+const submitLabel = document.getElementById("submitLabel");
 const loginStatus = document.getElementById("loginStatus");
 const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
+const confirmPasswordInput = document.getElementById("confirmPassword");
+const confirmField = document.getElementById("confirmField");
+const passwordRequirement = document.getElementById("passwordRequirement");
 const showPasswordBtn = document.getElementById("showPassword");
-const toggleAuthModeBtn = document.getElementById("toggleAuthMode");
+const signInTab = document.getElementById("signInTab");
+const createAccountTab = document.getElementById("createAccountTab");
+const authTitle = document.getElementById("authTitle");
+const authIntro = document.getElementById("authIntro");
+const formEyebrow = document.getElementById("formEyebrow");
 const sessionNote = document.getElementById("sessionNote");
 
 let authMode = "login";
+let requestInProgress = false;
 
-function resetLoginButton() {
-  document.body.classList.remove("login-success-transition");
-  loginBtn.disabled = false;
-  loginBtn.textContent = authMode === "login" ? "LOG IN" : "CREATE ACCOUNT";
+function clearStatus() {
   loginStatus.textContent = "";
   loginStatus.className = "login-status";
 }
 
-function setAuthMode(mode) {
-  authMode = mode;
-  loginBtn.textContent = mode === "login" ? "LOG IN" : "CREATE ACCOUNT";
-  toggleAuthModeBtn.textContent = mode === "login" ? "Create Account" : "Use Existing Account";
-  sessionNote.textContent = mode === "login"
-    ? "Use your Beabots account. This is not your Beacon login."
-    : "Create a Beabots account first. Beacon credentials are connected after sign in.";
-  loginStatus.textContent = "";
-  loginStatus.className = "login-status";
+function setAuthMode(mode, { focusTab = false } = {}) {
+  authMode = mode === "register" ? "register" : "login";
+  const registering = authMode === "register";
+
+  document.body.dataset.authMode = authMode;
+  document.title = registering ? "Beabots · Create account" : "Beabots · Sign in";
+  authTitle.textContent = registering ? "Create your account" : "Welcome back";
+  authIntro.textContent = registering
+    ? "Set up your Beabots account to get started."
+    : "Sign in to continue to your Beabots workspace.";
+  formEyebrow.textContent = registering ? "NEW WORKSPACE" : "YOUR WORKSPACE";
+  submitLabel.textContent = registering ? "Create account" : "Sign in";
+  sessionNote.innerHTML = registering
+    ? '<span class="note-lock" aria-hidden="true">●</span> Beacon credentials are connected separately after you create your account.'
+    : '<span class="note-lock" aria-hidden="true">●</span> This is your Beabots account, not your Beacon login.';
+
+  signInTab.classList.toggle("active", !registering);
+  createAccountTab.classList.toggle("active", registering);
+  signInTab.setAttribute("aria-selected", String(!registering));
+  createAccountTab.setAttribute("aria-selected", String(registering));
+  signInTab.tabIndex = registering ? -1 : 0;
+  createAccountTab.tabIndex = registering ? 0 : -1;
+
+  confirmField.hidden = !registering;
+  confirmPasswordInput.required = registering;
+  passwordRequirement.hidden = !registering;
+  passwordInput.autocomplete = registering ? "new-password" : "current-password";
+  showPasswordBtn.textContent = "Show";
+  showPasswordBtn.setAttribute("aria-label", "Show password");
+  showPasswordBtn.setAttribute("aria-pressed", "false");
+  passwordInput.type = "password";
+  clearStatus();
+
+  if (focusTab) (registering ? createAccountTab : signInTab).focus();
 }
 
-window.addEventListener("focus", resetLoginButton);
+function setBusy(busy) {
+  requestInProgress = busy;
+  loginBtn.disabled = busy;
+  signInTab.disabled = busy;
+  createAccountTab.disabled = busy;
+  loginBtn.classList.toggle("is-loading", busy);
+  if (busy) submitLabel.textContent = authMode === "register" ? "Creating account…" : "Signing in…";
+}
+
+function showError(message, focusTarget) {
+  loginStatus.textContent = message;
+  loginStatus.className = "login-status error";
+  focusTarget?.focus();
+}
+
+signInTab.addEventListener("click", () => setAuthMode("login"));
+createAccountTab.addEventListener("click", () => setAuthMode("register"));
+
+for (const tab of [signInTab, createAccountTab]) {
+  tab.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    setAuthMode(authMode === "login" ? "register" : "login", { focusTab: true });
+  });
+}
 
 showPasswordBtn.addEventListener("click", () => {
   const showing = passwordInput.type === "text";
   passwordInput.type = showing ? "password" : "text";
   showPasswordBtn.textContent = showing ? "Show" : "Hide";
-});
-
-toggleAuthModeBtn.addEventListener("click", () => {
-  setAuthMode(authMode === "login" ? "register" : "login");
+  showPasswordBtn.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+  showPasswordBtn.setAttribute("aria-pressed", String(!showing));
 });
 
 (async function redirectIfLoggedIn() {
   try {
     const sessionInfo = await fetchJSON("/api/auth/me");
-    if (sessionInfo.authenticated) {
-      window.beabots?.goToDashboard();
-    }
+    if (sessionInfo.authenticated) window.beabots?.goToDashboard();
   } catch {
-    // Stay on the login page if the auth endpoint is unavailable.
+    // Stay on the login page if the authentication endpoint is unavailable.
   }
 })();
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (requestInProgress) return;
+
   const email = usernameInput.value.trim().toLowerCase();
   const password = passwordInput.value;
+  const registering = authMode === "register";
 
-  if (!email) {
-    loginStatus.textContent = "Email is required.";
-    loginStatus.className = "login-status error";
-    usernameInput.focus();
+  if (!email || !usernameInput.validity.valid) {
+    showError("Enter a valid email address.", usernameInput);
+    return;
+  }
+  if (!password) {
+    showError("Enter your password.", passwordInput);
+    return;
+  }
+  if (registering && password.length < 8) {
+    showError("Use a password with at least 8 characters.", passwordInput);
+    return;
+  }
+  if (registering && password !== confirmPasswordInput.value) {
+    showError("The passwords don’t match.", confirmPasswordInput);
     return;
   }
 
-  if (password.length < 8) {
-    loginStatus.textContent = "Password must be at least 8 characters.";
-    loginStatus.className = "login-status error";
-    passwordInput.focus();
-    return;
-  }
-
-  loginBtn.disabled = true;
-  loginBtn.textContent = authMode === "login" ? "LOGGING IN..." : "CREATING ACCOUNT...";
-  loginStatus.textContent = authMode === "login" ? "Signing in..." : "Creating your Beabots account...";
-  loginStatus.className = "login-status";
+  clearStatus();
+  setBusy(true);
+  loginStatus.textContent = registering ? "Creating your Beabots account…" : "Checking your sign-in details…";
 
   try {
     const result = await fetchJSON(`/api/auth/${authMode}`, {
@@ -87,22 +140,20 @@ loginForm.addEventListener("submit", async (event) => {
       body: JSON.stringify({ email, password }),
     });
 
-    if (result.error) {
-      throw new Error(result.error);
-    }
+    if (result.error) throw new Error(result.error);
 
-    loginBtn.textContent = authMode === "login" ? "LOGGED IN" : "ACCOUNT CREATED";
-    loginStatus.textContent = authMode === "login"
-      ? "Signed in."
-      : "Account created. Connect Beacon credentials in settings next.";
+    submitLabel.textContent = registering ? "Account created" : "Signed in";
+    loginStatus.textContent = registering
+      ? "Your account is ready. Opening your workspace…"
+      : "Welcome back. Opening your workspace…";
     loginStatus.className = "login-status success";
     document.body.classList.add("login-success-transition");
-    const transitionDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 180 : 840;
+    const transitionDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 180 : 820;
     setTimeout(() => window.beabots?.goToDashboard(), transitionDelay);
   } catch (error) {
-    loginBtn.disabled = false;
-    loginBtn.textContent = authMode === "login" ? "LOG IN" : "CREATE ACCOUNT";
-    loginStatus.textContent = error.message || "Authentication failed.";
+    setBusy(false);
+    submitLabel.textContent = registering ? "Create account" : "Sign in";
+    loginStatus.textContent = error.message || (registering ? "Could not create your account." : "Could not sign in.");
     loginStatus.className = "login-status error";
   }
 });

@@ -14,7 +14,6 @@ from contextvars import ContextVar
 
 import requests
 
-from app.core.login import load_login_settings as _load_legacy_login_settings
 from app.core.logger import logger
 
 
@@ -70,11 +69,9 @@ def auth_context_key(settings, user_key=None):
 
 
 def load_login_settings():
-    """Return per-job Beacon settings when present, else legacy settings."""
+    """Return Beacon settings bound to this job, if any."""
     context = _auth_context.get()
-    if context is not None:
-        return dict(context.get("settings", {}))
-    return _load_legacy_login_settings()
+    return dict(context.get("settings", {})) if context is not None else {}
 
 
 def _context_key():

@@ -83,40 +83,7 @@ try {
 }
 (savedOrder || ["CSF", "CF4", "PBEF", "AF"]).forEach((type) => addDocumentType(type));
 
-function getDesktopApi() {
-  for (const candidate of [window, window.parent, window.top]) {
-    try {
-      if (candidate?.pywebview?.api?.save_generated_file) return candidate.pywebview.api;
-    } catch (error) {
-      // Browser frames may have a different origin.
-    }
-  }
-  return null;
-}
-
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error || new Error("Unable to read the generated file."));
-    reader.readAsDataURL(blob);
-  });
-}
-
 async function saveGeneratedFile(blob, filename) {
-  let desktopApi = getDesktopApi();
-  if (!desktopApi) {
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    desktopApi = getDesktopApi();
-  }
-
-  if (desktopApi) {
-    const result = await desktopApi.save_generated_file(filename, await blobToDataUrl(blob));
-    if (result?.cancelled) return null;
-    if (!result?.ok) throw new Error(result?.error || "Unable to save the generated file.");
-    return result.path || filename;
-  }
-
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

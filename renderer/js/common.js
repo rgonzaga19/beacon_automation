@@ -19,9 +19,6 @@ function openDashboardWorkspace(workspaceKey) {
 if (!window.beabots) {
   window.beabots = {
     apiBase: window.location.origin,
-    minimize: () => {},
-    maximize: () => {},
-    close: () => { window.location.href = "/dashboard.html"; },
     goHome: () => {
       if (window.parent && window.parent !== window) {
         window.parent.location.href = "/dashboard.html";
@@ -137,14 +134,6 @@ function showBeaconRequired(message) {
   );
 }
 
-function showLicenseRequired(message) {
-  showModal(
-    "License Required",
-    message || "Please activate a valid Beabots license in Settings before running automation.",
-    { onOk: () => window.beabots?.openSettingsWindow?.() },
-  );
-}
-
 // ---------------------------------------------------------------------------
 // "Back to Home" titlebar button — present on CF2, CF4, and Upload SOA
 // (not on the dashboard itself, and not on Settings, which is allowed to
@@ -155,77 +144,3 @@ function showLicenseRequired(message) {
 document.getElementById("btnHome")?.addEventListener("click", () => {
   window.beabots?.goHome();
 });
-
-// Sidebar update status remains visible while switching embedded pages.
-// Informational only: update scheduling and installation remain automatic.
-if (window.parent === window && document.querySelector(".sidebar-bottom")) {
-  let updateStrip;
-  function sizeUpdateMessage() {
-    const viewport = updateStrip.querySelector(".update-message-viewport");
-    const message = viewport.firstChild;
-    const distance = Math.max(0, message.scrollWidth - viewport.clientWidth);
-    message.style.setProperty("--update-scroll-distance", `-${distance}px`);
-    message.style.setProperty("--update-scroll-duration", `${Math.max(8, distance / 25 + 4)}s`);
-    message.classList.toggle("scrolling", distance > 0);
-  }
-  async function refreshUpdateStatus() {
-    try {
-      const response = await fetch(`${API_BASE}/api/update/status`);
-      if (!response.ok) return;
-      const status = await response.json();
-      if (!status.desktop_updates_enabled) return;
-      if (!updateStrip) {
-        updateStrip = document.createElement("div");
-        updateStrip.className = "desktop-update-status";
-        updateStrip.setAttribute("role", "status");
-        updateStrip.setAttribute("aria-live", "polite");
-        const viewport = document.createElement("div");
-        viewport.className = "update-message-viewport";
-        const message = document.createElement("span");
-        viewport.appendChild(message);
-        const progress = document.createElement("progress");
-        progress.max = 100;
-        progress.setAttribute("aria-label", "Update download progress");
-        const retry = document.createElement("button");
-        retry.type = "button";
-        retry.className = "desktop-update-retry";
-        retry.textContent = "Retry update";
-        retry.addEventListener("click", async () => {
-          retry.disabled = true;
-          try {
-            await fetchJSON("/api/update/apply", {
-              method: "POST",
-              body: JSON.stringify({ retry: true }),
-            });
-          } catch (error) {
-            updateStrip.title = `Update retry failed: ${error.message}`;
-          } finally {
-            retry.disabled = false;
-          }
-        });
-        updateStrip.append(viewport, progress, retry);
-        document.querySelector(".sidebar-bottom").appendChild(updateStrip);
-        new ResizeObserver(sizeUpdateMessage).observe(viewport);
-      }
-      updateStrip.dataset.phase = status.phase;
-      const text = status.message + (status.phase === "downloading" && status.percent != null ? ` ${status.percent}%` : "");
-      const message = updateStrip.querySelector(".update-message-viewport span");
-      if (message.textContent !== text) {
-        message.textContent = text;
-        updateStrip.title = text;
-        sizeUpdateMessage();
-      }
-      const progress = updateStrip.querySelector("progress");
-      const retry = updateStrip.querySelector(".desktop-update-retry");
-      retry.classList.toggle("visible", Boolean(status.retry_available));
-      progress.hidden = !["checking", "downloading", "verifying"].includes(status.phase);
-      if (status.percent == null) progress.removeAttribute("value");
-      else progress.value = status.percent;
-    } catch {
-      // Keep the last status visible while the desktop server restarts.
-    } finally {
-      window.setTimeout(refreshUpdateStatus, 1000);
-    }
-  }
-  refreshUpdateStatus();
-}

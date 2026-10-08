@@ -11,9 +11,6 @@ const MONTH_NAMES = [
 // ---------------------------------------------------------------------------
 // Browser fallback controls
 // ---------------------------------------------------------------------------
-document.getElementById("btnMinimize").addEventListener("click", () => window.beabots?.minimize());
-document.getElementById("btnMaximize").addEventListener("click", () => window.beabots?.maximize?.());
-document.getElementById("btnClose").addEventListener("click", () => window.beabots?.close());
 
 // Claim Year / Claim Month selects (years 2024-2035, defaults to now)
 // ---------------------------------------------------------------------------
@@ -451,14 +448,9 @@ async function handleWorkbookUpload(fileOrPath) {
   patientsLine.textContent = `Patients Found : ${result.patient_count}`;
   hasPatientRecords = result.patient_count > 0;
 
-  window.beabots?.focusSelf?.();
 }
 
 uploadBtn.addEventListener("click", async () => {
-  if (window.beabots?.selectExcelFile) {
-    await handleWorkbookUpload(await window.beabots.selectExcelFile());
-    return;
-  }
   webExcelInput.value = "";
   webExcelInput.click();
 });
@@ -477,43 +469,7 @@ async function downloadCf2Template() {
   templateDownloadPending = true;
   const mode = currentMode;
   try {
-    let desktopApi = null;
-    for (const frame of [window, window.parent, window.top]) {
-      try {
-        if (frame?.pywebview?.api?.save_generated_file) {
-          desktopApi = frame.pywebview.api;
-          break;
-        }
-      } catch (error) {
-        // Browser frames may have a different origin.
-      }
-    }
-
     const url = `${API_BASE}/api/cf2/download-template?mode=${encodeURIComponent(mode)}`;
-    if (desktopApi) {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Unable to load the Excel template.");
-      const blob = await response.blob();
-      const dataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error || new Error("Unable to read the Excel template."));
-        reader.readAsDataURL(blob);
-      });
-      const filename = mode === "existing_draft" ? "CF2_Template_ExistingDraft.xlsx" : "CF2_Template.xlsx";
-      const result = await desktopApi.save_generated_file(filename, dataUrl);
-      if (result?.cancelled) return;
-      if (!result?.ok) throw new Error(result?.error || "Unable to save the Excel template.");
-      showModal("Success", "Excel template saved successfully.");
-      return;
-    }
-
-    if (window.beabots?.saveExcelTemplate) {
-      const result = await window.beabots.saveExcelTemplate(mode);
-      if (result?.saved) showModal("Success", "Excel template downloaded successfully.");
-      else if (result?.error) throw new Error(result.error);
-      return;
-    }
     window.location.href = url;
   } catch (error) {
     showModal("Error", `Unable to download template.\n\n${error.message}`);
@@ -735,8 +691,6 @@ startBtn.addEventListener("click", async () => {
     log(`ERROR: ${result.error}`);
     if (result.requires_beacon) {
       showBeaconRequired(result.error);
-    } else if (result.requires_license) {
-      showLicenseRequired(result.error);
     }
     scrollLogToEnd();
     setControlsRunning(false);

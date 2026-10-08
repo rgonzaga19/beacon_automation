@@ -42,21 +42,7 @@
   function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
     updateToggleIcon(theme);
-    syncTitleBar(theme);
   }
-
-  function syncTitleBar(theme) {
-    // The top-level page owns the native window; iframe changes arrive via storage.
-    if (window.parent !== window) return;
-    const api = window.pywebview?.api;
-    if (api?.set_titlebar_theme) {
-      api.set_titlebar_theme(theme).catch(() => {});
-    }
-  }
-
-  window.addEventListener("pywebviewready", () => {
-    syncTitleBar(document.documentElement.getAttribute("data-theme") || DEFAULT_THEME);
-  });
 
   function setTheme(theme) {
     try {
@@ -66,7 +52,6 @@
       // it just won't persist or sync to other windows.
     }
     applyTheme(theme);
-    window.beabots?.setTheme?.(theme);
   }
 
   function toggleTheme() {
@@ -78,28 +63,10 @@
   // flash of the wrong theme.
   applyTheme(getStoredTheme() || DEFAULT_THEME);
 
-  // Reconcile with the main process's persisted value. This is the
-  // authoritative source (survives app restarts, and covers windows
-  // whose localStorage happens to be empty or stale) — the localStorage
-  // read above is just for an instant, flash-free first paint.
-  window.beabots?.getTheme?.().then((theme) => {
-    if (theme && theme !== getStoredTheme()) {
-      try {
-        localStorage.setItem(STORAGE_KEY, theme);
-      } catch (e) {
-        // ignore — theme still applies for this window
-      }
-      applyTheme(theme);
-    }
-  });
-
   // If another open window changes the theme, follow it.
   window.addEventListener("storage", (e) => {
     if (e.key === STORAGE_KEY && e.newValue) applyTheme(e.newValue);
   });
-
-  // Optional compatibility hook for hosts that broadcast theme changes.
-  window.beabots?.onThemeChanged?.((theme) => applyTheme(theme));
 
   // Optional Settings-page DARK/LIGHT toggle-track.
   function updateAppearanceRow(theme) {

@@ -6,9 +6,6 @@
 // ---------------------------------------------------------------------------
 // Browser fallback controls
 // ---------------------------------------------------------------------------
-document.getElementById("btnMinimize").addEventListener("click", () => window.beabots?.minimize());
-document.getElementById("btnMaximize").addEventListener("click", () => window.beabots?.maximize());
-document.getElementById("btnClose").addEventListener("click", () => window.beabots?.close());
 
 // ---------------------------------------------------------------------------
 // SOA folder
@@ -23,18 +20,6 @@ webSoaInput.hidden = true;
 document.body.appendChild(webSoaInput);
 let selectedSoaFiles = [];
 
-function soaDesktopApi() {
-  // Workspaces run in an iframe; pywebview exposes its bridge on the host.
-  for (const frame of [window, window.parent, window.top]) {
-    try {
-      if (typeof frame.pywebview?.api?.select_soa_files === "function") {
-        return frame.pywebview.api;
-      }
-    } catch (_) { /* A cross-origin host cannot expose the desktop bridge. */ }
-  }
-  return null;
-}
-
 function updateSoaSelection(files) {
   selectedSoaFiles = files;
   soaFolderInput.value = files.length
@@ -44,53 +29,13 @@ function updateSoaSelection(files) {
 }
 
 (async function initFolder() {
-  if (!window.beabots?.selectSoaFolder) {
-    soaFolderInput.placeholder = "No SOA Excel files selected";
-    browseBtn.lastChild.textContent = " UPLOAD FILES";
-    return;
-  }
-  const settings = await fetchJSON("/api/settings");
-  soaFolderInput.value = settings.soa_folder || window.beabots?.defaultSoaFolder || "";
+  soaFolderInput.placeholder = "No SOA Excel files selected";
+  browseBtn.lastChild.textContent = " UPLOAD FILES";
 })();
 
-browseBtn.addEventListener("click", async () => {
-  if (!window.beabots?.selectSoaFolder) {
-    const desktopApi = soaDesktopApi();
-    if (desktopApi) {
-      browseBtn.disabled = true;
-      try {
-        const result = await desktopApi.select_soa_files();
-        if (result.cancelled) return;
-        if (result.error) {
-          showModal("SOA File Selection", result.error);
-          return;
-        }
-        updateSoaSelection(result.files.map((file) => {
-          const bytes = Uint8Array.from(atob(file.data), (char) => char.charCodeAt(0));
-          return new File([bytes], file.name);
-        }));
-      } catch (_) {
-        showModal("SOA File Selection", "Unable to open the selected files. Please try again.");
-      } finally {
-        browseBtn.disabled = soaRunActive;
-      }
-      return;
-    }
-    webSoaInput.value = "";
-    webSoaInput.click();
-    return;
-  }
-  const chosen = await window.beabots?.selectSoaFolder(soaFolderInput.value);
-  if (!chosen) return;
-
-  soaFolderInput.value = chosen;
-
-  // Remember the choice for next time — same as the old
-  // settings["soa_folder"] = chosen; save_settings(settings)
-  await fetchJSON("/api/settings", {
-    method: "POST",
-    body: JSON.stringify({ soa_folder: chosen }),
-  });
+browseBtn.addEventListener("click", () => {
+  webSoaInput.value = "";
+  webSoaInput.click();
 });
 
 webSoaInput.addEventListener("change", () => {
@@ -346,14 +291,8 @@ automateBtn.addEventListener("click", async () => {
     return;
   }
 
-  const soaFolder = soaFolderInput.value.trim();
-  const isWebUpload = !window.beabots?.selectSoaFolder;
-  if (isWebUpload && selectedSoaFiles.length === 0) {
+  if (selectedSoaFiles.length === 0) {
     showModal("No SOA Files", "Please upload the SOA Excel files for this batch.");
-    return;
-  }
-  if (!isWebUpload && !soaFolder) {
-    showModal("No SOA Folder", "Please select the folder where your SOA files are located.");
     return;
   }
 
@@ -367,28 +306,15 @@ automateBtn.addEventListener("click", async () => {
   renderSummary();
   writeLog(`Starting SOA upload for ${transmittals.length} transmittal(s)...`);
 
-  let result;
-  if (isWebUpload) {
-    const formData = new FormData();
-    formData.append("transmittals", transmittals.join("\n"));
-    selectedSoaFiles.forEach((file) => formData.append("soa_files", file));
-    const res = await fetch(`${API_BASE}/api/soa/start`, {
-      method: "POST",
-      body: formData,
-    });
-    result = await res.json();
-  } else {
-    result = await fetchJSON("/api/soa/start", {
-      method: "POST",
-      body: JSON.stringify({ transmittals, soa_folder: soaFolder }),
-    });
-  }
+  const formData = new FormData();
+  formData.append("transmittals", transmittals.join("\n"));
+  selectedSoaFiles.forEach((file) => formData.append("soa_files", file));
+  const res = await fetch(`${API_BASE}/api/soa/start`, { method: "POST", body: formData });
+  const result = await res.json();
 
   if (result.error) {
     if (result.requires_beacon) {
       showBeaconRequired(result.error);
-    } else if (result.requires_license) {
-      showLicenseRequired(result.error);
     } else {
       showModal("Error", result.error);
     }

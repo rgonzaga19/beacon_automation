@@ -9,19 +9,6 @@ if (window.parent && window.parent !== window) {
 }
 
 // ---------------------------------------------------------------------------
-// Title bar controls
-// ---------------------------------------------------------------------------
-document.getElementById("btnMinimize").addEventListener("click", () => {
-  window.beabots?.minimize();
-});
-document.getElementById("btnMaximize").addEventListener("click", () => {
-  window.beabots?.maximize();
-});
-document.getElementById("btnClose").addEventListener("click", () => {
-  window.beabots?.close();
-});
-
-// ---------------------------------------------------------------------------
 // Toolbar navigation
 // ---------------------------------------------------------------------------
 const sidebar = document.getElementById("dashboardSidebar");

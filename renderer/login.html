@@ -1,136 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Beabots Login</title>
-<script src="js/theme.js"></script>
-<link rel="stylesheet" href="css/theme.css" />
-<style>
-  body { overflow:hidden; }
-  .login-layout { flex:1; min-height:0; display:grid; grid-template-columns:46% 54%; }
-  .brand-panel { position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:42px; color:var(--text-pri); background:var(--accent2); }
-  .brand-panel::after { content:""; position:absolute; left:-12%; right:-12%; bottom:-105px; height:180px; border-radius:50% 50% 0 0; background:rgba(5,18,28,.18); transform:rotate(-4deg); }
-  .brand-content { position:relative; z-index:1; width:100%; max-width:330px; text-align:center; }
-  .brand-mark { width:92px; height:92px; margin:0 auto 20px; display:grid; place-items:center; border-radius:24px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.35); }
-  .brand-mark img { width:58px; height:58px; object-fit:contain; }
-  .brand-name { margin:0; color:#fff; font-size:27px; font-weight:900; letter-spacing:1.5px; }
-  .brand-tagline { max-width:280px; margin:10px auto 0; color:rgba(255,255,255,.82); font-size:12.5px; line-height:1.6; }
-  .brand-rule { width:72px; height:2px; margin:22px auto; background:rgba(255,255,255,.7); border-radius:2px; }
-  .brand-features { display:grid; grid-template-columns:repeat(3,1fr); gap:15px; }
-  .brand-feature { color:rgba(255,255,255,.78); font-size:10px; line-height:1.35; }
-  .feature-icon { width:30px; height:30px; margin:0 auto 7px; display:grid; place-items:center; border:1px solid rgba(255,255,255,.35); border-radius:9px; color:#fff; font-size:14px; }
-
-  .form-panel { display:flex; align-items:center; justify-content:center; padding:46px; background:var(--bg-dark); }
-  .login-card { width:100%; max-width:390px; padding:30px; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:none; }
-  .login-card h1 { margin:0; color:var(--text-pri); font-size:22px; font-weight:850; letter-spacing:.2px; }
-  .login-card .intro { margin:7px 0 24px; color:var(--text-sec); font-size:12px; }
-  .login-field { margin-bottom:16px; }
-  .login-field label { display:block; margin-bottom:7px; color:var(--text-sec); font-size:10px; font-weight:800; letter-spacing:.45px; }
-  .input-shell { display:flex; align-items:center; gap:9px; padding:0 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); transition:border-color 140ms ease,box-shadow 140ms ease; }
-  .input-shell:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
-  .input-icon { width:18px; color:var(--accent); text-align:center; }
-  .input-shell input { width:100%; height:43px; padding:0; color:var(--text-pri); background:transparent; border:0; outline:0; }
-  .input-shell input:-webkit-autofill,
-  .input-shell input:-webkit-autofill:hover,
-  .input-shell input:-webkit-autofill:focus {
-    -webkit-text-fill-color:var(--text-pri);
-    caret-color:var(--text-pri);
-    -webkit-box-shadow:0 0 0 1000px var(--bg-card) inset;
-    box-shadow:0 0 0 1000px var(--bg-card) inset;
-  }
-  .password-toggle { flex:none; padding:5px; color:var(--text-sec); background:transparent; border:0; cursor:pointer; font:700 10px var(--font-ui); }
-  .password-toggle:hover { color:var(--accent); }
-  .login-meta { display:flex; align-items:center; justify-content:flex-end; min-height:20px; margin:-3px 0 13px; }
-  .session-note { color:var(--text-sec); font-size:9.5px; }
-  #loginBtn { width:100%; height:43px; font-weight:800; letter-spacing:.6px; }
-  .login-status { min-height:18px; margin-top:12px; color:var(--text-sec); text-align:center; font-size:10.5px; }
-  .login-status.error { color:var(--error); }
-  .login-status.success { color:var(--success); }
-  .login-transition-wash { position:absolute; z-index:20; inset:0; pointer-events:none; background:radial-gradient(circle at 73% 70%,var(--accent) 0,var(--accent2) 28%,var(--bg-dark) 72%); clip-path:circle(0% at 73% 70%); opacity:0; }
-  body.login-success-transition .login-transition-wash { animation:login-wash 900ms cubic-bezier(.65,0,.2,1) forwards; }
-  body.login-success-transition .brand-panel { animation:brand-exit 720ms cubic-bezier(.55,0,.25,1) forwards; }
-  body.login-success-transition .login-card { animation:card-exit 650ms cubic-bezier(.55,0,.25,1) forwards; }
-  body.login-success-transition #loginBtn { position:relative; overflow:hidden; box-shadow:0 0 0 4px var(--accent-soft),0 0 30px var(--accent); }
-  body.login-success-transition #loginBtn::after { content:""; position:absolute; inset:-100% -35%; background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.72) 50%,transparent 65%); animation:login-shine 620ms ease-out forwards; }
-  @keyframes brand-exit { to { opacity:0; transform:translateX(-70px) scale(.96); filter:blur(5px); } }
-  @keyframes card-exit { to { opacity:0; transform:translateX(80px) scale(.94); filter:blur(4px); } }
-  @keyframes login-wash { 0% { opacity:0; clip-path:circle(0% at 73% 70%); } 18% { opacity:.96; } 100% { opacity:1; clip-path:circle(145% at 73% 70%); } }
-  @keyframes login-shine { from { transform:translateX(-70%) rotate(8deg); } to { transform:translateX(70%) rotate(8deg); } }
-  @media (max-width:900px) {
-    .login-layout { grid-template-columns:40% 60%; }
-    .brand-panel { padding:28px 20px; }
-    .brand-mark { width:72px; height:72px; }
-    .brand-mark img { width:46px; height:46px; }
-    .brand-name { font-size:22px; }
-    .brand-features { gap:8px; }
-    .form-panel { padding:28px; }
-  }
-  @media (max-width:720px) {
-    .login-layout { grid-template-columns:1fr; }
-    .brand-panel { display:none; }
-    .form-panel { padding:22px; }
-    .login-card { max-width:440px; }
-  }
-  @media (max-height:620px) {
-    .brand-rule { margin:14px auto; }
-    .form-panel { padding-top:18px; padding-bottom:18px; }
-    .login-card { padding:22px 26px; }
-    .login-card .intro { margin-bottom:16px; }
-  }
-  @media (prefers-reduced-motion:reduce) {
-    body.login-success-transition .login-transition-wash { animation-duration:180ms; }
-    body.login-success-transition .brand-panel,
-    body.login-success-transition .login-card,
-    body.login-success-transition #loginBtn::after { animation:none; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#082c2a" />
+  <title>Beabots · Sign in</title>
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/login.css" />
 </head>
-<body>
-  <div class="app-window no-glow">
-    <div class="titlebar">
+<body class="auth-page">
+  <div class="app-window no-glow auth-window">
+    <div class="titlebar" aria-hidden="true">
       <span class="icon"><img src="assets/bot.ico" alt=""></span>
-      <span class="title">BEABOTS — SECURE LOGIN</span>
+      <span class="title">BEABOTS — ACCOUNT ACCESS</span>
       <span class="spacer"></span>
-      <div class="titlebar-btn" id="btnMinimize">─</div>
-      <div class="titlebar-btn" id="btnMaximize">🗖</div>
-      <div class="titlebar-btn close" id="btnClose">×</div>
     </div>
 
-    <main class="login-layout">
-      <section class="brand-panel">
+    <main class="auth-layout">
+      <aside class="brand-panel">
+        <div class="brand-backdrop-grid" aria-hidden="true"></div>
         <div class="brand-content">
-          <div class="brand-mark"><img src="assets/bot.ico" alt="Beabots"></div>
-          <h1 class="brand-name">BEABOTS</h1>
-          <p class="brand-tagline">Smart automation for faster, more reliable PhilHealth Beacon claims processing.</p>
-          <div class="brand-rule"></div>
-          <div class="brand-features">
-            <div class="brand-feature"><div class="feature-icon">◇</div>Modern<br>Workflow</div>
-            <div class="brand-feature"><div class="feature-icon">▣</div>Claims<br>Automation</div>
-            <div class="brand-feature"><div class="feature-icon">✓</div>Secure<br>Access</div>
+          <a class="brand-lockup" href="/" aria-label="Beabots home">
+            <span class="brand-mark"><img src="assets/bot.ico" alt=""></span>
+            <span class="brand-name">BEABOTS</span>
+          </a>
+
+          <div class="brand-copy">
+            <span class="brand-eyebrow"><span class="eyebrow-dot"></span> BEACON CLAIMS WORKFLOW</span>
+            <h1>Less busywork.<br><span>More clear work.</span></h1>
+            <p>Keep your claims workflow moving with focused tools for faster, more consistent processing.</p>
           </div>
+
+          <div class="workflow-card" aria-label="A simple claims workflow illustration">
+            <div class="workflow-topline"><span>CLAIMS WORKFLOW</span><span class="workflow-live"><i></i> READY</span></div>
+            <div class="workflow-steps">
+              <div class="workflow-step"><span class="step-icon step-file">01</span><span><b>Prepare</b><small>Review your records</small></span><span class="step-check">✓</span></div>
+              <div class="step-connector"></div>
+              <div class="workflow-step"><span class="step-icon step-check-icon">02</span><span><b>Validate</b><small>Check before encoding</small></span><span class="step-check">✓</span></div>
+              <div class="step-connector"></div>
+              <div class="workflow-step workflow-step-current"><span class="step-icon step-send">03</span><span><b>Process</b><small>Move work forward</small></span><span class="step-arrow">↗</span></div>
+            </div>
+          </div>
+
+          <div class="brand-footnote"><span class="footnote-mark">✓</span> Your Beabots account is separate from your Beacon login.</div>
         </div>
-      </section>
+        <div class="brand-orb brand-orb-one" aria-hidden="true"></div>
+        <div class="brand-orb brand-orb-two" aria-hidden="true"></div>
+      </aside>
 
-      <section class="form-panel">
-        <form class="login-card" id="loginForm">
-          <h1>Welcome back</h1>
-          <p class="intro">Sign in to your Beabots account. Beacon credentials are connected separately in settings.</p>
+      <section class="form-panel" aria-labelledby="authTitle">
+        <div class="login-card">
+          <div class="mobile-brand"><span class="brand-mark"><img src="assets/bot.ico" alt=""></span><span>BEABOTS</span></div>
 
-          <div class="login-field">
-            <label for="username">EMAIL</label>
-            <div class="input-shell"><span class="input-icon">@</span><input type="email" id="username" autocomplete="email" placeholder="you@example.com" /></div>
+          <div class="auth-heading">
+            <span class="form-eyebrow" id="formEyebrow">YOUR WORKSPACE</span>
+            <h2 id="authTitle">Welcome back</h2>
+            <p class="intro" id="authIntro">Sign in to continue to your Beabots workspace.</p>
           </div>
 
-          <div class="login-field">
-            <label for="password">PASSWORD</label>
-            <div class="input-shell"><span class="input-icon">●</span><input type="password" id="password" autocomplete="current-password" placeholder="Enter your password" /><button class="password-toggle" id="showPassword" type="button">Show</button></div>
+          <div class="auth-switch" role="tablist" aria-label="Choose account action">
+            <button class="auth-tab active" id="signInTab" type="button" role="tab" aria-selected="true" aria-controls="loginForm">Sign in</button>
+            <button class="auth-tab" id="createAccountTab" type="button" role="tab" aria-selected="false" aria-controls="loginForm">Create account</button>
           </div>
 
-          <div class="login-meta"><span class="session-note" id="sessionNote">Use your Beabots account. This is not your Beacon login.</span></div>
-          <button class="solid-btn" id="loginBtn" type="submit">LOG IN</button>
-          <button class="cyber-btn" id="toggleAuthMode" type="button" style="width:100%; height:38px; margin-top:10px;">Create Account</button>
-          <div class="login-status" id="loginStatus" role="status" aria-live="polite"></div>
-        </form>
+          <form id="loginForm" novalidate>
+            <div class="login-field">
+              <label for="username">Email address</label>
+              <div class="input-shell"><span class="input-icon" aria-hidden="true">@</span><input type="email" id="username" name="email" autocomplete="email" placeholder="you@example.com" required /></div>
+            </div>
+
+            <div class="login-field">
+              <div class="field-label-row"><label for="password">Password</label><span class="password-requirement" id="passwordRequirement" hidden>At least 8 characters</span></div>
+              <div class="input-shell"><span class="input-icon key-icon" aria-hidden="true">⌑</span><input type="password" id="password" name="password" autocomplete="current-password" placeholder="Enter your password" required /><button class="password-toggle" id="showPassword" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
+            </div>
+
+            <div class="login-field confirm-field" id="confirmField" hidden>
+              <label for="confirmPassword">Confirm password</label>
+              <div class="input-shell"><span class="input-icon key-icon" aria-hidden="true">⌑</span><input type="password" id="confirmPassword" name="confirm_password" autocomplete="new-password" placeholder="Enter your password again" /></div>
+            </div>
+
+            <div class="session-note" id="sessionNote"><span class="note-lock" aria-hidden="true">●</span> This is your Beabots account, not your Beacon login.</div>
+            <button class="solid-btn auth-submit" id="loginBtn" type="submit"><span id="submitLabel">Sign in</span><span class="submit-arrow" aria-hidden="true">→</span></button>
+            <div class="login-status" id="loginStatus" role="status" aria-live="polite"></div>
+          </form>
+
+          <div class="auth-footer"><span class="footer-line"></span><span>SECURE WORKSPACE ACCESS</span><span class="footer-line"></span></div>
+        </div>
+        <div class="form-legal">Beabots · Claims workflow automation</div>
       </section>
     </main>
     <div class="login-transition-wash" aria-hidden="true"></div>

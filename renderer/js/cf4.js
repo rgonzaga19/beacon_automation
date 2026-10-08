@@ -5,7 +5,7 @@
  * to have hardcoded (chief complaint text, which "Essentially normal" /
  * symptom / exam-finding boxes get checked, the "Others" remarks, the
  * Course in the Ward order text). They're persisted through server.py's
- * /api/cf4/settings endpoint (stored alongside the rest of settings.json
+ * /api/cf4/settings endpoint (stored in the signed-in user account
  * under a "cf4" key) and read back by server.py right before it kicks off
  * /api/beacon/start, so beacon.run(..., cf4_data=...) always gets
  * whatever was last saved here instead of a fixed string in the script.
@@ -313,19 +313,6 @@ const DEFAULT_CF4_SETTINGS = {
 };
 
 // ---------------------------------------------------------------------------
-// Title bar controls
-// ---------------------------------------------------------------------------
-document.getElementById("btnMinimize").addEventListener("click", () => {
-  window.beabots?.minimize();
-});
-document.getElementById("btnMaximize").addEventListener("click", () => {
-  window.beabots?.maximize();
-});
-document.getElementById("btnClose").addEventListener("click", () => {
-  window.beabots?.close();
-});
-
-// ---------------------------------------------------------------------------
 // Field <-> settings-key mapping. Starts with the hand-written fields
 // already in cf4.html, then SYMPTOM_COLUMNS / PHYSICAL_EXAM_SECTIONS
 // below fill in the rest as they're rendered.
@@ -490,7 +477,7 @@ document.getElementById("btnResetDefaults").addEventListener("click", () => {
 });
 
 document.getElementById("btnCancel").addEventListener("click", () => {
-  window.beabots?.close();
+  window.beabots?.goHome();
 });
 
 loadSettings();
@@ -775,8 +762,6 @@ startBtn.addEventListener("click", async () => {
     writeLog(`ERROR: ${result.error}`, "ERROR");
     if (result.requires_beacon) {
       showBeaconRequired(result.error);
-    } else if (result.requires_license) {
-      showLicenseRequired(result.error);
     }
     cf4Running = false;
     cf4StopRequested = false;
