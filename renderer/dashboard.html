@@ -151,8 +151,9 @@
             <button class="side-link" id="btnUploadSoa" type="button" title="Auto Upload SOA"><span class="side-icon" aria-hidden="true">⇧</span><span class="side-label">Auto Upload SOA</span></button>
             <button class="side-link" id="btnCf4" type="button" title="Claim Form 4"><span class="side-icon" aria-hidden="true">▤</span><span class="side-label">Claim Form 4</span></button>
             <button class="side-link" id="btnFinalizeClaims" type="button" title="Edit Claims"><span class="side-icon" aria-hidden="true">&#10003;</span><span class="side-label">Edit Claims</span></button>
-            <button class="side-link" id="btnAutoRename" type="button" title="PDF Auto Rename"><span class="side-icon" aria-hidden="true">↻</span><span class="side-label">PDF Auto Rename</span></button>
+            <button class="side-link" id="btnRunAll" type="button" title="Run CF2, SOA, and CF4"><span class="side-icon" aria-hidden="true">▶</span><span class="side-label">Run All</span></button>
             <button class="side-link" id="btnPdfSplitter" type="button" title="PDF Splitter"><span class="side-icon" aria-hidden="true">&#9986;</span><span class="side-label">PDF Splitter</span></button>
+            <button class="side-link" id="btnAutoRename" type="button" title="PDF Auto Rename"><span class="side-icon" aria-hidden="true">↻</span><span class="side-label">PDF Auto Rename</span></button>
             <button class="side-link" id="btnSettings" type="button" title="Settings"><span class="side-icon" aria-hidden="true">⚙</span><span class="side-label">Settings</span></button>
           </nav>
           <footer class="sidebar-footer" aria-label="Beabots version and copyright"><span class="sidebar-copyright">&#169; <span id="sidebarCopyrightYear"></span> Beabots. All rights reserved.</span><span class="footer-divider" aria-hidden="true">&#183;</span><span class="sidebar-version-full" id="sidebarVersionFull">Version web</span><span class="sidebar-version-short" id="sidebarVersionShort">vweb</span></footer>
@@ -168,12 +169,14 @@
                 <button class="tool-card" data-open-tool="soaExcel"><strong>SOA Excel Generator</strong><span>Prepare claim workbooks</span></button><button class="tool-card" data-open-tool="cf2"><strong>Claim Form 2</strong><span>Prepare CF2 drafts</span></button>
                 <button class="tool-card" data-open-tool="uploadSoa"><strong>Upload SOA</strong><span>Upload supporting documents</span></button><button class="tool-card" data-open-tool="cf4"><strong>Claim Form 4</strong><span>Configure CF4 details</span></button>
                 <button class="tool-card" data-open-tool="finalizeClaims"><strong>Edit Claims</strong><span>Review and finalize claims</span></button><button class="tool-card" data-open-tool="autoRename"><strong>PDF Auto Rename</strong><span>Organize claim documents</span></button><button class="tool-card" data-open-tool="pdfSplitter"><strong>PDF Splitter</strong><span>Split document files</span></button>
+              <button class="tool-card" data-open-tool="runAll"><strong>Run All</strong><span>Create CF2 drafts, upload SOAs, and generate CF4</span></button>
               </div></section>
               <section class="home-card" id="profileCard"><h2>Your profile</h2><p>Set how your account appears in Beabots.</p><form class="profile-fields" id="profileForm"><div class="profile-field"><label for="profileNameInput">Profile name</label><input id="profileNameInput" maxlength="120" autocomplete="name" placeholder="Your name"><small>Your name on your account profile.</small></div><div class="profile-field"><label for="displayNameInput">Display name</label><input id="displayNameInput" maxlength="120" placeholder="Name shown in the header"><small>Used for your greeting and account menu.</small></div><button class="solid-btn profile-save" type="submit">Save profile</button><div id="profileStatus" role="status" aria-live="polite"></div></form></section>
             </div>
           </div>
         </main>
         <iframe class="workspace-frame" data-workspace-frame="cf2" title="Claim Form 2"></iframe>
+        <iframe class="workspace-frame" data-workspace-frame="runAll" title="Run All Claims Automation"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="uploadSoa" title="Auto Upload SOA"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="cf4" title="Claim Form 4"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="finalizeClaims" title="Edit Claims"></iframe>

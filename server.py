@@ -45,7 +45,7 @@ from app.domain.time_parser import parse_time_range, format_beacon_time
 from app.domain.cf2_mapper import build_cf2_data
 from app.automation.cf2 import CF2Automation
 from app.automation.draft_title import MAX_TITLE_LENGTH
-from app.automation.soa import SOAAutomation
+from app.automation.soa import SOAAutomation, _find_soa_file
 from app.automation.beacon import run as beacon_run
 from app.automation import beacon as beacon_automation
 from app.automation.auto_rename_service import build_renamed_archive, build_template, create_preview
@@ -87,11 +87,17 @@ _cf2_states = {}
 _cf2_runs = {}
 _soa_runs = {}
 _beacon_runs = {}
+_run_all_runs = {}
+_run_all_retry_states = {}
 _job_start_lock = threading.RLock()
 def serialize_job_start(fn):
     @wraps(fn)
     def wrapped(*args, **kwargs):
         with _job_start_lock:
+            if fn.__name__ != "run_all_start":
+                user = current_user()
+                if user and user.id in _run_all_runs:
+                    return jsonify({"error": "Run All is already running for this account."}), 409
             return fn(*args, **kwargs)
     return wrapped
 
@@ -2032,6 +2038,358 @@ def beacon_stop():
         "message": "Stop requested. CF4 automation will end after the current safe step.",
         "level": "WARNING",
     }, room=user_room(user.id))
+    return jsonify({"stopped": True, "running": True})
+
+
+# ---------------------------------------------------------------------------
+# Combined CF2 -> SOA -> CF4 workflow. This is an additive entry point; the
+# existing single-purpose automation pages and endpoints remain independent.
+# ---------------------------------------------------------------------------
+def _expire_run_all_retry_state(user_id, run_id):
+    state = _run_all_retry_states.get(user_id)
+    if state and state.get("run_id") == run_id:
+        _run_all_retry_states.pop(user_id, None)
+        shutil.rmtree(state["soa_folder"], ignore_errors=True)
+
+
+def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_settings, cf4_settings, stop_event, run_id):
+    room_token = _emit_room.set(user_room(user_id))
+    results = []
+    stopped = False
+    auth_key = browser_session.auth_context_key(beacon_settings, user_key=f"user:{user_id}")
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            cf2 = CF2Automation(
+                mode="new_draft",
+                account_receivable_name=cf2_settings["account_receivable_name"],
+                account_receivable_designation=cf2_settings["account_receivable_designation"],
+                account_receivable_number=cf2_settings["account_receivable_number"],
+            )
+            try:
+                for index, record in enumerate(records, start=1):
+                    if stop_event.is_set():
+                        stopped = True
+                        break
+
+                    item = {
+                        "patient_name": record.patient_name,
+                        "member_pin": record.member_pin,
+                        "transmittal": "",
+                        "cf2": "waiting",
+                        "soa": "waiting",
+                        "cf4": "waiting",
+                        "message": "",
+                    }
+                    results.append(item)
+
+                    def publish(stage, status, message=""):
+                        item[stage] = status
+                        if message:
+                            item["message"] = message
+                        emit_to_current_room("run_all_progress", {
+                            "index": index,
+                            "total": len(records),
+                            "result": dict(item),
+                            "stage": stage,
+                        })
+
+                    publish("cf2", "running", "Creating and encoding CF2 draft")
+                    cf2_result = cf2.process_patient(record, current=index, total=len(records))
+                    item["transmittal"] = str(cf2_result.get("transmittal") or "").strip()
+                    if cf2_result.get("status") != "success" or not item["transmittal"]:
+                        publish("cf2", cf2_result.get("status", "failed"), cf2_result.get("message", "CF2 did not return a transmittal."))
+                        item["soa"] = item["cf4"] = "blocked"
+                        continue
+                    publish("cf2", "success", cf2_result.get("message", "CF2 draft completed."))
+
+                    if stop_event.is_set():
+                        stopped = True
+                        item["soa"] = item["cf4"] = "blocked"
+                        break
+                    publish("soa", "running", "Uploading matched SOA")
+                    soa = SOAAutomation(soa_folder=str(soa_folder))
+                    try:
+                        soa.run([item["transmittal"]], should_stop=stop_event.is_set)
+                        soa_result = next(iter(soa.get_results()), None)
+                    finally:
+                        soa.close()
+                    if not soa_result or soa_result.get("status") != "success":
+                        message = (soa_result or {}).get("message", "SOA upload did not complete.")
+                        publish("soa", (soa_result or {}).get("status", "failed"), message)
+                        item["cf4"] = "blocked"
+                        continue
+                    publish("soa", "success", soa_result.get("message", "SOA uploaded."))
+
+                    if stop_event.is_set():
+                        stopped = True
+                        item["cf4"] = "blocked"
+                        break
+                    publish("cf4", "running", "Generating CF4")
+                    cf4_results = beacon_run(
+                        [item["transmittal"]],
+                        auto_encode_cf4=True,
+                        cf4_data=cf4_settings,
+                        should_stop=stop_event.is_set,
+                    )
+                    cf4_result = next(iter(cf4_results), None)
+                    if cf4_result and cf4_result.get("status") == "SUCCESS":
+                        publish("cf4", "success", "CF4 generated.")
+                    else:
+                        message = (cf4_result or {}).get("remarks", "CF4 generation did not complete.")
+                        publish("cf4", "failed", message)
+
+                    if stop_event.is_set():
+                        stopped = True
+                        break
+            finally:
+                cf2.close()
+    except Exception as ex:
+        logger.exception(f"Run All automation failed: {ex}")
+        if results:
+            last = results[-1]
+            for stage in ("cf2", "soa", "cf4"):
+                if last.get(stage) == "running":
+                    last[stage] = "failed"
+                    last["message"] = str(ex)
+                    break
+    finally:
+        retryable = any(
+            item.get("cf2") == "success"
+            and (item.get("soa") in ("failed", "blocked") or item.get("cf4") in ("failed", "blocked"))
+            for item in results
+        )
+        retry_run_id = None
+        if retryable:
+            retry_run_id = run_id
+            _run_all_retry_states[user_id] = {
+                "run_id": run_id,
+                "beacon_settings": beacon_settings,
+                "cf4_settings": cf4_settings,
+                "soa_folder": soa_folder,
+                "results": results,
+            }
+            expiry_timer = threading.Timer(3600, _expire_run_all_retry_state, args=(user_id, run_id))
+            expiry_timer.daemon = True
+            expiry_timer.start()
+        else:
+            shutil.rmtree(soa_folder, ignore_errors=True)
+        _run_all_runs.pop(user_id, None)
+        emit_to_current_room("run_all_done", {"results": results, "stopped": stopped, "retry_run_id": retry_run_id})
+        _emit_room.reset(room_token)
+
+
+def _run_all_retry_automation(user_id, retry_state, item, start_at, stop_event):
+    room_token = _emit_room.set(user_room(user_id))
+    run_id = retry_state["run_id"]
+    transmittal = item["transmittal"]
+    beacon_settings = retry_state["beacon_settings"]
+    cf4_settings = retry_state["cf4_settings"]
+
+    def publish(stage, status, message=""):
+        item[stage] = status
+        if message:
+            item["message"] = message
+        emit_to_current_room("run_all_progress", {
+            "index": retry_state["results"].index(item) + 1,
+            "total": len(retry_state["results"]),
+            "result": dict(item),
+            "stage": stage,
+        })
+
+    try:
+        auth_key = browser_session.auth_context_key(beacon_settings, user_key=f"user:{user_id}")
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            if start_at == "soa":
+                publish("soa", "running", "Retrying SOA upload for the existing CF2 draft")
+                soa = SOAAutomation(soa_folder=str(retry_state["soa_folder"]))
+                try:
+                    soa.run([transmittal], should_stop=stop_event.is_set)
+                    soa_result = next(iter(soa.get_results()), None)
+                finally:
+                    soa.close()
+                if not soa_result or soa_result.get("status") != "success":
+                    publish("soa", (soa_result or {}).get("status", "failed"), (soa_result or {}).get("message", "SOA upload did not complete."))
+                else:
+                    publish("soa", "success", soa_result.get("message", "SOA uploaded."))
+
+            if item.get("soa") == "success" and not stop_event.is_set():
+                publish("cf4", "running", "Generating CF4 for the existing draft")
+                cf4_results = beacon_run([transmittal], auto_encode_cf4=True, cf4_data=cf4_settings, should_stop=stop_event.is_set)
+                cf4_result = next(iter(cf4_results), None)
+                if cf4_result and cf4_result.get("status") == "SUCCESS":
+                    publish("cf4", "success", "CF4 generated.")
+                else:
+                    publish("cf4", "failed", (cf4_result or {}).get("remarks", "CF4 generation did not complete."))
+    except Exception as ex:
+        logger.exception(f"Run All retry failed for {transmittal}: {ex}")
+        stage = "soa" if start_at == "soa" and item.get("soa") == "running" else "cf4"
+        publish(stage, "failed", str(ex))
+    finally:
+        all_done = all(
+            result.get("cf2") == "success"
+            and result.get("soa") == "success"
+            and result.get("cf4") == "success"
+            for result in retry_state["results"]
+        )
+        if all_done:
+            _expire_run_all_retry_state(user_id, run_id)
+        _run_all_runs.pop(user_id, None)
+        emit_to_current_room("run_all_done", {
+            "results": retry_state["results"],
+            "stopped": stop_event.is_set(),
+            "retry_run_id": None if all_done else run_id,
+        })
+        _emit_room.reset(room_token)
+
+
+@app.route("/api/run-all/start", methods=["POST"])
+@login_required
+@serialize_job_start
+def run_all_start():
+    user, beacon_settings, error_response = require_beacon_connection()
+    if error_response:
+        return error_response
+    if not request.content_type or not request.content_type.startswith("multipart/form-data"):
+        return jsonify({"error": "Upload the CF2 workbook and SOA files from this page."}), 400
+
+    uploaded = request.files.get("workbook")
+    if not uploaded:
+        return jsonify({"error": "Select a CF2 Excel workbook."}), 400
+    try:
+        workbook_path = _save_upload(uploaded, "run_all", {".xlsx", ".xlsm", ".xls"})
+    except ValueError as ex:
+        return jsonify({"error": str(ex)}), 400
+
+    try:
+        claim_year = int(request.form.get("claim_year"))
+        claim_month_name = request.form.get("claim_month")
+        claim_month = MONTH_NAMES.index(claim_month_name) + 1 if claim_month_name else None
+        workbook = load_workbook(workbook_path, data_only=True)
+        try:
+            records = _analyze_workbook(workbook, claim_year, claim_month, "new_draft")
+        finally:
+            workbook.close()
+    except Exception as ex:
+        return jsonify({"error": str(ex)}), 400
+    finally:
+        workbook_path.unlink(missing_ok=True)
+
+    soa_folder_path, soa_files = _prepare_upload_folder(request.files.getlist("soa_files"), {".xlsx", ".xls"})
+    if not soa_files:
+        shutil.rmtree(soa_folder_path, ignore_errors=True)
+        return jsonify({"error": "Select at least one SOA Excel file (.xlsx or .xls)."}), 400
+    if len(soa_files) != len(records):
+        shutil.rmtree(soa_folder_path, ignore_errors=True)
+        return jsonify({
+            "error": (
+                f"The workbook contains {len(records)} completed patient row(s), "
+                f"but {len(soa_files)} SOA file(s) were selected. "
+                "The counts must match exactly."
+            )
+        }), 400
+
+    # Validate every filename match before creating any drafts. Never guess
+    # when a patient has no unique SOA workbook.
+    match_token = _emit_room.set(user_room(user.id))
+    try:
+        matched_soa = {}
+        match_errors = []
+        for record in records:
+            # CF2 workbooks commonly write names as "SURNAME, GIVEN" while
+            # the existing SOA matcher expects the Beacon/API order "GIVEN
+            # SURNAME". Normalize only for preflight; the SOA automation
+            # still resolves the patient name from Beacon as it always has.
+            soa_match_name = record.patient_name
+            if "," in soa_match_name:
+                surname, given = soa_match_name.split(",", 1)
+                if surname.strip() and given.strip():
+                    soa_match_name = f"{given.strip()} {surname.strip()}"
+            try:
+                matched_file = _find_soa_file(soa_match_name, soa_folder_path)
+            except Exception as ex:
+                match_errors.append(str(ex))
+                continue
+            if matched_file in matched_soa:
+                match_errors.append(
+                    f"The SOA file '{matched_file.name}' matched both "
+                    f"'{matched_soa[matched_file]}' and '{record.patient_name}'. "
+                    "Use distinct filenames so each patient has their own SOA."
+                )
+            else:
+                matched_soa[matched_file] = record.patient_name
+        if match_errors:
+            raise ValueError("\n".join(match_errors))
+    except Exception as ex:
+        shutil.rmtree(soa_folder_path, ignore_errors=True)
+        return jsonify({"error": f"SOA matching check failed: {ex}"}), 400
+    finally:
+        _emit_room.reset(match_token)
+
+    active_runs = (_cf2_runs, _soa_runs, _beacon_runs, _run_all_runs)
+    if any(user.id in runs for runs in active_runs):
+        shutil.rmtree(soa_folder_path, ignore_errors=True)
+        return jsonify({"error": "Another automation is already running for this account."}), 409
+
+    ar_values = {
+        "account_receivable_name": str(request.form.get("account_receivable_name") or "").strip(),
+        "account_receivable_designation": str(request.form.get("account_receivable_designation") or "").strip(),
+        "account_receivable_number": str(request.form.get("account_receivable_number") or "").strip(),
+    }
+    user_settings = get_or_create_user_settings(user)
+    cf4_settings = {**DEFAULT_CF4_SETTINGS, **(user_settings.cf4_settings or {})}
+    stop_event = threading.Event()
+    old_retry_state = _run_all_retry_states.get(user.id)
+    if old_retry_state:
+        _expire_run_all_retry_state(user.id, old_retry_state["run_id"])
+    run_id = uuid.uuid4().hex
+    _run_all_runs[user.id] = {"stop_event": stop_event}
+    threading.Thread(
+        target=_run_all_automation,
+        args=(user.id, beacon_settings, records, soa_folder_path, ar_values, cf4_settings, stop_event, run_id),
+        daemon=True,
+    ).start()
+    return jsonify({"started": True, "patient_count": len(records)})
+
+
+@app.route("/api/run-all/retry", methods=["POST"])
+@login_required
+@serialize_job_start
+def run_all_retry():
+    user = current_user()
+    data = request.get_json(silent=True) or {}
+    retry_state = _run_all_retry_states.get(user.id)
+    if not retry_state or data.get("run_id") != retry_state.get("run_id"):
+        return jsonify({"error": "This run is no longer available to retry. Start a new run."}), 410
+    item = next((row for row in retry_state["results"] if row.get("member_pin") == data.get("member_pin")), None)
+    if not item or item.get("cf2") != "success":
+        return jsonify({"error": "This claim has no completed CF2 draft to continue."}), 400
+    if item.get("soa") != "success":
+        start_at = "soa"
+    elif item.get("cf4") != "success":
+        start_at = "cf4"
+    else:
+        return jsonify({"error": "All stages for this claim are already complete."}), 409
+
+    stop_event = threading.Event()
+    _run_all_runs[user.id] = {"stop_event": stop_event}
+    threading.Thread(
+        target=_run_all_retry_automation,
+        args=(user.id, retry_state, item, start_at, stop_event),
+        daemon=True,
+    ).start()
+    return jsonify({"started": True, "stage": start_at})
+
+
+@app.route("/api/run-all/stop", methods=["POST"])
+@login_required
+def run_all_stop():
+    user = current_user()
+    run = _run_all_runs.get(user.id)
+    if not run:
+        return jsonify({"stopped": False, "running": False})
+    run["stop_event"].set()
     return jsonify({"stopped": True, "running": True})
 
 

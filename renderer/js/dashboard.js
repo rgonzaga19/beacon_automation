@@ -77,6 +77,7 @@ window.beabots?.onDashboardEnter(playDashboardEntrance);
 
 const workspaceButtons = {
   cf2: document.getElementById("btnCf2"),
+  runAll: document.getElementById("btnRunAll"),
   uploadSoa: document.getElementById("btnUploadSoa"),
   cf4: document.getElementById("btnCf4"),
   finalizeClaims: document.getElementById("btnFinalizeClaims"),
@@ -89,6 +90,7 @@ const workspaceButtons = {
 const workspaceColumn = document.getElementById("workspaceColumn");
 const workspaceRoutes = {
   cf2: "cf2.html",
+  runAll: "run-all.html",
   uploadSoa: "upload-soa.html",
   cf4: "cf4.html",
   finalizeClaims: "edit-claims.html",
@@ -264,6 +266,9 @@ window.beabots?.onWorkspaceActive(setWorkspaceActive);
 
 document.getElementById("btnCf2").addEventListener("click", () => {
   openWorkspace("cf2");
+});
+document.getElementById("btnRunAll").addEventListener("click", () => {
+  openWorkspace("runAll");
 });
 document.getElementById("btnUploadSoa").addEventListener("click", () => {
   openWorkspace("uploadSoa");
