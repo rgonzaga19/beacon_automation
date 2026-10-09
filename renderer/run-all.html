@@ -8,9 +8,9 @@
 <link rel="stylesheet" href="css/theme.css" />
 <style>
   * { box-sizing:border-box; }
-  html,body { height:auto; min-height:100%; overflow-x:hidden; overflow-y:auto; }
-  body { min-height:100vh; color:var(--text-pri); background:var(--bg-dark); }
-  .page { width:min(1120px,100%); margin:0 auto; padding:clamp(18px,3.2vw,38px); }
+  html,body { width:100%; height:auto; min-height:100%; overflow-x:hidden; overflow-y:auto; }
+  body { min-height:100vh; color:var(--text-pri); background:var(--bg-dark); -webkit-text-size-adjust:100%; }
+  .page { width:100%; max-width:1120px; margin:0 auto; padding:clamp(16px,3.2vw,38px); }
   .page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:24px; }
   .eyebrow { display:inline-flex; align-items:center; gap:7px; margin-bottom:9px; color:var(--accent); font-size:10px; font-weight:800; letter-spacing:1.1px; text-transform:uppercase; }
   .eyebrow::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px var(--accent); }
@@ -43,12 +43,13 @@
   .file-meta strong { display:block; color:var(--text-pri); font-size:11px; }
   .file-meta.ready strong { color:var(--success); }
   .field { min-width:0; display:grid; gap:6px; }
-  .field input,.field select { width:100%; min-height:42px; padding:9px 11px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:inherit; font-size:13px; }
+  .field input,.field select { display:block; width:100%; min-width:0; min-height:44px; padding:9px 11px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:inherit; font-size:13px; }
   .period-fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .billing-section { margin-top:21px; padding-top:18px; border-top:1px solid var(--border); }
   .billing-section h3 { margin:0 0 4px; font-size:12px; }
   .billing-section>p { margin:0 0 13px; color:var(--text-sec); font-size:10.5px; }
-  .billing-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+  .billing-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; align-items:start; }
+  .billing-grid .field:nth-child(3) { grid-column:span 2; }
   .actions { display:flex; flex-wrap:wrap; align-items:center; gap:11px; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
   .actions button { min-height:43px; padding:10px 17px; }
   #startBtn { min-width:160px; }
@@ -56,7 +57,7 @@
   #stopBtn.visible { display:inline-flex; }
   #status { flex:1; min-width:170px; color:var(--text-sec); font-size:11px; }
   #error { display:none; margin-top:12px; padding:12px 14px; color:var(--error); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font-size:11px; line-height:1.5; white-space:pre-wrap; }
-  #resultsWrap { overflow:auto; }
+  #resultsWrap { max-width:100%; overflow:auto; -webkit-overflow-scrolling:touch; }
   table { width:100%; min-width:700px; border-collapse:collapse; font-size:12px; }
   th,td { padding:12px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
   th { color:var(--text-sec); font-size:10px; letter-spacing:.55px; text-transform:uppercase; background:var(--bg-card); }
@@ -73,8 +74,29 @@
   @media(prefers-reduced-motion:reduce) { .stage.running::before { animation:none; border-color:var(--accent); border-right-color:transparent; } }
   #log { max-height:240px; overflow:auto; display:grid; gap:5px; color:var(--text-sec); font:11px/1.5 var(--font-ui); }
   .log-line { overflow-wrap:anywhere; }
-  @media(max-width:700px) { .upload-grid { grid-template-columns:1fr; } .billing-grid { grid-template-columns:1fr 1fr; } }
-  @media(max-width:520px) { .page { padding:14px; } .page-header { display:block; } .saved-settings { display:inline-block; margin-top:12px; } .steps li { display:grid; justify-items:start; gap:6px; padding:9px 7px; font-size:9px; } .steps b { width:20px; height:20px; } .billing-grid { grid-template-columns:1fr; } .picker-row { align-items:flex-start; flex-direction:column; } .picker-button { width:100%; } #startBtn { width:100%; } }
+  @media(max-width:900px) { .upload-grid { grid-template-columns:1fr; } .billing-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .billing-grid .field:nth-child(3) { grid-column:span 2; } }
+  @media(max-width:520px) {
+    .page { padding:12px; }
+    .page-header { display:block; margin-bottom:16px; }
+    .page-header p { font-size:12px; }
+    .saved-settings { display:inline-block; max-width:100%; margin-top:12px; white-space:normal; }
+    .panel { margin:10px 0; padding:14px; border-radius:var(--radius-md); }
+    .panel-heading { gap:9px; }
+    .steps li { display:grid; justify-items:start; align-content:start; gap:6px; padding:9px 7px; font-size:9px; }
+    .steps b { width:20px; height:20px; }
+    .instructions { padding:12px; }
+    .instructions ol { padding-left:16px; font-size:11px; }
+    .upload-card { padding:13px; }
+    .billing-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px 10px; }
+    .billing-grid .field:nth-child(3) { grid-column:1 / -1; }
+    .picker-row { align-items:stretch; flex-direction:column; }
+    .picker-button { width:100%; min-height:44px; }
+    .actions { align-items:stretch; }
+    #startBtn,#stopBtn { width:100%; justify-content:center; }
+    #status { flex:1 0 100%; min-width:0; }
+    #resultsWrap { margin:0 -2px; }
+    #log { max-height:200px; }
+  }
 </style>
 </head>
 <body>
@@ -92,9 +114,11 @@
       <section class="upload-card"><div class="upload-title">Patient SOA files <span aria-hidden="true">· required</span></div><small>Select one spreadsheet for each completed patient row · .xlsx or .xls</small><div class="picker-row"><label class="picker-button" for="soaFiles"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>Choose SOA files</label><input class="file-input" id="soaFiles" name="soa_files" type="file" accept=".xlsx,.xls" multiple required><div class="file-meta" id="soaMeta"><strong>No SOA files selected</strong>Names will be checked against the workbook.</div></div></section>
     </div>
     <section class="billing-section"><h3>Claim period and CF2 billing contact</h3><p>Billing contact fields are optional, as in the standalone CF2 workflow.</p><div class="billing-grid">
-      <div class="field"><label>Claim month and year</label><div class="period-fields"><select id="claimMonth" name="claim_month" aria-label="Claim month"></select><select id="claimYear" name="claim_year" aria-label="Claim year"></select></div><small>Applied to treatment dates in the workbook.</small></div>
+      <div class="field"><label for="claimMonth">Claim month</label><select id="claimMonth" name="claim_month"></select><small>Applied to treatment dates.</small></div>
+      <div class="field"><label for="claimYear">Claim year</label><select id="claimYear" name="claim_year"></select></div>
       <div class="field"><label for="arName">Billing contact name</label><input id="arName" name="account_receivable_name" autocomplete="name"></div>
-      <div class="field"><label for="arDesignation">Designation and contact number</label><div class="period-fields"><input id="arDesignation" name="account_receivable_designation" aria-label="Designation" placeholder="Designation"><input id="arNumber" name="account_receivable_number" inputmode="tel" aria-label="Contact number" placeholder="Contact number"></div></div>
+      <div class="field"><label for="arDesignation">Designation</label><input id="arDesignation" name="account_receivable_designation" placeholder="e.g. Encoder"></div>
+      <div class="field"><label for="arNumber">Contact number</label><input id="arNumber" name="account_receivable_number" inputmode="tel" placeholder="e.g. 09XXXXXXXXX"></div>
     </div></section>
     <div class="actions"><button id="startBtn" class="cyber-btn" type="submit">Start Run All</button><button id="stopBtn" class="cyber-btn" type="button">Stop after current step</button><span id="status" role="status" aria-live="polite">Ready when you are.</span></div>
     <div id="error" role="alert"></div>
