@@ -19,6 +19,8 @@ class PatientRecord:
 
     member_pin: str = ""
 
+    draft_title: str = ""
+
     px_contact_no: str = ""
 
     admission_time: time | None = None

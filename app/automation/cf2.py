@@ -9,7 +9,7 @@ from app.automation.draft import (
     run_create_draft_flow,
     InvalidMemberPinError,
 )
-from app.automation.draft_title import build_draft_title
+from app.automation.draft_title import MAX_TITLE_LENGTH, build_draft_title
 from app.core.logger import logger
 
 # Guard against print() crashing an otherwise-successful patient run.
@@ -113,6 +113,10 @@ class CF2Automation:
 
         try:
             data = build_cf2_data(record)
+            if not data.session_dates or not data.first_treatment or not data.last_treatment:
+                raise ValueError(
+                    "Treatment Dates are missing or invalid. Upload a workbook with valid treatment dates."
+                )
         except Exception as e:
             result["message"] = f"Could not build CF2 data: {e}"
             print(f"ERROR: {result['message']}")
@@ -284,13 +288,21 @@ class CF2Automation:
         Creates the Beacon transmittal (Create Draft) and runs Add Claims
         for this patient's Member PIN, admission date (= first treatment
         date) and discharge date (= last treatment date), with an
-        auto-generated draft title. The API response supplies the generated
+        custom or automatically generated draft title. The API response supplies the generated
         transmittal/claim IDs directly, so fill_cf2() continues without any
         browser navigation or URL parsing.
         """
         admission_date = data.first_treatment.strftime("%m/%d/%Y")
         discharge_date = data.last_treatment.strftime("%m/%d/%Y")
-        draft_title = build_draft_title(data.patient_name, data.first_treatment, data.last_treatment)
+        draft_title = str(data.draft_title or "").strip()
+        if not draft_title:
+            draft_title = build_draft_title(data.patient_name, data.first_treatment, data.last_treatment)
+        elif len(draft_title) > MAX_TITLE_LENGTH:
+            print(
+                f"WARNING: Custom draft title exceeds {MAX_TITLE_LENGTH} chars "
+                f"({len(draft_title)}); truncating it."
+            )
+            draft_title = draft_title[:MAX_TITLE_LENGTH]
 
         result = run_create_draft_flow(
             None, data.member_pin, admission_date, discharge_date, draft_title

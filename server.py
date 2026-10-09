@@ -44,6 +44,7 @@ from app.domain.date_parser import parse_dates
 from app.domain.time_parser import parse_time_range, format_beacon_time
 from app.domain.cf2_mapper import build_cf2_data
 from app.automation.cf2 import CF2Automation
+from app.automation.draft_title import MAX_TITLE_LENGTH
 from app.automation.soa import SOAAutomation
 from app.automation.beacon import run as beacon_run
 from app.automation import beacon as beacon_automation
@@ -1431,6 +1432,81 @@ def post_cf4_settings():
 def _analyze_workbook(workbook, claim_year, claim_month=None, mode="new_draft"):
     sheet = workbook["Sheet1"]
     records = []
+    header_columns = {
+        re.sub(r"[^a-z0-9]+", "", str(cell.value or "").casefold()): cell.column
+        for cell in sheet[1]
+        if cell.value is not None
+    }
+
+    def find_header(*names):
+        for name in names:
+            column = header_columns.get(re.sub(r"[^a-z0-9]+", "", name.casefold()))
+            if column:
+                return column
+        return None
+
+    draft_title_column = find_header("draft title", "draft title optional") if mode == "new_draft" else None
+    if mode == "new_draft" and draft_title_column:
+        if draft_title_column != 1:
+            raise ValueError("In the New Draft template, DRAFT TITLE (OPTIONAL) must be in column A.")
+        # Current New Draft template: the optional title was inserted as
+        # column A, shifting the original fields one column to the right.
+        draft_title_column = 1
+        identifier_column = 2
+        patient_column = 3
+        doctor_column = 4
+        accreditation_column = 5
+        treatment_dates_column = 6
+    else:
+        # Legacy New Draft and Existing Draft workbooks retain their original
+        # positions. Resolve those by header so both formats remain supported.
+        patient_column = find_header("name of patient", "patient name")
+        identifier_column = (
+            find_header("transmittal no", "transmittal number")
+            if mode == "existing_draft"
+            else find_header("member pin")
+        )
+        doctor_column = find_header("attending nephrologist", "doctor")
+        accreditation_column = find_header("accreditation no", "accreditation number")
+        treatment_dates_column = find_header("treatment dates")
+    required_headers = {
+        "NAME OF PATIENT": patient_column,
+        "MEMBER PIN" if mode == "new_draft" else "TRANSMITTAL NO.": identifier_column,
+        "ATTENDING/ NEPHROLOGIST": doctor_column,
+        "ACCREDITATION NO.": accreditation_column,
+        "TREATMENT DATES": treatment_dates_column,
+    }
+    missing_headers = [label for label, column in required_headers.items() if column is None]
+    expected_labels = {
+        patient_column: "NAME OF PATIENT",
+        identifier_column: "MEMBER PIN" if mode == "new_draft" else "TRANSMITTAL NO.",
+        doctor_column: "ATTENDING/ NEPHROLOGIST",
+        accreditation_column: "ACCREDITATION NO.",
+        treatment_dates_column: "TREATMENT DATES",
+    }
+    expected_headers = {
+        patient_column: {"nameofpatient", "patientname"},
+        identifier_column: {"memberpin"} if mode == "new_draft" else {"transmittalno", "transmittalnumber"},
+        doctor_column: {"attendingnephrologist", "doctor"},
+        accreditation_column: {"accreditationno", "accreditationnumber"},
+        treatment_dates_column: {"treatmentdates"},
+    }
+    for column, accepted_headers in expected_headers.items():
+        if column is None:
+            continue
+        actual_header = next(
+            (header for header, header_column in header_columns.items() if header_column == column),
+            None,
+        )
+        if actual_header not in accepted_headers:
+            label = expected_labels[column]
+            missing_headers.append(f"{label} in column {column}")
+    if missing_headers:
+        raise ValueError(
+            "The workbook headers do not match the selected CF2 template. "
+            f"Missing required column(s): {', '.join(missing_headers)}. "
+            "Download the template for this workflow and keep its headers unchanged."
+        )
     time_column = next(
         (
             cell.column
@@ -1451,19 +1527,49 @@ def _analyze_workbook(workbook, claim_year, claim_month=None, mode="new_draft"):
     )
 
     for row in range(2, sheet.max_row + 1):
-        # Column layout is the same in both templates — only what column A
-        # MEANS changes: Member PIN for a fresh draft (new_draft, the
-        # original CF2_Template.xlsx), or an existing Transmittal No. to
-        # search for instead (existing_draft, CF2_Template_ExistingDraft.xlsx).
-        # B=NAME, C=DOCTOR, D=ACCREDITATION NO., E=TREATMENT DATES either way.
-        patient = sheet[f"B{row}"].value
-        if patient is None:
+        # Column positions are read from headers so the optional New Draft
+        # title column can be added without changing Existing Draft files.
+        patient = sheet.cell(row=row, column=patient_column).value
+        identifier = sheet.cell(row=row, column=identifier_column).value
+        doctor = sheet.cell(row=row, column=doctor_column).value
+        accreditation = sheet.cell(row=row, column=accreditation_column).value
+        treatment_dates = sheet.cell(row=row, column=treatment_dates_column).value
+        draft_title = (
+            sheet.cell(row=row, column=draft_title_column).value
+            if draft_title_column
+            else None
+        )
+        if all(
+            value is None or not str(value).strip()
+            for value in (patient, identifier, doctor, accreditation, treatment_dates, draft_title)
+        ):
             continue
 
-        identifier = sheet[f"A{row}"].value
-        doctor = sheet[f"C{row}"].value
-        accreditation = sheet[f"D{row}"].value
-        treatment_dates = sheet[f"E{row}"].value
+        if patient is None or not str(patient).strip():
+            raise ValueError(f"Row {row}: NAME OF PATIENT is required.")
+        patient_name = str(patient).strip()
+        if not any(character.isalpha() for character in patient_name):
+            raise ValueError(
+                f"Row {row}: NAME OF PATIENT appears to contain an identifier, not a patient name. "
+                "Check that the workbook columns have not shifted."
+            )
+        if identifier is None or not str(identifier).strip():
+            identifier_label = "MEMBER PIN" if mode == "new_draft" else "TRANSMITTAL NO."
+            raise ValueError(f"Row {row}: {identifier_label} is required.")
+        if doctor is None or not str(doctor).strip():
+            raise ValueError(f"Row {row}: ATTENDING/ NEPHROLOGIST is required.")
+        if accreditation is None or not str(accreditation).strip():
+            raise ValueError(f"Row {row}: ACCREDITATION NO. is required.")
+        if treatment_dates is None or not str(treatment_dates).strip():
+            raise ValueError(
+                f"Row {row}: TREATMENT DATES is required. Use a format such as "
+                "'June 15,17,19' or '6/15,17,19'."
+            )
+        draft_title = str(draft_title).strip() if draft_title is not None else ""
+        if draft_title and len(draft_title) > MAX_TITLE_LENGTH:
+            raise ValueError(
+                f"Row {row}: Draft Title must be {MAX_TITLE_LENGTH} characters or fewer."
+            )
         time_range = sheet.cell(row=row, column=time_column).value if time_column else None
         px_contact = sheet.cell(row=row, column=px_contact_column).value if px_contact_column else None
         try:
@@ -1471,25 +1577,37 @@ def _analyze_workbook(workbook, claim_year, claim_month=None, mode="new_draft"):
         except ValueError as ex:
             raise ValueError(f"Row {row}: {ex}") from ex
 
+        try:
+            parsed_treatment_dates = parse_dates(
+                treatment_dates, claim_year, claim_month
+            )
+        except ValueError as ex:
+            raise ValueError(f"Row {row}: Invalid TREATMENT DATES: {ex}") from ex
+        if not parsed_treatment_dates:
+            raise ValueError(
+                f"Row {row}: Could not read TREATMENT DATES {str(treatment_dates)!r}. "
+                "Use a format such as 'June 15,17,19', '6/15,17,19', or '15,17,19' "
+                "with the claim month selected."
+            )
+
         identifier_str = str(identifier).strip() if identifier is not None else ""
 
         record = PatientRecord(
             transmittal=identifier_str if mode == "existing_draft" else "",
-            patient_name=str(patient),
+            patient_name=patient_name,
             doctor=str(doctor),
             accreditation_no=str(accreditation),
             treatment_dates_raw=str(treatment_dates),
             time_range_raw=str(time_range).strip() if time_range is not None else "",
             member_pin=identifier_str if mode == "new_draft" else "",
+            draft_title=draft_title,
             px_contact_no=str(px_contact).strip() if px_contact is not None else "",
             admission_time=admission_time,
             discharge_time=discharge_time,
             source_row=row,
         )
 
-        record.treatment_dates = parse_dates(
-            record.treatment_dates_raw, claim_year, claim_month
-        )
+        record.treatment_dates = parsed_treatment_dates
 
         if record.treatment_dates:
             record.first_treatment = record.treatment_dates[0]
@@ -1498,19 +1616,22 @@ def _analyze_workbook(workbook, claim_year, claim_month=None, mode="new_draft"):
 
         records.append(record)
 
+    if not records:
+        raise ValueError("No patient rows were found. Add at least one completed patient row and upload again.")
+
     return records
 
 
 def _record_to_dict(record, cf2, mode="new_draft"):
     """Same fields the old log_box printed per patient, as JSON instead of
-    text. "identifier"/"identifier_label" replace the old hardcoded
-    "member_pin" display line so the CF2 window can show whichever column
-    A actually meant for this upload (Member PIN vs. Transmittal No.)."""
+    text. "identifier"/"identifier_label" let the CF2 window show the
+    correct New Draft Member PIN or Existing Draft Transmittal No."""
     return {
         "identifier_label": "Transmittal No." if mode == "existing_draft" else "Member PIN",
         "identifier": record.transmittal if mode == "existing_draft" else record.member_pin,
         "excel_row": record.source_row,
         "patient_name": record.patient_name,
+        "draft_title": record.draft_title,
         "doctor": record.doctor,
         "accreditation_no": record.accreditation_no,
         "treatment_dates_raw": record.treatment_dates_raw,

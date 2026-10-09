@@ -1,5 +1,5 @@
 import re
-from datetime import date
+from datetime import date, datetime
 
 
 MONTHS = {
@@ -54,6 +54,12 @@ def parse_dates(text, default_year, default_month=None):
     supplied, it falls back to the current calendar month.
     """
 
+    if isinstance(text, datetime):
+        return [text.date()]
+
+    if isinstance(text, date):
+        return [text]
+
     if text is None:
         return []
 
@@ -83,7 +89,9 @@ def _parse_month_name(text, default_year):
 
     month = None
 
-    for name, number in MONTHS.items():
+    # Match full month names before abbreviations (JULY before JUL, JUNE
+    # before JUN, SEPTEMBER before SEP) so the shorter prefix cannot win.
+    for name, number in sorted(MONTHS.items(), key=lambda item: len(item[0]), reverse=True):
 
         if clean.startswith(name):
 
@@ -94,6 +102,9 @@ def _parse_month_name(text, default_year):
             break
 
     if month is None:
+        return []
+
+    if not re.fullmatch(r"\s*\d+(?:\s*[,\-]\s*\d+)*\s*", clean):
         return []
 
     numbers = re.findall(r"\d+", clean)
@@ -136,6 +147,9 @@ def _parse_numeric(text, default_year):
     )
 
     if not m:
+        return []
+
+    if not re.fullmatch(r"\d+(?:[,-]\d+)*", m.group(2)):
         return []
 
     month = int(m.group(1))
@@ -182,7 +196,7 @@ def _parse_days_only(text, default_year, default_month):
     if not stripped or "/" in stripped:
         return []
 
-    if not re.fullmatch(r"[\d,\-]+", stripped):
+    if not re.fullmatch(r"\d+(?:[,-]\d+)*", stripped):
         return []
 
     days = re.findall(r"\d+", stripped)

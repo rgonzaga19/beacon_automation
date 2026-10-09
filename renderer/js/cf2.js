@@ -38,37 +38,59 @@ claimMonthSelect.value = MONTH_NAMES[new Date().getMonth()];
 // ---------------------------------------------------------------------------
 let currentMode = "new_draft"; // or "existing_draft"
 
-const modeNewDraftBtn = document.getElementById("modeNewDraft");
-const modeExistingDraftBtn = document.getElementById("modeExistingDraft");
-const modeHint = document.getElementById("modeHint");
+const workflowUi = {
+  new_draft: {
+    section: document.querySelector('[data-mode-section="new_draft"]'),
+    fileLabel: document.getElementById("fileLabelNew"),
+    sheetsLine: document.getElementById("sheetsLineNew"),
+    patientsLine: document.getElementById("patientsLineNew"),
+  },
+  existing_draft: {
+    section: document.querySelector('[data-mode-section="existing_draft"]'),
+    fileLabel: document.getElementById("fileLabelExisting"),
+    sheetsLine: document.getElementById("sheetsLineExisting"),
+    patientsLine: document.getElementById("patientsLineExisting"),
+  },
+};
+const uploadButtons = [...document.querySelectorAll(".draft-upload-btn")];
+
+function resetWorkflowCards() {
+  Object.values(workflowUi).forEach((ui) => {
+    ui.fileLabel.textContent = "No workbook selected";
+    ui.sheetsLine.textContent = "—";
+    ui.patientsLine.textContent = "0";
+  });
+}
 
 const MODE_HINTS = {
   new_draft:
-    'Column A of the template is the patient\'s <strong>Member PIN</strong> — a new Beacon draft is created for each row.',
+    'Column A is an optional <strong>Draft Title</strong>; Column B is the patient\'s <strong>Member PIN</strong>.',
   existing_draft:
     'Column A of the template is the <strong>Transmittal No.</strong> of a draft that already exists in Beacon — this searches for it instead of creating one.',
 };
 
 function setMode(mode) {
+  if (!workflowUi[mode]) return;
   if (mode === currentMode) return;
   currentMode = mode;
 
-  modeNewDraftBtn.classList.toggle("active", mode === "new_draft");
-  modeExistingDraftBtn.classList.toggle("active", mode === "existing_draft");
-  modeHint.innerHTML = MODE_HINTS[mode];
+  Object.entries(workflowUi).forEach(([key, ui]) => {
+    const active = key === mode;
+    ui.section.classList.toggle("active", active);
+    ui.section.setAttribute("aria-current", active ? "step" : "false");
+  });
 
   // A workbook uploaded for one mode has the wrong meaning in column A
   // for the other (Member PIN vs. Transmittal No.), so switching modes
   // clears whatever was loaded rather than leaving stale/misleading data.
-  fileLabel.textContent = "No file selected";
-  sheetsLine.textContent = "Sheets : -";
-  patientsLine.textContent = "Patients Found : 0";
+  resetWorkflowCards();
   hasPatientRecords = false;
   clearLog();
 }
-
-modeNewDraftBtn.addEventListener("click", () => setMode("new_draft"));
-modeExistingDraftBtn.addEventListener("click", () => setMode("existing_draft"));
+Object.entries(workflowUi).forEach(([mode, ui]) => {
+  ui.section.classList.toggle("active", mode === currentMode);
+  ui.section.setAttribute("aria-current", mode === currentMode ? "step" : "false");
+});
 
 // ---------------------------------------------------------------------------
 // Log panels
@@ -339,10 +361,6 @@ window.beabots?.onServerLog?.(({ level, line }) => {
 // ---------------------------------------------------------------------------
 // Upload Excel File (same log format as analyze_workbook())
 // ---------------------------------------------------------------------------
-const uploadBtn = document.getElementById("uploadBtn");
-const fileLabel = document.getElementById("fileLabel");
-const sheetsLine = document.getElementById("sheetsLine");
-const patientsLine = document.getElementById("patientsLine");
 const webExcelInput = document.createElement("input");
 webExcelInput.type = "file";
 webExcelInput.accept = ".xlsx,.xls,.xlsm";
@@ -357,8 +375,8 @@ async function handleWorkbookUpload(fileOrPath) {
   const isWebFile = fileOrPath instanceof File;
   const path = isWebFile ? fileOrPath.name : fileOrPath;
   const filename = isWebFile ? fileOrPath.name : path.split(/[\\/]/).pop();
-  fileLabel.textContent = `📄 ${filename}`;
-
+  const activeWorkflow = workflowUi[currentMode];
+  activeWorkflow.fileLabel.textContent = `Selected: ${filename}`;
   clearLog();
   log("=========================================");
   log(" CF2");
@@ -410,6 +428,9 @@ async function handleWorkbookUpload(fileOrPath) {
     log(`Patient #${i + 1}`);
     log(`${record.identifier_label}: ${record.identifier}`);
     log(`Patient     : ${record.patient_name}`);
+    if (currentMode === "new_draft") {
+      log(`Draft Title : ${record.draft_title || "(generated from patient name and treatment dates)"}`);
+    }
     log(`Doctor      : ${record.doctor}`);
     log(`Accred. No. : ${record.accreditation_no}`);
     log(`Dates       : ${record.treatment_dates_raw}`);
@@ -444,16 +465,17 @@ async function handleWorkbookUpload(fileOrPath) {
   renderBatchTable(result.records);
   scrollLogToEnd();
 
-  sheetsLine.textContent = `Sheets : ${result.sheets.length} (${result.sheets.join(", ")})`;
-  patientsLine.textContent = `Patients Found : ${result.patient_count}`;
+  activeWorkflow.sheetsLine.textContent = `${result.sheets.length} · ${result.sheets.join(", ")}`;
+  activeWorkflow.patientsLine.textContent = String(result.patient_count);
   hasPatientRecords = result.patient_count > 0;
 
 }
 
-uploadBtn.addEventListener("click", async () => {
+uploadButtons.forEach((uploadBtn) => uploadBtn.addEventListener("click", async () => {
+  setMode(uploadBtn.dataset.mode);
   webExcelInput.value = "";
   webExcelInput.click();
-});
+}));
 
 webExcelInput.addEventListener("change", async () => {
   await handleWorkbookUpload(webExcelInput.files?.[0]);
@@ -464,10 +486,9 @@ webExcelInput.addEventListener("change", async () => {
 // ---------------------------------------------------------------------------
 let templateDownloadPending = false;
 
-async function downloadCf2Template() {
+async function downloadCf2Template(mode = currentMode) {
   if (templateDownloadPending) return;
   templateDownloadPending = true;
-  const mode = currentMode;
   try {
     const url = `${API_BASE}/api/cf2/download-template?mode=${encodeURIComponent(mode)}`;
     window.location.href = url;
@@ -478,7 +499,9 @@ async function downloadCf2Template() {
   }
 }
 
-document.getElementById("downloadTemplateLink").addEventListener("click", downloadCf2Template);
+document.querySelectorAll(".template-link[data-mode]").forEach((button) => {
+  button.addEventListener("click", () => downloadCf2Template(button.dataset.mode));
+});
 
 // ---------------------------------------------------------------------------
 // User Guide modal
@@ -499,12 +522,12 @@ const GUIDE_STEP_3 = {
     "Only modify the data rows.",
 };
 
-function buildGuideSteps() {
+function buildGuideSteps(mode = currentMode) {
   return [
     [1, "📋", "Prepare the report from AR","The data will be used in the cf2 template \n" +
       "This Automation includes: Draft, CF2, Signatories and CF2 Preview."],
     [2, "⬇", "Download the Excel Template", "Click 'Download Excel Template'.\nUse the provided template."],
-    [3, "🗂", "Edit the Template", GUIDE_STEP_3[currentMode]],
+    [3, "🗂", "Edit the Template", GUIDE_STEP_3[mode]],
     [4, "⏷", "Use Excel Filters",
       "To speed up encoding, use Excel Filters.\n\n" +
       "• Doctor Name\n" +
@@ -519,8 +542,8 @@ function buildGuideSteps() {
   ];
 }
 
-function buildCurrentGuideSteps() {
-  const isNewDraft = currentMode === "new_draft";
+function buildCurrentGuideSteps(mode = currentMode) {
+  const isNewDraft = mode === "new_draft";
   return [
     {
       title: "Set the claim period",
@@ -532,17 +555,21 @@ function buildCurrentGuideSteps() {
       description: isNewDraft
         ? "Use New Draft when Beacon must create a new claim for each patient."
         : "Use Existing Draft when the claim is already in Beacon and must be located by transmittal number.",
-      note: isNewDraft ? "Column A must contain the Member PIN." : "Column A must contain the existing Transmittal No.",
+      note: isNewDraft ? "Column A may contain a custom Draft Title; Column B must contain the Member PIN." : "Column A must contain the existing Transmittal No.",
     },
     {
       title: "Download the matching template",
-      description: "Click Download Excel Template after selecting the mode. New Draft and Existing Draft use different templates and Column A has a different meaning.",
-      note: "Do not reuse a workbook prepared for the other mode.",
+      description: "Download the template from the matching workflow section. New Draft begins with an optional Draft Title; Existing Draft begins with its Transmittal No.",
+      note: "Do not use the Existing Draft template for New Draft or vice versa.",
     },
     {
-      title: "Complete columns A to E",
-      description: "Enter Column A identifier, B patient name, C doctor, D accreditation number, and E treatment dates. Add one patient per row and save the workbook.",
-      note: "Keep Sheet1, headers, column order, and file format unchanged.",
+      title: isNewDraft ? "Complete the New Draft template" : "Complete the Existing Draft template",
+      description: isNewDraft
+        ? "Column A is an optional Draft Title, B is Member PIN, C is patient name, D is doctor, E is accreditation number, and F is treatment dates. Optional time and PX contact fields follow."
+        : "Column A is the existing Transmittal No., B is patient name, C is doctor, D is accreditation number, and E is treatment dates. Optional time and PX contact fields follow.",
+      note: isNewDraft
+        ? "Draft Title is optional and limited to 50 characters. Leave it blank to generate the title from the patient name and treatment dates."
+        : "Keep Sheet1, headers, column order, and file format unchanged.",
     },
     {
       title: "Upload and review the workbook",
@@ -557,8 +584,9 @@ function buildCurrentGuideSteps() {
   ];
 }
 
-document.getElementById("guideCard").addEventListener("click", () => {
-  const stepsHtml = buildCurrentGuideSteps().map((step, index) => `
+document.querySelectorAll("[data-guide-mode]").forEach((button) => button.addEventListener("click", () => {
+  const guideMode = button.dataset.guideMode;
+  const stepsHtml = buildCurrentGuideSteps(guideMode).map((step, index) => `
     <div class="guide-step">
       <div class="guide-step-number">${index + 1}</div>
       <div class="step-title">${step.title}</div>
@@ -572,8 +600,8 @@ document.getElementById("guideCard").addEventListener("click", () => {
       <div class="modal-box">
         <h2>CF2 WORKFLOW GUIDE</h2>
         <div class="guide-intro">
-          <span>Follow these steps in order. The guide updates for the selected workflow mode.</span>
-          <span class="guide-mode-pill">${currentMode === "new_draft" ? "NEW DRAFT" : "EXISTING DRAFT"}</span>
+          <span>Follow the steps for this workflow.</span>
+          <span class="guide-mode-pill">${guideMode === "new_draft" ? "NEW DRAFT" : "EXISTING DRAFT"}</span>
         </div>
         <div class="guide-steps-grid">${stepsHtml}</div>
         <div class="modal-actions" style="justify-content: center; margin-top: 10px;">
@@ -582,7 +610,7 @@ document.getElementById("guideCard").addEventListener("click", () => {
       </div>
     </div>`;
   document.getElementById("guideOkBtn").addEventListener("click", () => { root.innerHTML = ""; });
-});
+}));
 
 // ---------------------------------------------------------------------------
 // Start Automation (same worker flow as _run_automation_worker /
@@ -613,6 +641,10 @@ accountReceivableBtn.addEventListener("click", () => {
     accountReceivable.name = document.getElementById("arName").value.trim();
     accountReceivable.designation = document.getElementById("arDesignation").value.trim();
     accountReceivable.number = document.getElementById("arNumber").value.trim();
+    const summary = document.getElementById("arSummary");
+    summary.textContent = accountReceivable.name
+      ? `${accountReceivable.name}${accountReceivable.designation ? ` / ${accountReceivable.designation}` : ""}`
+      : "No details saved for this session.";
     root.innerHTML = "";
   });
 });
@@ -644,11 +676,9 @@ function setControlsRunning(running) {
     ? (cf2StopRequested ? "Stopping..." : "Stop Automation")
     : "Start Automation";
   startBtn.classList.toggle("running", running);
-  uploadBtn.disabled = running;
+  uploadButtons.forEach((button) => { button.disabled = running; });
   claimYearSelect.disabled = running;
   claimMonthSelect.disabled = running;
-  modeNewDraftBtn.disabled = running;
-  modeExistingDraftBtn.disabled = running;
   clearBtn.disabled = running;
 }
 
@@ -702,9 +732,7 @@ startBtn.addEventListener("click", async () => {
 clearBtn.addEventListener("click", () => {
   if (cf2RunActive) return;
   setMode("new_draft");
-  fileLabel.textContent = "No file selected";
-  sheetsLine.textContent = "Sheets : -";
-  patientsLine.textContent = "Patients Found : 0";
+  resetWorkflowCards();
   claimYearSelect.value = String(new Date().getFullYear());
   claimMonthSelect.value = MONTH_NAMES[new Date().getMonth()];
   hasPatientRecords = false;

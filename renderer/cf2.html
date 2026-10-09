@@ -122,7 +122,40 @@
      height; the Reminder panel below absorbs whatever vertical space
      is left in the column, instead of leaving dead space beneath it. */
   .workspace > .panel { flex: none; }
-  .workspace > .reminder-block { flex: 1; }
+
+  /* Shared setup and distinct draft workflows */
+  .ar-workspace-card { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px; }
+  .ar-card-copy { min-width:0; display:flex; align-items:center; gap:12px; }
+  .ar-card-mark, .draft-step { width:38px; height:38px; flex:none; display:grid; place-items:center; border-radius:var(--radius-md); color:var(--accent); background:var(--accent-soft); font-size:12px; font-weight:800; }
+  .ar-card-copy strong { display:block; color:var(--text-pri); font-size:12px; }
+  .ar-card-copy p { margin:4px 0; color:var(--text-sec); font-size:10.5px; line-height:1.45; }
+  .ar-summary { color:var(--accent); font-size:10px; line-height:1.4; }
+  .ar-edit-btn { flex:none; }
+  .draft-workflows { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; container-type:inline-size; }
+  .draft-section { min-width:0; display:flex; flex-direction:column; gap:13px; padding:16px; border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--bg-panel); transition:border-color .18s ease, background-color .18s ease; }
+  .draft-section.active { border-color:var(--accent); background:color-mix(in srgb,var(--accent-soft) 24%,var(--bg-panel)); }
+  .draft-section-heading { display:flex; align-items:flex-start; gap:11px; }
+  .draft-step { width:32px; height:32px; font-size:10px; }
+  .draft-step-existing { color:var(--info,var(--accent)); background:var(--accent-soft); }
+  .draft-kicker { color:var(--accent); font-size:9px; letter-spacing:.8px; font-weight:800; }
+  .draft-section h2 { margin:3px 0 4px; color:var(--text-pri); font:700 14px var(--font-ui); }
+  .draft-section-heading p { margin:0; color:var(--text-sec); font-size:10.5px; line-height:1.5; }
+  .draft-identifier { display:flex; flex-direction:column; gap:3px; padding:10px 12px; border-radius:var(--radius-md); background:var(--bg-card); border:1px solid var(--border); }
+  .draft-identifier span { color:var(--text-sec); font-size:9px; text-transform:uppercase; letter-spacing:.5px; }
+  .draft-identifier strong { color:var(--text-pri); font-size:11.5px; }
+  .draft-identifier small { color:var(--text-sec); font-size:9.5px; line-height:1.4; }
+  .draft-upload-btn { width:100%; min-height:40px; }
+  .file-status { min-width:0; }
+  .file-status span:last-child { overflow-wrap:anywhere; }
+  .draft-section-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
+  .template-link, .guide-link { padding:4px 0; color:var(--accent); background:transparent; border:0; font:600 10px var(--font-ui); text-align:left; cursor:pointer; }
+  .template-link:hover, .guide-link:hover { color:var(--text-pri); text-decoration:underline; text-underline-offset:3px; }
+  .draft-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:auto; }
+  .draft-stats > div { min-width:0; padding:9px 10px; display:flex; flex-direction:column; gap:4px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
+  .draft-stats small { color:var(--text-sec); font-size:8px; letter-spacing:.5px; }
+  .draft-stats strong { color:var(--text-pri); font-size:10px; overflow-wrap:anywhere; }
+  @container (max-width:680px) { .draft-workflows { grid-template-columns:minmax(0,1fr); } }
+
 
   /* ---------- Claim period ---------- */
   .field-row {
@@ -366,42 +399,6 @@
     min-width: 0;
     overflow-wrap: anywhere;
   }
-
-  /* ---------- Reminder ---------- */
-  .reminder-block {
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--warning);
-    border-radius: var(--radius-lg);
-    box-shadow: none;
-    padding: 14px 16px 16px 16px;
-  }
-  .reminder-body {
-    flex: 1;
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 10px 4px 4px 4px;
-  }
-  .reminder-body .reminder-icon {
-    flex: none;
-    width: 26px;
-    height: 26px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--warning);
-    background: color-mix(in srgb, var(--warning) 16%, transparent);
-    border-radius: var(--radius-sm);
-  }
-  .reminder-body .reminder-text {
-    color: var(--text-sec);
-    font-size: 11.5px;
-    line-height: 1.7;
-  }
-  .reminder-body .reminder-text strong { color: var(--text-pri); }
 
   /* ---------- Logs + run control ---------- */
   .log-section {
@@ -786,96 +783,41 @@
         <div class="title">CF2</div>
         <div class="subtitle">Claims transmittal automation</div>
       </div>
-      <div class="page-header-actions">
-        <button class="page-header-link" id="accountReceivableBtn" type="button">Account Receivable</button>
-      </div>
     </div>
 
     <div class="main-row">
 
       <div class="workspace">
-
-        <div class="panel section-block">
-          <div class="section-label"><span>▸ CLAIM PERIOD</span></div>
+        <section class="panel section-block shared-settings">
+          <div class="section-label"><span>CLAIM PERIOD</span></div>
           <div class="field-row">
-            <div class="field-group">
-              <label>Claim Year</label>
-              <select id="claimYear"></select>
-            </div>
-            <div class="field-group">
-              <label>Claim Month</label>
-              <select id="claimMonth"></select>
-            </div>
+            <div class="field-group"><label for="claimYear">Claim Year</label><select id="claimYear"></select></div>
+            <div class="field-group"><label for="claimMonth">Claim Month</label><select id="claimMonth"></select></div>
           </div>
+        </section>
+        <section class="panel section-block ar-workspace-card">
+          <div class="ar-card-copy"><span class="ar-card-mark" aria-hidden="true">AR</span><div><strong>Account receivable</strong><p>Signatory details used in CF2, shared by both draft workflows.</p><span class="ar-summary" id="arSummary">No details saved for this session.</span></div></div>
+          <button class="cyber-btn ar-edit-btn" id="accountReceivableBtn" type="button">Edit details</button>
+        </section>
+        <div class="draft-workflows" aria-label="Choose a CF2 workflow">
+          <section class="panel section-block draft-section active" data-mode-section="new_draft" aria-labelledby="newDraftTitle">
+            <div class="draft-section-heading"><span class="draft-step">01</span><div><span class="draft-kicker">NEW DRAFT</span><h2 id="newDraftTitle">Create a new draft</h2><p>Use this when the claim has not been created in Beacon yet.</p></div></div>
+            <div class="draft-identifier"><span>Column A (optional)</span><strong>Draft Title</strong><small>Up to 50 characters. Leave blank to use the patient name and treatment dates.</small></div>
+            <div class="draft-identifier"><span>Column B</span><strong>Member PIN</strong><small>A new Beacon draft will be created for each patient.</small></div>
+            <button class="solid-btn draft-upload-btn" id="uploadBtnNew" type="button" data-mode="new_draft"><span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>Upload New Draft Workbook</button>
+            <div class="file-status"><span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span><span id="fileLabelNew">No workbook selected</span></div>
+            <div class="draft-section-actions"><button class="template-link" id="downloadTemplateLinkNew" type="button" data-mode="new_draft">Download new draft template <span aria-hidden="true">&#8595;</span></button><button class="guide-link" id="guideCardNew" type="button" data-guide-mode="new_draft">View workflow guide</button></div>
+            <div class="draft-stats"><div><small>WORKSHEETS</small><strong id="sheetsLineNew">—</strong></div><div><small>PATIENTS FOUND</small><strong id="patientsLineNew">0</strong></div></div>
+          </section>
+          <section class="panel section-block draft-section" data-mode-section="existing_draft" aria-labelledby="existingDraftTitle">
+            <div class="draft-section-heading"><span class="draft-step draft-step-existing">02</span><div><span class="draft-kicker">EXISTING DRAFT</span><h2 id="existingDraftTitle">Continue a draft</h2><p>Use this when the claim already exists in Beacon.</p></div></div>
+            <div class="draft-identifier"><span>Column A</span><strong>Transmittal No.</strong><small>The automation locates and updates the matching draft.</small></div>
+            <button class="solid-btn draft-upload-btn" id="uploadBtnExisting" type="button" data-mode="existing_draft"><span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>Upload Existing Draft Workbook</button>
+            <div class="file-status"><span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span><span id="fileLabelExisting">No workbook selected</span></div>
+            <div class="draft-section-actions"><button class="template-link" id="downloadTemplateLinkExisting" type="button" data-mode="existing_draft">Download existing draft template <span aria-hidden="true">&#8595;</span></button><button class="guide-link" id="guideCardExisting" type="button" data-guide-mode="existing_draft">View workflow guide</button></div>
+            <div class="draft-stats"><div><small>WORKSHEETS</small><strong id="sheetsLineExisting">—</strong></div><div><small>PATIENTS FOUND</small><strong id="patientsLineExisting">0</strong></div></div>
+          </section>
         </div>
-
-        <div class="panel section-block">
-          <div class="section-label"><span>▸ WORKBOOK</span></div>
-
-          <div class="mode-toggle" id="modeToggle">
-            <button class="mode-btn active" id="modeNewDraft" data-mode="new_draft">
-              <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13 3v6h6"/><path d="M12 18v-5"/><path d="M9.5 15.5h5"/></svg></span>
-              New Draft
-            </button>
-            <button class="mode-btn" id="modeExistingDraft" data-mode="existing_draft">
-              <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
-              Existing Draft
-            </button>
-          </div>
-          <div class="mode-hint" id="modeHint">
-            Column A of the template is the patient's <strong>Member PIN</strong> — a new Beacon draft is created for each row.
-          </div>
-
-          <div class="workbook-row">
-            <div class="upload-col">
-              <button class="solid-btn" id="uploadBtn">
-                <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
-                Upload Excel File
-              </button>
-              <div class="file-status">
-                <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span>
-                <span id="fileLabel">No file selected</span>
-              </div>
-              <span id="downloadTemplateLink">
-                <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg></span>
-                Download Excel Template
-              </span>
-            </div>
-            <div class="guide-card" id="guideCard">
-              <div class="guide-title">
-                <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H12v18H5.5A2.5 2.5 0 0 1 3 18.5z"/><path d="M21 5.5A2.5 2.5 0 0 0 18.5 3H12v18h6.5a2.5 2.5 0 0 0 2.5-2.5z"/></svg></span>
-                USER GUIDE
-              </div>
-              <div class="guide-desc">Read the quick guide before uploading your Excel template.</div>
-              <div class="guide-open-btn">Open Guide →</div>
-            </div>
-          </div>
-
-          <div class="stat-row">
-            <div class="stat-card">
-              <span class="stat-icon"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l4-3h5l2 3h7v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg></span>
-              <span id="sheetsLine">Sheets : -</span>
-            </div>
-            <div class="stat-card">
-              <span class="stat-icon"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.5"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-              <span id="patientsLine">Patients Found : 0</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="reminder-block">
-          <div class="section-label"><span>▸ REMINDER</span></div>
-          <div class="reminder-body">
-            <span class="reminder-icon"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a1.5 1.5 0 0 0 1.3 2.3h17.6a1.5 1.5 0 0 0 1.3-2.3L13.7 3.9a1.5 1.5 0 0 0-2.6 0Z"/><path d="M12 9v4"/><path d="M12 16.5h.01"/></svg></span>
-            <span class="reminder-text">
-              <strong>Always verify the accuracy of the information</strong> before and after running this automation.
-              This tool is designed to reduce manual, repetitive work and speed up encoding — it does not replace
-              professional judgment or review. Please confirm patient details, dates, and claim data against the
-              source documents prior to submission.
-            </span>
-          </div>
-        </div>
-
       </div>
 
       <div class="log-section">

@@ -14,6 +14,7 @@ class CF2Data:
     last_treatment: date
     total_sessions: int
     member_pin: str = ""
+    draft_title: str = ""
     px_contact_no: str = ""
     admission_time: time | None = None
     discharge_time: time | None = None
