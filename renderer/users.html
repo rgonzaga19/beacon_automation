@@ -35,7 +35,9 @@
   .identity span { color:var(--text-sec); font-size:10px; }
   .pill { display:inline-flex; padding:4px 8px; border:1px solid var(--border); border-radius:999px; color:var(--text-sec); font-size:9px; font-weight:700; white-space:nowrap; }
   .pill.good { color:var(--success); }
-  .pill.admin { color:var(--accent); }
+  .role-select { min-width:132px; min-height:34px; padding:6px 9px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:700 10px var(--font-ui); }
+  .role-select:focus { border-color:var(--accent); outline:2px solid var(--accent-soft); }
+  .role-select:disabled { opacity:.65; cursor:not-allowed; }
   .empty { padding:28px; color:var(--text-sec); text-align:center; }
   .pager { display:flex; justify-content:flex-end; align-items:center; gap:9px; margin-top:14px; }
   #pageLabel { min-width:88px; color:var(--text-sec); text-align:center; font-size:10px; }
@@ -45,13 +47,13 @@
 </head>
 <body>
 <main>
-  <header class="page-head"><div><span class="eyebrow">Administration</span><h1>User Management</h1><p>Review registered accounts, account status, roles, and Beacon connection status.</p></div><span class="admin-tag">Administrator access</span></header>
+  <header class="page-head"><div><span class="eyebrow">Administration</span><h1>User Management</h1><p>Review registered accounts, account status, roles, and Beacon connection status. Admins can manage other users’ roles.</p></div><span class="admin-tag">Administrator access</span></header>
   <section class="panel" aria-label="User directory">
     <div class="toolbar"><form id="searchForm"><input id="searchInput" type="search" maxlength="120" placeholder="Search email or name" aria-label="Search users"><button type="submit">Search</button></form><button id="refreshBtn" type="button">Refresh</button><span id="summary" aria-live="polite">Loading users…</span></div>
     <div id="error" role="alert"></div>
     <div class="table-wrap"><table><thead><tr><th>User</th><th>Account</th><th>Role</th><th>Beacon</th><th>Joined</th><th>Last updated</th></tr></thead><tbody id="usersBody"><tr><td colspan="6" class="empty">Loading user directory…</td></tr></tbody></table></div>
     <div class="pager"><button id="previousBtn" type="button" disabled>Previous</button><span id="pageLabel">Page 1</span><button id="nextBtn" type="button" disabled>Next</button></div>
-    <p class="privacy-note">Account passwords and saved Beacon credentials are never shown here.</p>
+    <p class="privacy-note">Admin grants User Management access. Subscriber and Member currently have the same app permissions. Account passwords and saved Beacon credentials are never shown here.</p>
   </section>
 </main>
 <script src="js/common.js"></script>

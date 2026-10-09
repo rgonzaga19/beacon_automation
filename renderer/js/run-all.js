@@ -9,6 +9,36 @@ const logNode = document.getElementById("log");
 const results = new Map();
 let active = false;
 let retryRunId = null;
+let canRunAll = null;
+let accessCheckFailed = false;
+const runAllAccessReady = fetchJSON("/api/auth/me").then((payload) => {
+  if (!payload.authenticated) {
+    window.location.replace("/login");
+    canRunAll = false;
+    return;
+  }
+  const user = payload.user || {};
+  canRunAll = Boolean(user.is_admin || user.role === "admin" || user.role === "subscriber");
+}).catch(() => {
+  canRunAll = false;
+  accessCheckFailed = true;
+});
+
+function showRunAllAccessMessage() {
+  errorNode.textContent = accessCheckFailed
+    ? "Could not verify your account role. Refresh the page or contact your administrator."
+    : "Run All is available to Subscriber and Admin accounts only. Contact your administrator to request Subscriber access.";
+  errorNode.style.display = "block";
+  statusNode.textContent = "This account cannot start Run All.";
+}
+
+startBtn.addEventListener("click", async (event) => {
+  if (canRunAll === true) return;
+  event.preventDefault();
+  if (canRunAll === null) await runAllAccessReady;
+  if (canRunAll) form.requestSubmit(startBtn);
+  else showRunAllAccessMessage();
+});
 
 function updateFileMeta(input, target, emptyTitle, emptyDescription, noun) {
   const files = [...input.files];
@@ -109,6 +139,11 @@ socket.on("run_all_done", (event) => {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (active) return;
+  if (canRunAll === null) await runAllAccessReady;
+  if (!canRunAll) {
+    showRunAllAccessMessage();
+    return;
+  }
   errorNode.style.display = "none";
   errorNode.textContent = "";
   results.clear();

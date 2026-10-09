@@ -17,6 +17,7 @@ class User(db.Model):
     display_name = db.Column(db.String(120), nullable=True)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
+    role = db.Column(db.String(20), nullable=False, default="member")
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now)
     updated_at = db.Column(
         db.DateTime(timezone=True),

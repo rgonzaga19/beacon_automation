@@ -291,6 +291,25 @@ def init_database():
             column = db.engine.dialect.identifier_preparer.quote("profile_name")
             db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} VARCHAR(120)"))
             db.session.commit()
+            columns.add("profile_name")
+        if "role" not in columns:
+            table = db.engine.dialect.identifier_preparer.quote("users")
+            column = db.engine.dialect.identifier_preparer.quote("role")
+            db.session.execute(text(
+                f"ALTER TABLE {table} ADD COLUMN {column} VARCHAR(20) NOT NULL DEFAULT 'member'"
+            ))
+            db.session.commit()
+        # Keep the legacy flag aligned because existing authorization checks
+        # use is_admin. Existing admins retain their role during migration.
+        db.session.execute(text(
+            "UPDATE users SET role = CASE "
+            "WHEN is_admin = TRUE THEN 'admin' "
+            "WHEN role = 'admin' THEN 'member' "
+            "WHEN role IS NULL THEN 'member' "
+            "WHEN role NOT IN ('member', 'subscriber') THEN 'member' "
+            "ELSE role END"
+        ))
+        db.session.commit()
 
 
 def current_user():
@@ -307,6 +326,7 @@ def user_payload(user):
         "profile_name": user.profile_name,
         "display_name": user.display_name,
         "is_admin": user.is_admin,
+        "role": user.role or ("admin" if user.is_admin else "member"),
     }
 
 
@@ -607,6 +627,8 @@ def admin_list_users():
             "display_name": user.display_name or "",
             "is_active": bool(user.is_active),
             "is_admin": bool(user.is_admin),
+            "role": user.role or ("admin" if user.is_admin else "member"),
+            "can_change_role": user.id != current_user().id,
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "updated_at": user.updated_at.isoformat() if user.updated_at else None,
             "beacon_connected": bool(user.settings and user.settings.beacon_validated_at),
@@ -618,6 +640,31 @@ def admin_list_users():
         "pages": max(1, (total + per_page - 1) // per_page),
         "search": search,
     })
+
+
+@app.route("/api/admin/users/<int:user_id>/role", methods=["PATCH"])
+@admin_required
+def admin_update_user_role(user_id):
+    data = request.get_json(silent=True) or {}
+    role = str(data.get("role") or "").strip().lower()
+    if role not in {"admin", "subscriber", "member"}:
+        return jsonify({"error": "Role must be admin, subscriber, or member."}), 400
+
+    target = db.session.get(User, user_id)
+    if not target:
+        return jsonify({"error": "User account not found."}), 404
+    actor = current_user()
+    if target.id == actor.id and role != "admin":
+        return jsonify({"error": "You cannot demote your own account here."}), 409
+    if target.is_active and target.is_admin and role != "admin":
+        active_admins = User.query.filter_by(is_active=True, is_admin=True).with_for_update().all()
+        if len(active_admins) <= 1:
+            return jsonify({"error": "Promote another active user to admin before demoting the last active administrator."}), 409
+
+    target.role = role
+    target.is_admin = role == "admin"
+    db.session.commit()
+    return jsonify({"user_id": target.id, "role": target.role, "is_admin": target.is_admin})
 
 
 @app.route("/api/auth/register", methods=["POST"])
@@ -638,6 +685,7 @@ def auth_register():
         email=email,
         password_hash=generate_password_hash(password),
         display_name=display_name,
+        role="member",
     )
     db.session.add(user)
     db.session.flush()
@@ -2309,6 +2357,11 @@ def _run_all_retry_automation(user_id, retry_state, item, start_at, stop_event):
 @login_required
 @serialize_job_start
 def run_all_start():
+    user = current_user()
+    if not (user.is_admin or user.role == "subscriber"):
+        return jsonify({
+            "error": "Run All is available to Subscriber and Admin accounts only. Contact your administrator to request Subscriber access."
+        }), 403
     user, beacon_settings, error_response = require_beacon_connection()
     if error_response:
         return error_response
@@ -2419,6 +2472,10 @@ def run_all_start():
 @serialize_job_start
 def run_all_retry():
     user = current_user()
+    if not (user.is_admin or user.role == "subscriber"):
+        return jsonify({
+            "error": "Run All is available to Subscriber and Admin accounts only. Contact your administrator to request Subscriber access."
+        }), 403
     data = request.get_json(silent=True) or {}
     retry_state = _run_all_retry_states.get(user.id)
     if not retry_state or data.get("run_id") != retry_state.get("run_id"):

@@ -30,7 +30,11 @@ function renderUsers(users) {
     return `<tr>
       <td class="identity"><strong>${escapeHtml(name)}</strong><span>${escapeHtml(user.email)}</span></td>
       <td><span class="pill ${user.is_active ? "good" : ""}">${user.is_active ? "Active" : "Inactive"}</span></td>
-      <td><span class="pill ${user.is_admin ? "admin" : ""}">${user.is_admin ? "Administrator" : "User"}</span></td>
+      <td><select class="role-select" data-user-id="${user.id}" aria-label="Role for ${escapeHtml(user.email)}" ${user.can_change_role ? "" : "disabled"}>
+        <option value="admin" ${user.role === "admin" ? "selected" : ""}>Admin</option>
+        <option value="subscriber" ${user.role === "subscriber" ? "selected" : ""}>Subscriber</option>
+        <option value="member" ${user.role === "member" ? "selected" : ""}>Member</option>
+      </select></td>
       <td><span class="pill ${user.beacon_connected ? "good" : ""}">${user.beacon_connected ? `Connected · ${escapeHtml(user.beacon_server || "Beacon")}` : "Not connected"}</span></td>
       <td>${escapeHtml(formatDate(user.created_at))}</td>
       <td>${escapeHtml(formatDate(user.updated_at))}</td>
@@ -73,6 +77,36 @@ searchForm.addEventListener("submit", (event) => {
   loadUsers();
 });
 document.getElementById("refreshBtn").addEventListener("click", loadUsers);
+usersBody.addEventListener("change", async (event) => {
+  const select = event.target.closest(".role-select");
+  if (!select) return;
+  const role = select.value;
+  const confirmed = window.confirm(
+    role === "admin"
+      ? "Promote this account to Admin? Admins can manage other user roles."
+      : `Change this account role to ${role === "subscriber" ? "Subscriber" : "Member"}?`
+  );
+  if (!confirmed) {
+    loadUsers();
+    return;
+  }
+  select.disabled = true;
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/users/${encodeURIComponent(select.dataset.userId)}/role`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "Could not update this user's role.");
+    await loadUsers();
+    summary.textContent = `Role updated to ${role}.`;
+  } catch (error) {
+    await loadUsers();
+    errorNode.textContent = error.message || String(error);
+    errorNode.style.display = "block";
+  }
+});
 previousBtn.addEventListener("click", () => { if (page > 1) { page -= 1; loadUsers(); } });
 nextBtn.addEventListener("click", () => { if (page < pages) { page += 1; loadUsers(); } });
 loadUsers();
