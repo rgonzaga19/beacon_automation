@@ -14,7 +14,9 @@ ECLAIMS_API_BASES = {
 }
 
 class DraftApiError(RuntimeError):
-    pass
+    def __init__(self, message, status_code=None):
+        super().__init__(message)
+        self.status_code = status_code
 
 class InvalidMemberPinError(Exception):
     pass
@@ -36,9 +38,19 @@ def _eclaims_api_base():
 
 def _request(method, path, *, params=None, json_body=None, base=None):
     url = f"{base or _base_url()}{path}"
-    r = browser_session.http_request(method, url, headers=_headers(), params=params, json=json_body, timeout=20)
+    try:
+        r = browser_session.http_request(
+            method, url, headers=_headers(), params=params, json=json_body, timeout=20
+        )
+    except requests.RequestException as ex:
+        raise DraftApiError(
+            f"{method} {path} request failed ({type(ex).__name__})."
+        ) from ex
     if not r.ok:
-        raise DraftApiError(f"{method} {path} failed: HTTP {r.status_code}: {r.text[:500]}")
+        raise DraftApiError(
+            f"{method} {path} failed with HTTP {r.status_code}.",
+            status_code=r.status_code,
+        )
     return r.json() if r.content else None
 
 def _get(path, params=None, base=None): return _request("GET", path, params=params, base=base)
@@ -238,6 +250,8 @@ def create_member_claim(member_pin, admission_date, discharge_date, draft_title)
 
     patient = None
     confirmed_pin = None
+    lookup_found_patient = False
+    pin_verification_mismatch = False
     attempts = [pin] + ([] if pin.startswith("0") else ["0" + pin])
     for candidate in attempts:
         try:
@@ -250,20 +264,35 @@ def create_member_claim(member_pin, admission_date, discharge_date, draft_title)
                 candidate_patient = get_patient_by_member_pin(
                     candidate, admission_date, discharge_date
                 )
-
-            if not isinstance(candidate_patient, dict) or not candidate_patient:
+        except DraftApiError as ex:
+            # A missing record may be represented by an HTTP 400/404; try
+            # the alternate leading-zero form. Auth, server, and other API
+            # failures must be shown as such instead of mislabeled as a bad PIN.
+            if ex.status_code in (400, 404):
                 continue
+            raise
 
-            returned_pin = verify_member_pin(candidate_patient, identity)
-            if returned_pin and _member_pins_match(returned_pin, candidate):
-                # Keep the PIN Beacon verified, including its canonical
-                # leading zero, for the claim payload.
-                patient, confirmed_pin = candidate_patient, returned_pin
-                break
-        except Exception:
+        if not isinstance(candidate_patient, dict) or not candidate_patient:
             continue
+
+        lookup_found_patient = True
+        returned_pin = verify_member_pin(candidate_patient, identity)
+        if returned_pin and _member_pins_match(returned_pin, candidate):
+            # Keep the PIN Beacon verified, including its canonical
+            # leading zero, for the claim payload.
+            patient, confirmed_pin = candidate_patient, returned_pin
+            break
+        pin_verification_mismatch = True
     if patient is None:
-        raise InvalidMemberPinError(f"Incorrect Member PIN: {attempts[-1]}")
+        if lookup_found_patient and pin_verification_mismatch:
+            raise InvalidMemberPinError(
+                "Beacon found the patient record, but eClaims PIN verification did not match. "
+                "Check the uploaded PIN and the account's S2/S4 server setting."
+            )
+        raise InvalidMemberPinError(
+            "Beacon returned no patient record for this Member PIN. Check the PIN, "
+            "dependent marker, and the account's S2/S4 server setting."
+        )
 
     duplicate_payload = _claim_payload(patient, confirmed_pin, transmittal_id, admission_date, discharge_date, include_facility=True)
     _put("/api/PHICCF1/GetDuplicatePHICCF1Entry", json_body=duplicate_payload)
