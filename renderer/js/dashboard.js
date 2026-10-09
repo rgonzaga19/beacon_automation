@@ -81,7 +81,7 @@ function openWorkspace(activeKey) {
   const route = workspaceRoutes[activeKey];
   const frame = workspaceFrames[activeKey];
   if (!route || !frame) return;
-  dashboardLayout.classList.toggle("claims-mode", !["about", "settings"].includes(activeKey));
+  dashboardLayout.classList.toggle("claims-mode", activeKey !== "about");
   workspaceColumn.classList.add("workspace-active");
   Object.entries(workspaceFrames).forEach(([key, item]) => {
     item.classList.toggle("active", key === activeKey);
