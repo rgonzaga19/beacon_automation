@@ -200,6 +200,19 @@ document.getElementById("profileForm").addEventListener("submit", async (event) 
 });
 loadSignedInProfile();
 
+const sidebarCopyrightYear = document.getElementById("sidebarCopyrightYear");
+const sidebarVersionFull = document.getElementById("sidebarVersionFull");
+const sidebarVersionShort = document.getElementById("sidebarVersionShort");
+sidebarCopyrightYear.textContent = String(new Date().getFullYear());
+fetchJSON("/api/app/version").then((result) => {
+  const version = result.version || "web";
+  sidebarVersionFull.textContent = `Version ${version}`;
+  sidebarVersionShort.textContent = `v${version}`;
+}).catch(() => {
+  sidebarVersionFull.textContent = "Version web";
+  sidebarVersionShort.textContent = "vweb";
+});
+
 window.openBeabotsWorkspace = openWorkspace;
 
 window.beabots?.onWorkspaceActive(setWorkspaceActive);
@@ -227,9 +240,6 @@ document.getElementById("btnPdfSplitter").addEventListener("click", () => {
 });
 document.getElementById("btnSettings").addEventListener("click", () => {
   openWorkspace("settings");
-});
-document.getElementById("btnLogout").addEventListener("click", () => {
-  window.beabots?.logout();
 });
 // ---------------------------------------------------------------------------
 // PDF Splitter loading indicator

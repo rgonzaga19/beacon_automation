@@ -32,14 +32,18 @@
   .sidebar { flex:1; display:flex; flex-direction:column; min-height:0; padding:14px 10px; overflow:hidden; background:var(--bg-panel); }
   .menu-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-md); }
   .sidebar-nav { display:flex; flex-direction:column; gap:7px; }
-  .sidebar-bottom { margin-top:auto; padding-top:12px; }
+  .sidebar-footer { margin-top:auto; padding:16px 6px 2px; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:3px 6px; color:var(--text-sec); font-size:9px; line-height:1.4; text-align:center; }
+  .sidebar-footer .footer-divider { color:var(--accent); }
+  .sidebar-version-short { display:none; }
+  .sidebar-column.collapsed .sidebar-footer { flex-direction:column; gap:4px; padding:14px 0 4px; font-size:8px; }
+  .sidebar-column.collapsed .sidebar-copyright, .sidebar-column.collapsed .sidebar-footer .footer-divider, .sidebar-column.collapsed .sidebar-version-full { display:none; }
+  .sidebar-column.collapsed .sidebar-version-short { display:block; }
   .side-link { width:100%; height:44px; display:flex; align-items:center; gap:12px; padding:0 13px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:var(--radius-md); font:700 11px var(--font-ui); letter-spacing:.25px; white-space:nowrap; cursor:pointer; transition:color 140ms ease,background 140ms ease,border-color 140ms ease; }
   .side-link:hover { color:var(--text-pri); background:var(--accent-soft); border-color:var(--border); }
   .side-link.active { color:var(--text-pri); background:var(--accent-soft-strong); border-color:var(--accent); }
   .side-link .side-icon { width:20px; min-width:20px; height:20px; display:grid; place-items:center; color:var(--accent); font-size:17px; }
   .side-link .side-label { opacity:1; transition:opacity 100ms ease; }
   .sidebar-column.collapsed .side-label { opacity:0; pointer-events:none; }
-  .sidebar-bottom .side-link:hover { color:var(--error); }
 
   .body { flex:1; display:flex; align-items:flex-start; justify-content:center; padding:clamp(28px,5vw,64px) 24px; min-width:0; min-height:0; overflow:auto; text-align:left; }
   .home-content { width:min(100%,1040px); margin:0 auto; }
@@ -136,7 +140,7 @@
             <button class="side-link" id="btnPdfSplitter" type="button" title="PDF Splitter"><span class="side-icon" aria-hidden="true">&#9986;</span><span class="side-label">PDF Splitter</span></button>
             <button class="side-link" id="btnSettings" type="button" title="Settings"><span class="side-icon" aria-hidden="true">⚙</span><span class="side-label">Settings</span></button>
           </nav>
-          <div class="sidebar-bottom"><button class="side-link" id="btnLogout" type="button" title="Log out"><span class="side-icon" aria-hidden="true">↪</span><span class="side-label">Log out</span></button></div>
+          <footer class="sidebar-footer" aria-label="Beabots version and copyright"><span class="sidebar-copyright">&#169; <span id="sidebarCopyrightYear"></span> Beabots. All rights reserved.</span><span class="footer-divider" aria-hidden="true">&#183;</span><span class="sidebar-version-full" id="sidebarVersionFull">Version web</span><span class="sidebar-version-short" id="sidebarVersionShort">vweb</span></footer>
         </aside>
       </div>
       <div class="content-column" id="workspaceColumn">
