@@ -38,6 +38,23 @@
   .role-select { min-width:132px; min-height:34px; padding:6px 9px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:700 10px var(--font-ui); }
   .role-select:focus { border-color:var(--accent); outline:2px solid var(--accent-soft); }
   .role-select:disabled { opacity:.65; cursor:not-allowed; }
+  .actions-cell { white-space:nowrap; }
+  .delete-user-btn { min-height:32px; padding:6px 9px; color:var(--error); background:transparent; border:1px solid var(--border); border-radius:var(--radius-md); font:700 10px var(--font-ui); cursor:pointer; }
+  .delete-user-btn:hover:not(:disabled) { border-color:var(--error); background:color-mix(in srgb,var(--error) 10%,transparent); }
+  .delete-user-btn:disabled { opacity:.4; cursor:not-allowed; }
+  .delete-dialog { width:min(460px,calc(100vw - 28px)); padding:0; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); }
+  .delete-dialog::backdrop { background:rgba(0,0,0,.68); }
+  .delete-dialog form { padding:22px; }
+  .delete-dialog h2 { margin:0 0 9px; font-size:17px; }
+  .delete-dialog p { margin:0 0 14px; color:var(--text-sec); font-size:11px; line-height:1.55; }
+  .delete-dialog .target-email { color:var(--text-pri); font-weight:800; overflow-wrap:anywhere; }
+  .delete-dialog label { display:block; margin:0 0 6px; font-size:11px; font-weight:700; }
+  .delete-dialog input { width:100%; min-height:42px; padding:9px 11px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
+  .dialog-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:17px; }
+  .dialog-actions button { min-height:38px; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius-md); font:700 10px var(--font-ui); cursor:pointer; }
+  #cancelDeleteBtn { color:var(--text-pri); background:var(--bg-card); }
+  #confirmDeleteBtn { color:white; background:var(--error); border-color:var(--error); }
+  #confirmDeleteBtn:disabled { opacity:.45; cursor:not-allowed; }
   .empty { padding:28px; color:var(--text-sec); text-align:center; }
   .pager { display:flex; justify-content:flex-end; align-items:center; gap:9px; margin-top:14px; }
   #pageLabel { min-width:88px; color:var(--text-sec); text-align:center; font-size:10px; }
@@ -51,11 +68,21 @@
   <section class="panel" aria-label="User directory">
     <div class="toolbar"><form id="searchForm"><input id="searchInput" type="search" maxlength="120" placeholder="Search email or name" aria-label="Search users"><button type="submit">Search</button></form><button id="refreshBtn" type="button">Refresh</button><span id="summary" aria-live="polite">Loading users…</span></div>
     <div id="error" role="alert"></div>
-    <div class="table-wrap"><table><thead><tr><th>User</th><th>Account</th><th>Role</th><th>Beacon</th><th>Joined</th><th>Last updated</th></tr></thead><tbody id="usersBody"><tr><td colspan="6" class="empty">Loading user directory…</td></tr></tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>User</th><th>Account</th><th>Role</th><th>Beacon</th><th>Joined</th><th>Last updated</th><th>Actions</th></tr></thead><tbody id="usersBody"><tr><td colspan="7" class="empty">Loading user directory…</td></tr></tbody></table></div>
     <div class="pager"><button id="previousBtn" type="button" disabled>Previous</button><span id="pageLabel">Page 1</span><button id="nextBtn" type="button" disabled>Next</button></div>
     <p class="privacy-note">Admin grants User Management access. Subscriber and Member currently have the same app permissions. Account passwords and saved Beacon credentials are never shown here.</p>
   </section>
 </main>
+<dialog id="deleteDialog" class="delete-dialog" aria-labelledby="deleteDialogTitle">
+  <form id="deleteForm">
+    <h2 id="deleteDialogTitle">Delete user account?</h2>
+    <p>This permanently removes the app account, saved app settings, and automation job history. It does not delete claims or records in Beacon.</p>
+    <p>To confirm, type <span id="deleteTargetEmail" class="target-email"></span>.</p>
+    <label for="deleteEmailInput">User email</label>
+    <input id="deleteEmailInput" type="email" autocomplete="off" required>
+    <div class="dialog-actions"><button id="cancelDeleteBtn" type="button">Cancel</button><button id="confirmDeleteBtn" type="submit" disabled>Delete account</button></div>
+  </form>
+</dialog>
 <script src="js/common.js"></script>
 <script src="js/users.js"></script>
 </body>

@@ -6,9 +6,14 @@ const errorNode = document.getElementById("error");
 const previousBtn = document.getElementById("previousBtn");
 const nextBtn = document.getElementById("nextBtn");
 const pageLabel = document.getElementById("pageLabel");
+const deleteDialog = document.getElementById("deleteDialog");
+const deleteEmailInput = document.getElementById("deleteEmailInput");
+const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+const deleteTargetEmail = document.getElementById("deleteTargetEmail");
 let page = 1;
 let pages = 1;
 let loading = false;
+let pendingDeleteUser = null;
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -22,7 +27,7 @@ function formatDate(value) {
 
 function renderUsers(users) {
   if (!users.length) {
-    usersBody.innerHTML = '<tr><td colspan="6" class="empty">No users match this search.</td></tr>';
+    usersBody.innerHTML = '<tr><td colspan="7" class="empty">No users match this search.</td></tr>';
     return;
   }
   usersBody.innerHTML = users.map((user) => {
@@ -38,6 +43,7 @@ function renderUsers(users) {
       <td><span class="pill ${user.beacon_connected ? "good" : ""}">${user.beacon_connected ? `Connected · ${escapeHtml(user.beacon_server || "Beacon")}` : "Not connected"}</span></td>
       <td>${escapeHtml(formatDate(user.created_at))}</td>
       <td>${escapeHtml(formatDate(user.updated_at))}</td>
+      <td class="actions-cell"><button class="delete-user-btn" type="button" data-user-id="${user.id}" data-user-email="${escapeHtml(user.email)}" ${user.can_delete ? "" : "disabled"} title="${user.can_delete ? "Delete this account" : "You cannot delete your own account or the last active administrator."}">Delete</button></td>
     </tr>`;
   }).join("");
 }
@@ -49,7 +55,7 @@ async function loadUsers() {
   previousBtn.disabled = true;
   nextBtn.disabled = true;
   summary.textContent = "Loading users…";
-  usersBody.innerHTML = '<tr><td colspan="6" class="empty">Loading user directory…</td></tr>';
+  usersBody.innerHTML = '<tr><td colspan="7" class="empty">Loading user directory…</td></tr>';
   try {
     const params = new URLSearchParams({ page: String(page), per_page: "25", q: searchInput.value.trim() });
     const response = await fetch(`${API_BASE}/api/admin/users?${params}`);
@@ -62,7 +68,7 @@ async function loadUsers() {
     previousBtn.disabled = payload.page <= 1;
     nextBtn.disabled = payload.page >= pages;
   } catch (error) {
-    usersBody.innerHTML = '<tr><td colspan="6" class="empty">User directory unavailable.</td></tr>';
+    usersBody.innerHTML = '<tr><td colspan="7" class="empty">User directory unavailable.</td></tr>';
     summary.textContent = "Could not load users";
     errorNode.textContent = error.message || String(error);
     errorNode.style.display = "block";
@@ -77,6 +83,48 @@ searchForm.addEventListener("submit", (event) => {
   loadUsers();
 });
 document.getElementById("refreshBtn").addEventListener("click", loadUsers);
+usersBody.addEventListener("click", (event) => {
+  const button = event.target.closest(".delete-user-btn");
+  if (!button || button.disabled) return;
+  pendingDeleteUser = { id: button.dataset.userId, email: button.dataset.userEmail };
+  deleteTargetEmail.textContent = pendingDeleteUser.email;
+  deleteEmailInput.value = "";
+  confirmDeleteBtn.disabled = true;
+  deleteDialog.showModal();
+  deleteEmailInput.focus();
+});
+deleteEmailInput.addEventListener("input", () => {
+  confirmDeleteBtn.disabled = !pendingDeleteUser
+    || deleteEmailInput.value.trim().toLowerCase() !== pendingDeleteUser.email.toLowerCase();
+});
+document.getElementById("cancelDeleteBtn").addEventListener("click", () => {
+  deleteDialog.close();
+  pendingDeleteUser = null;
+});
+document.getElementById("deleteForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!pendingDeleteUser || confirmDeleteBtn.disabled) return;
+  confirmDeleteBtn.disabled = true;
+  confirmDeleteBtn.textContent = "Deleting…";
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/users/${encodeURIComponent(pendingDeleteUser.id)}`, { method: "DELETE" });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "Could not delete this account.");
+    deleteDialog.close();
+    pendingDeleteUser = null;
+    page = 1;
+    await loadUsers();
+    summary.textContent = "User account deleted.";
+  } catch (error) {
+    deleteDialog.close();
+    pendingDeleteUser = null;
+    await loadUsers();
+    errorNode.textContent = error.message || String(error);
+    errorNode.style.display = "block";
+  } finally {
+    confirmDeleteBtn.textContent = "Delete account";
+  }
+});
 usersBody.addEventListener("change", async (event) => {
   const select = event.target.closest(".role-select");
   if (!select) return;

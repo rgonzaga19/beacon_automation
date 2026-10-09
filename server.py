@@ -619,6 +619,10 @@ def admin_list_users():
         .limit(per_page)
         .all()
     )
+    actor_id = current_user().id
+    active_admin_ids = {
+        row.id for row in User.query.filter_by(is_active=True, is_admin=True).all()
+    }
     return jsonify({
         "users": [{
             "id": user.id,
@@ -628,7 +632,10 @@ def admin_list_users():
             "is_active": bool(user.is_active),
             "is_admin": bool(user.is_admin),
             "role": user.role or ("admin" if user.is_admin else "member"),
-            "can_change_role": user.id != current_user().id,
+            "can_change_role": user.id != actor_id,
+            "can_delete": user.id != actor_id and not (
+                user.id in active_admin_ids and len(active_admin_ids) <= 1
+            ),
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "updated_at": user.updated_at.isoformat() if user.updated_at else None,
             "beacon_connected": bool(user.settings and user.settings.beacon_validated_at),
@@ -665,6 +672,25 @@ def admin_update_user_role(user_id):
     target.is_admin = role == "admin"
     db.session.commit()
     return jsonify({"user_id": target.id, "role": target.role, "is_admin": target.is_admin})
+
+
+@app.route("/api/admin/users/<int:user_id>", methods=["DELETE"])
+@admin_required
+def admin_delete_user(user_id):
+    target = db.session.get(User, user_id)
+    if not target:
+        return jsonify({"error": "User account not found."}), 404
+    actor = current_user()
+    if target.id == actor.id:
+        return jsonify({"error": "You cannot delete your own account here."}), 409
+    if target.is_active and target.is_admin:
+        active_admins = User.query.filter_by(is_active=True, is_admin=True).with_for_update().all()
+        if len(active_admins) <= 1:
+            return jsonify({"error": "Promote another active user to admin before deleting the last active administrator."}), 409
+
+    db.session.delete(target)
+    db.session.commit()
+    return jsonify({"deleted": True, "user_id": user_id})
 
 
 @app.route("/api/auth/register", methods=["POST"])
