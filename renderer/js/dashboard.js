@@ -14,6 +14,48 @@ if (window.parent && window.parent !== window) {
 const sidebar = document.getElementById("dashboardSidebar");
 const sidebarToggle = document.getElementById("btnSidebarToggle");
 const sidebarToggleIcon = sidebarToggle.querySelector(".side-icon");
+const dashboardLayout = document.querySelector(".dashboard-layout");
+const mobileMenuButton = document.getElementById("mobileMenuButton");
+const sidebarBackdrop = document.getElementById("sidebarBackdrop");
+let activeWorkspaceKey = null;
+
+function closeMobileSidebar() {
+  sidebar.classList.remove("mobile-open");
+  dashboardLayout.classList.remove("mobile-menu-open");
+  sidebarBackdrop.hidden = true;
+  mobileMenuButton.setAttribute("aria-expanded", "false");
+  mobileMenuButton.setAttribute("aria-label", "Open workspace menu");
+  if (!activeWorkspaceKey || activeWorkspaceKey === "about") {
+    dashboardLayout.classList.remove("claims-mode");
+  }
+}
+
+function openMobileSidebar() {
+  sidebar.classList.remove("collapsed");
+  sidebarToggle.setAttribute("aria-expanded", "true");
+  sidebarToggle.setAttribute("aria-label", "Collapse sidebar");
+  sidebarToggleIcon.textContent = "\u2039";
+  dashboardLayout.classList.add("claims-mode", "mobile-menu-open");
+  sidebar.classList.add("mobile-open");
+  sidebarBackdrop.hidden = false;
+  mobileMenuButton.setAttribute("aria-expanded", "true");
+  mobileMenuButton.setAttribute("aria-label", "Close workspace menu");
+}
+
+mobileMenuButton.addEventListener("click", () => {
+  if (dashboardLayout.classList.contains("mobile-menu-open")) closeMobileSidebar();
+  else openMobileSidebar();
+});
+sidebarBackdrop.addEventListener("click", closeMobileSidebar);
+window.addEventListener("resize", () => {
+  if (window.innerWidth > 760) closeMobileSidebar();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && dashboardLayout.classList.contains("mobile-menu-open")) {
+    closeMobileSidebar();
+    mobileMenuButton.focus();
+  }
+});
 
 sidebarToggle.addEventListener("click", () => {
   const collapsed = sidebar.classList.toggle("collapsed");
@@ -45,7 +87,6 @@ const workspaceButtons = {
 };
 
 const workspaceColumn = document.getElementById("workspaceColumn");
-const dashboardLayout = document.querySelector(".dashboard-layout");
 const workspaceRoutes = {
   cf2: "cf2.html",
   uploadSoa: "upload-soa.html",
@@ -70,6 +111,8 @@ function setWorkspaceActive(activeKey) {
 }
 
 function showWorkspaceHome() {
+  activeWorkspaceKey = null;
+  closeMobileSidebar();
   dashboardLayout.classList.remove("claims-mode");
   workspaceColumn.classList.remove("workspace-active");
   Object.values(workspaceFrames).forEach((frame) => frame.classList.remove("active"));
@@ -81,6 +124,8 @@ function openWorkspace(activeKey) {
   const route = workspaceRoutes[activeKey];
   const frame = workspaceFrames[activeKey];
   if (!route || !frame) return;
+  activeWorkspaceKey = activeKey;
+  closeMobileSidebar();
   dashboardLayout.classList.toggle("claims-mode", activeKey !== "about");
   workspaceColumn.classList.add("workspace-active");
   Object.entries(workspaceFrames).forEach(([key, item]) => {

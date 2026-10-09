@@ -7,7 +7,8 @@
 <script src="js/theme.js"></script>
 <link rel="stylesheet" href="css/theme.css" />
 <style>
-  .dashboard-layout { flex:1; display:flex; min-height:0; }
+  .dashboard-layout { position:relative; flex:1; display:flex; min-width:0; min-height:0; }
+  .mobile-menu-trigger { display:none; width:40px; min-width:40px; height:40px; min-height:40px; align-items:center; justify-content:center; padding:0; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font-size:18px; line-height:1; cursor:pointer; }
   .site-header { height:72px; flex:0 0 72px; display:flex; align-items:center; gap:34px; padding:0 clamp(20px,4vw,56px); background:var(--bg-panel); border-bottom:1px solid var(--border); }
   .site-brand { display:flex; align-items:center; gap:10px; color:var(--text-pri); font-weight:800; letter-spacing:.7px; text-decoration:none; }
   .site-brand img { width:30px; height:30px; object-fit:contain; }
@@ -72,7 +73,7 @@
   #profileStatus { min-height:18px; color:var(--success); font-size:12px; }
   @media(max-width:760px) { .home-columns { grid-template-columns:1fr; } }
   @media(max-width:500px) { .site-header { height:auto; min-height:64px; flex-wrap:wrap; gap:0; padding:8px 12px; } .site-nav { order:3; width:100%; height:40px; justify-content:space-between; } .site-nav button { padding:0 5px; font-size:11px; } .site-account { margin-left:auto; } .tool-list { grid-template-columns:1fr; } }
-  @media(max-width:500px) { .dashboard-layout.claims-mode { position:relative; } .dashboard-layout.claims-mode .sidebar-column { position:absolute; z-index:8; inset:0 auto 0 0; width:min(85vw,280px); flex-basis:min(85vw,280px); box-shadow:var(--shadow-md); } .dashboard-layout.claims-mode .sidebar-column.collapsed { width:68px; flex-basis:68px; } }
+  .sidebar-backdrop { display:none; }
   .workspace-frame { flex:1; width:100%; min-width:0; min-height:0; border:0; background:var(--bg-dark); display:none; }
   .content-column.workspace-active .body { display:none; }
   .content-column.workspace-active .workspace-frame.active { display:block; }
@@ -100,10 +101,23 @@
     .app-window.dashboard-entering .sidebar-column,
     .app-window.dashboard-entering .body { animation-duration:160ms; animation-delay:0ms; }
   }
-  @media (max-width:500px) {
-    .sidebar-column { width:100%; flex-basis:100%; }
-    .sidebar-column.collapsed { width:68px; flex-basis:68px; }
-    .body { display:flex; }
+  @media (max-width:760px) {
+    .site-header { height:auto; min-height:64px; flex:0 0 auto; flex-wrap:wrap; gap:6px; padding:8px 12px 0; }
+    .site-brand { order:0; margin-right:auto; }
+    .mobile-menu-trigger { display:inline-flex; order:1; }
+    .site-account { order:2; }
+    .site-nav { order:3; width:100%; height:40px; justify-content:center; gap:2px; margin:0; }
+    .site-nav button { height:36px; min-height:36px; padding:0 9px; font-size:11px; }
+    .dashboard-layout { overflow:hidden; }
+    .dashboard-layout.claims-mode .sidebar-column { position:absolute; z-index:30; inset:0 auto 0 0; width:min(84vw,300px); flex:0 0 min(84vw,300px); box-shadow:var(--shadow-md); transform:translateX(-102%); visibility:hidden; pointer-events:none; transition:transform 180ms ease,visibility 180ms ease; }
+    .dashboard-layout.claims-mode .sidebar-column.mobile-open { transform:translateX(0); visibility:visible; pointer-events:auto; }
+    .dashboard-layout.claims-mode .sidebar-column.collapsed { width:min(84vw,300px); flex-basis:min(84vw,300px); }
+    .sidebar-column .sidebar-topbar { display:none; }
+    .sidebar { overflow-y:auto; overscroll-behavior:contain; }
+    .sidebar-backdrop:not([hidden]) { position:absolute; z-index:20; inset:0; display:block; width:100%; height:100%; padding:0; background:rgba(0,0,0,.48); border:0; }
+    .body { padding:22px 14px; }
+    .home-columns { grid-template-columns:1fr; }
+    .tool-list { grid-template-columns:1fr; }
   }
 </style>
 <link rel="stylesheet" href="css/site-header.css" />
@@ -112,6 +126,7 @@
   <div class="app-window no-glow" id="dashboardShell">
     <header class="site-header">
       <a class="site-brand" href="/dashboard.html" id="siteBrand"><img src="assets/bot.ico" alt=""><span>BEABOTS</span></a>
+      <button class="mobile-menu-trigger" id="mobileMenuButton" type="button" aria-controls="dashboardSidebar" aria-expanded="false" aria-label="Open workspace menu"><span aria-hidden="true">&#9776;</span></button>
       <nav class="site-nav" aria-label="Main navigation">
         <button id="siteHome" type="button">Home</button><button id="siteClaims" type="button">Claims</button><button id="siteAbout" type="button">About</button><button id="siteContact" type="button">Contact Us</button>
       </nav>
@@ -143,6 +158,7 @@
           <footer class="sidebar-footer" aria-label="Beabots version and copyright"><span class="sidebar-copyright">&#169; <span id="sidebarCopyrightYear"></span> Beabots. All rights reserved.</span><span class="footer-divider" aria-hidden="true">&#183;</span><span class="sidebar-version-full" id="sidebarVersionFull">Version web</span><span class="sidebar-version-short" id="sidebarVersionShort">vweb</span></footer>
         </aside>
       </div>
+      <button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="Close workspace menu" hidden></button>
       <div class="content-column" id="workspaceColumn">
         <main class="body" id="workspaceHome">
           <div class="home-content">
