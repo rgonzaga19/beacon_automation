@@ -154,6 +154,17 @@ def verify_member_pin(patient, identity):
     return re.sub(r"\D", "", str(result.get("pin") or ""))
 
 
+def _member_pins_match(first, second):
+    """Allow one leading zero to be lost when Excel stores a PIN as a number."""
+    first_digits = re.sub(r"\D", "", str(first or ""))
+    second_digits = re.sub(r"\D", "", str(second or ""))
+    return (
+        first_digits == second_digits
+        or first_digits == f"0{second_digits}"
+        or second_digits == f"0{first_digits}"
+    )
+
+
 def _first_present(record, *field_names):
     for field_name in field_names:
         value = record.get(field_name)
@@ -244,8 +255,10 @@ def create_member_claim(member_pin, admission_date, discharge_date, draft_title)
                 continue
 
             returned_pin = verify_member_pin(candidate_patient, identity)
-            if returned_pin and returned_pin == candidate:
-                patient, confirmed_pin = candidate_patient, candidate
+            if returned_pin and _member_pins_match(returned_pin, candidate):
+                # Keep the PIN Beacon verified, including its canonical
+                # leading zero, for the claim payload.
+                patient, confirmed_pin = candidate_patient, returned_pin
                 break
         except Exception:
             continue
