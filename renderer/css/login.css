@@ -7,17 +7,24 @@
 
 .auth-window {
   min-height: 100vh;
-  height: 100vh;
+  height: auto;
   overflow: auto;
   background: var(--bg-dark);
 }
+
+.auth-site-header { position:relative; z-index:3; display:flex; flex:0 0 64px; align-items:center; justify-content:space-between; padding:0 clamp(20px,5vw,72px); background:var(--bg-panel); border-bottom:1px solid var(--border); }
+.auth-site-brand { display:flex; align-items:center; gap:10px; color:var(--text-pri); font-size:13px; font-weight:850; letter-spacing:1px; text-decoration:none; }
+.auth-site-brand img { width:30px; height:30px; object-fit:contain; }
+.auth-site-header nav { display:flex; gap:20px; margin-left:auto; }
+.auth-site-header nav a { color:var(--text-sec); font-size:12px; font-weight:650; text-decoration:none; }
+.auth-site-header nav a:hover { color:var(--accent); }
 
 .auth-layout {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.04fr) minmax(440px, .96fr);
   flex: 1;
-  min-height: 100vh;
+  min-height: calc(100vh - 64px);
 }
 
 .brand-panel {
@@ -188,9 +195,9 @@ body.login-success-transition .auth-submit::after { position: absolute; inset: -
 }
 
 @media (max-width: 700px) {
-  .auth-layout { display: block; min-height: 100vh; }
+  .auth-layout { display: block; min-height: calc(100vh - 64px); }
   .brand-panel { display: none; }
-  .form-panel { min-height: 100vh; padding: 30px 23px 22px; }
+  .form-panel { min-height: calc(100vh - 64px); padding: 30px 23px 22px; }
   .login-card { width: min(100%, 430px); }
   .mobile-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 38px; color: var(--text-pri); font-size: 11px; font-weight: 900; letter-spacing: 1.8px; }
   .mobile-brand .brand-mark { width: 37px; height: 37px; border-color: var(--border); border-radius: 12px; background: var(--bg-panel); }

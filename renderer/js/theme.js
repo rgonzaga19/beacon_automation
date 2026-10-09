@@ -10,7 +10,7 @@
 
 (function () {
   const STORAGE_KEY = "beabots-theme";
-  const DEFAULT_THEME = "dark";
+  const DEFAULT_THEME = "light";
 
   function getStoredTheme() {
     try {

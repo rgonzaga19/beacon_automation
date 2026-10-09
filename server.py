@@ -28,6 +28,7 @@ from flask_socketio import SocketIO, join_room
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
+from sqlalchemy import inspect, text
 
 from openpyxl import load_workbook
 
@@ -275,6 +276,13 @@ def socket_connected():
 def init_database():
     with app.app_context():
         db.create_all()
+        # Add profile fields to databases created by earlier releases.
+        columns = {column["name"] for column in inspect(db.engine).get_columns("users")}
+        if "profile_name" not in columns:
+            table = db.engine.dialect.identifier_preparer.quote("users")
+            column = db.engine.dialect.identifier_preparer.quote("profile_name")
+            db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} VARCHAR(120)"))
+            db.session.commit()
 
 
 def current_user():
@@ -288,6 +296,7 @@ def user_payload(user):
     return {
         "id": user.id,
         "email": user.email,
+        "profile_name": user.profile_name,
         "display_name": user.display_name,
         "is_admin": user.is_admin,
     }
@@ -391,6 +400,11 @@ def _prepare_upload_folder(files, allowed_extensions):
 
 @app.route("/")
 def web_index():
+    return send_from_directory(app.static_folder, "home.html")
+
+
+@app.route("/login")
+def web_login():
     return send_from_directory(app.static_folder, "login.html")
 
 
@@ -588,6 +602,21 @@ def auth_login():
 def auth_logout():
     session.clear()
     return jsonify({"logged_out": True})
+
+
+@app.route("/api/auth/profile", methods=["PATCH"])
+@login_required
+def auth_update_profile():
+    user = current_user()
+    data = request.get_json(force=True)
+    profile_name = str(data.get("profile_name", "")).strip()
+    display_name = str(data.get("display_name", "")).strip()
+    if len(profile_name) > 120 or len(display_name) > 120:
+        return jsonify({"error": "Names must be 120 characters or fewer."}), 400
+    user.profile_name = profile_name or None
+    user.display_name = display_name or None
+    db.session.commit()
+    return jsonify({"user": user_payload(user)})
 
 
 # ---------------------------------------------------------------------------

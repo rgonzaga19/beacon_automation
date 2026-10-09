@@ -42,10 +42,10 @@ const workspaceButtons = {
   autoRename: document.getElementById("btnAutoRename"),
   pdfSplitter: document.getElementById("btnPdfSplitter"),
   settings: document.getElementById("btnSettings"),
-  about: document.getElementById("btnAbout"),
 };
 
 const workspaceColumn = document.getElementById("workspaceColumn");
+const dashboardLayout = document.querySelector(".dashboard-layout");
 const workspaceRoutes = {
   cf2: "cf2.html",
   uploadSoa: "upload-soa.html",
@@ -70,6 +70,7 @@ function setWorkspaceActive(activeKey) {
 }
 
 function showWorkspaceHome() {
+  dashboardLayout.classList.remove("claims-mode");
   workspaceColumn.classList.remove("workspace-active");
   Object.values(workspaceFrames).forEach((frame) => frame.classList.remove("active"));
   setWorkspaceActive(null);
@@ -80,6 +81,7 @@ function openWorkspace(activeKey) {
   const route = workspaceRoutes[activeKey];
   const frame = workspaceFrames[activeKey];
   if (!route || !frame) return;
+  dashboardLayout.classList.toggle("claims-mode", !["about", "settings"].includes(activeKey));
   workspaceColumn.classList.add("workspace-active");
   Object.entries(workspaceFrames).forEach(([key, item]) => {
     item.classList.toggle("active", key === activeKey);
@@ -91,13 +93,116 @@ function openWorkspace(activeKey) {
   history.replaceState(null, "", `dashboard.html#${activeKey}`);
 }
 
+function setTopNavigation(active) {
+  document.querySelectorAll(".site-nav button").forEach((button) => {
+    const selected = button.id === active;
+    button.classList.toggle("active", selected);
+    if (selected) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+}
+
+document.getElementById("siteHome").addEventListener("click", () => {
+  setTopNavigation("siteHome");
+  showWorkspaceHome();
+});
+document.getElementById("siteBrand").addEventListener("click", (event) => {
+  event.preventDefault();
+  document.getElementById("siteHome").click();
+});
+document.getElementById("siteClaims").addEventListener("click", () => {
+  setTopNavigation("siteClaims");
+  openWorkspace("soaExcel");
+});
+document.getElementById("siteAbout").addEventListener("click", () => {
+  setTopNavigation("siteAbout");
+  openWorkspace("about");
+  focusAboutSection("about");
+});
+document.getElementById("siteContact").addEventListener("click", () => {
+  setTopNavigation("siteContact");
+  openWorkspace("about");
+  focusAboutSection("contact");
+});
+
+function focusAboutSection(section) {
+  const frame = workspaceFrames.about;
+  const focus = () => {
+    try { frame.contentWindow.location.hash = section; } catch { /* The about document may still be navigating. */ }
+  };
+  if (frame.contentDocument?.readyState === "complete" && frame.contentWindow.location.pathname.endsWith("/about.html")) focus();
+  else frame.addEventListener("load", focus, { once: true });
+}
+document.querySelectorAll("[data-open-tool]").forEach((button) => button.addEventListener("click", () => {
+  setTopNavigation("siteClaims");
+  openWorkspace(button.dataset.openTool);
+}));
+
+const accountTrigger = document.getElementById("accountTrigger");
+const accountMenu = document.getElementById("accountMenu");
+accountTrigger.addEventListener("click", () => {
+  const expanded = accountTrigger.getAttribute("aria-expanded") !== "true";
+  accountTrigger.setAttribute("aria-expanded", String(expanded));
+  accountMenu.hidden = !expanded;
+});
+document.getElementById("editProfileButton").addEventListener("click", () => {
+  accountMenu.hidden = true;
+  setTopNavigation("siteHome");
+  showWorkspaceHome();
+  requestAnimationFrame(() => {
+    document.getElementById("profileCard").scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById("profileNameInput").focus({ preventScroll: true });
+  });
+});
+document.getElementById("accountSettings").addEventListener("click", () => openWorkspace("settings"));
+document.getElementById("accountLogout").addEventListener("click", () => window.beabots?.logout());
+
+async function loadSignedInProfile() {
+  try {
+    const result = await fetchJSON("/api/auth/me");
+    if (!result.authenticated) {
+      window.location.replace("/login");
+      return;
+    }
+    const user = result.user || {};
+    const displayName = user.display_name || user.profile_name || user.email || "Account";
+    document.getElementById("accountName").textContent = displayName;
+    document.getElementById("accountAvatar").textContent = (displayName.trim()[0] || "B").toUpperCase();
+    document.getElementById("homeGreeting").textContent = `Welcome${user.display_name ? `, ${user.display_name}` : " to Beabots"}`;
+    document.getElementById("profileNameInput").value = user.profile_name || "";
+    document.getElementById("displayNameInput").value = user.display_name || "";
+  } catch {
+    window.location.replace("/login");
+  }
+}
+
+document.getElementById("profileForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const status = document.getElementById("profileStatus");
+  status.textContent = "Saving…";
+  try {
+    const result = await fetchJSON("/api/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify({
+        profile_name: document.getElementById("profileNameInput").value,
+        display_name: document.getElementById("displayNameInput").value,
+      }),
+    });
+    const user = result.user;
+    const name = user.display_name || user.profile_name || user.email || "Account";
+    document.getElementById("accountName").textContent = name;
+    document.getElementById("accountAvatar").textContent = (name.trim()[0] || "B").toUpperCase();
+    document.getElementById("homeGreeting").textContent = `Welcome${user.display_name ? `, ${user.display_name}` : " to Beabots"}`;
+    status.textContent = "Profile saved.";
+  } catch (error) {
+    status.textContent = error.message || "Could not save your profile.";
+  }
+});
+loadSignedInProfile();
+
 window.openBeabotsWorkspace = openWorkspace;
 
 window.beabots?.onWorkspaceActive(setWorkspaceActive);
-
-document.getElementById("btnDashboardHome").addEventListener("click", () => {
-  showWorkspaceHome();
-});
 
 document.getElementById("btnCf2").addEventListener("click", () => {
   openWorkspace("cf2");
@@ -126,10 +231,6 @@ document.getElementById("btnSettings").addEventListener("click", () => {
 document.getElementById("btnLogout").addEventListener("click", () => {
   window.beabots?.logout();
 });
-document.getElementById("btnAbout").addEventListener("click", () => {
-  openWorkspace("about");
-});
-
 // ---------------------------------------------------------------------------
 // PDF Splitter loading indicator
 // ---------------------------------------------------------------------------
@@ -158,16 +259,11 @@ if (pdfSplitterFrame && pdfSplitterLoader) {
 // ---------------------------------------------------------------------------
 // Initial state
 // ---------------------------------------------------------------------------
-const appVersionLabel = document.getElementById("appVersion");
-
-async function loadVersion() {
-  const currentVersion = await window.beabots.getVersion();
-  appVersionLabel.textContent = `v${currentVersion}`;
-}
-
-loadVersion();
-
 const initialWorkspace = window.location.hash.replace("#", "");
 if (workspaceRoutes[initialWorkspace]) {
+  if (["about", "settings"].includes(initialWorkspace)) setTopNavigation(initialWorkspace === "about" ? "siteAbout" : "siteHome");
+  else setTopNavigation("siteClaims");
   openWorkspace(initialWorkspace);
+} else {
+  setTopNavigation("siteHome");
 }

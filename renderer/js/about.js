@@ -1,25 +1,16 @@
-const versionEl = document.getElementById("version");
-const btnTitlebarClose = document.getElementById("btnTitlebarClose");
-const btnThemeToggle = document.getElementById("btnThemeToggle");
-
-async function loadAbout() {
-  const version = await window.beabots?.getVersion?.();
-  versionEl.textContent = `Version ${version || "web"}`;
+if (window.parent && window.parent !== window) {
+  document.body.classList.add("embedded-page");
 }
 
-document.getElementById("btnHome")?.addEventListener("click", () => {
-  window.beabots?.goHome();
-});
+function syncAboutNavigation() {
+  const current = window.location.hash.slice(1) || "about";
+  document.querySelectorAll(".about-nav a[data-section]").forEach((link) => {
+    const active = link.dataset.section === current;
+    link.classList.toggle("active", active);
+    if (active) link.setAttribute("aria-current", "location");
+    else link.removeAttribute("aria-current");
+  });
+}
 
-btnThemeToggle?.addEventListener("click", async () => {
-  const current = await window.beabots?.getTheme?.();
-  const nextTheme = current === "light" ? "dark" : "light";
-  await window.beabots?.setTheme?.(nextTheme);
-  window.beabotsTheme?.setTheme(nextTheme);
-});
-
-btnTitlebarClose?.addEventListener("click", () => {
-  window.beabots?.goHome();
-});
-
-loadAbout();
+window.addEventListener("hashchange", syncAboutNavigation);
+syncAboutNavigation();
