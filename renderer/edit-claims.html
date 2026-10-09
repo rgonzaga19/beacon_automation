@@ -87,15 +87,11 @@
     @media(max-width:420px) { .editor-grid { grid-template-columns:1fr; gap:9px; } .editor-section { padding:13px; } }
     @media(max-width:620px) { .course-ward-row { grid-template-columns:1fr; } .course-ward-remove { width:100%; } }
     .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
-    .claim-actions-menu { position:fixed; z-index:1100; width:286px; padding:5px; color:var(--text-pri); background:color-mix(in srgb,var(--bg-panel) 94%,#fff 6%); border:1px solid color-mix(in srgb,var(--border) 72%,var(--text-sec)); border-radius:8px; box-shadow:0 12px 34px rgba(0,0,0,.42); backdrop-filter:blur(16px); }
-    .claim-actions-menu[hidden] { display:none; }
-    .claim-actions-menu button { width:100%; min-height:38px; display:grid; grid-template-columns:24px minmax(0,1fr); align-items:center; gap:9px; padding:0 9px; color:var(--text-pri); background:transparent; border:0; border-radius:5px; text-align:left; font:500 12px var(--font-ui); cursor:pointer; }
-    .claim-actions-menu button:hover,.claim-actions-menu button:focus-visible { color:var(--text-pri); background:var(--accent-soft); outline:none; }
-    .claim-actions-menu button:focus-visible { box-shadow:inset 0 0 0 1px var(--accent); }
-    .claim-menu-icon { width:21px; height:21px; display:grid; place-items:center; color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 45%,transparent); border-radius:5px; font-size:10px; font-weight:800; }
-    .claim-menu-divider { height:1px; margin:5px 4px; background:var(--border); }
     table { width:100%; min-width:960px; border-collapse:collapse; font-size:11px; text-align:left; }
     #claimsBody td:nth-child(2) { min-width:178px; white-space:nowrap; }
+    .beacon-message-cell { min-width:220px; max-width:380px; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
+    .beacon-message-cell.success { color:var(--success); }
+    .beacon-message-cell.error { color:var(--error); }
     .cell-copy-btn { margin-left:6px; padding:0 3px; min-height:20px; width:20px; vertical-align:middle; display:inline-grid; place-items:center; }
     .cell-copy-btn svg { width:11px; height:11px; display:block; }
     .icon-btn { min-height:38px; width:38px; padding:0; display:inline-grid; place-items:center; }
@@ -141,7 +137,7 @@
             <button class="cyber-btn" id="lookupButton" type="submit" style="align-self:flex-end">LOOK UP</button>
           </div>
           <span class="field-hint">Or leave the text field empty and filter by admission date range (used only when the text field is empty).</span>
-          <div style="margin-top:10px;padding:9px 12px;border:1px solid color-mix(in srgb,#f0ad4e 45%,transparent);border-radius:var(--radius-md);background:color-mix(in srgb,#f0ad4e 10%,transparent);color:#f0ad4e;font-size:11px;line-height:1.5"><strong>NOTE:</strong> Using date filtering may take 5&ndash;10 minutes or more, depending on the number and age of the claims.</div>
+          <div style="margin-top:10px;padding:9px 12px;border:1px solid color-mix(in srgb,#f0ad4e 45%,transparent);border-radius:var(--radius-md);background:color-mix(in srgb,#f0ad4e 10%,transparent);color:#f0ad4e;font-size:11px;line-height:1.5"><strong>NOTE:</strong> Using date filtering may take 5&ndash;10 minutes or more, depending on the number and age of the claims. When possible, use a transmittal number instead.</div>
         </form>
         <div class="status-legend" aria-label="Transmittal status legend">
           <span class="legend-title">STATUS LEGEND</span>
@@ -155,27 +151,20 @@
         <div class="summary" id="summary" hidden></div>
         <div class="page-toolbar" aria-label="Claim actions toolbar" style="margin-top:12px;margin-bottom:10px">
           <button class="solid-btn" id="transmitAllButton" type="button" title="Auto Transmit All" aria-label="Auto Transmit All">AUTO TRANSMIT ALL</button>
-          <button class="solid-btn" id="copyTransmittalsButton" type="button" title="Copy All Transmittals" aria-label="Copy All Transmittals">COPY ALL TRANSMITTALS</button>
-          <button class="solid-btn" id="copyDraftTransmittalsButton" type="button" title="Copy Draft Transmittals" aria-label="Copy Draft Transmittals">COPY DRAFT TRANSMITTALS</button>
+          <button class="solid-btn" id="generateSoaAllButton" type="button" title="Generate SOA for All Draft Claims" aria-label="Generate SOA for All Draft Claims">GENERATE SOA ALL</button>
+          <button class="solid-btn" id="generateCf4AllButton" type="button" title="Generate CF4 for All Draft Claims" aria-label="Generate CF4 for All Draft Claims">GENERATE CF4 ALL</button>
+          <button class="solid-btn" id="removeSoaAllButton" type="button" title="Remove SOA Data from All Draft Claims" aria-label="Remove SOA Data from All Draft Claims">REMOVE SOA ALL</button>
+          <button class="solid-btn" id="copyTransmittalsButton" type="button" title="Copy Transmittal" aria-label="Copy Transmittal">COPY TRANSMITTAL</button>
           <span class="toolbar-status" id="transmitAllStatus" aria-live="polite"></span>
         </div>
         <div class="table-wrap">
           <table aria-label="Claims in transmittal">
-            <thead><tr><th>Action</th><th>Transmittal</th><th>Claim Series</th><th>Patient</th><th>Member</th><th>Admission</th><th>Discharge</th><th>Claim Status</th><th>Transmittal Status</th></tr></thead>
-            <tbody id="claimsBody"><tr><td class="message" colspan="9">Enter a transmittal number to view its claims.</td></tr></tbody>
+            <thead><tr><th>Action</th><th>Transmittal</th><th>Claim Series</th><th>Patient</th><th>Member</th><th>Admission</th><th>Discharge</th><th>Claim Status</th><th>Transmittal Status</th><th>Beacon Message</th></tr></thead>
+            <tbody id="claimsBody"><tr><td class="message" colspan="10">Enter a transmittal number to view its claims.</td></tr></tbody>
           </table>
         </div>
       </section>
     </main>
-  </div>
-  <div class="claim-actions-menu" id="claimActionsMenu" role="menu" aria-label="Draft claim actions" hidden>
-    <button type="button" role="menuitem" data-editor-view="cf4"><span class="claim-menu-icon" aria-hidden="true">V</span><span>Add vitals</span></button>
-    <button type="button" role="menuitem" data-editor-view="doctor"><span class="claim-menu-icon" aria-hidden="true">D</span><span>Change doctor</span></button>
-    <button type="button" role="menuitem" data-editor-view="cf2"><span class="claim-menu-icon" aria-hidden="true">T</span><span>Change time</span></button>
-    <button type="button" role="menuitem" data-editor-view="soa"><span class="claim-menu-icon" aria-hidden="true">S</span><span>Generate/Remove SOA Data</span></button>
-    <button type="button" role="menuitem" data-editor-view="hpi"><span class="claim-menu-icon" aria-hidden="true">H</span><span>History of Present Illness</span></button>
-    <button type="button" role="menuitem" data-editor-view="pmh"><span class="claim-menu-icon" aria-hidden="true">P</span><span>Pertinent Past Medical History</span></button>
-    <button type="button" role="menuitem" data-editor-view="course"><span class="claim-menu-icon" aria-hidden="true">C</span><span>Update Course in the Ward</span></button>
   </div>
   <div class="editor-overlay" id="claimEditor" hidden>
     <section class="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
@@ -185,8 +174,7 @@
         <button class="editor-tab" type="button" role="tab" data-editor-view="doctor" aria-selected="false">Change doctor</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="cf2" aria-selected="false">Change time</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="soa" aria-selected="false">Generate/Remove SOA Data</button>
-        <button class="editor-tab" type="button" role="tab" data-editor-view="hpi" aria-selected="false">History of Present Illness</button>
-        <button class="editor-tab" type="button" role="tab" data-editor-view="pmh" aria-selected="false">Pertinent Past Medical History</button>
+        <button class="editor-tab" type="button" role="tab" data-editor-view="history" aria-selected="false">HPI &amp; Pertinent Past Medical History</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="course" aria-selected="false">Update Course in the Ward</button>
       </nav>
       <div class="editor-content">

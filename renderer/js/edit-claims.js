@@ -4,7 +4,6 @@ const lookupButton = document.getElementById("lookupButton");
 const summary = document.getElementById("summary");
 const claimsBody = document.getElementById("claimsBody");
 const claimEditor = document.getElementById("claimEditor");
-const claimActionsMenu = document.getElementById("claimActionsMenu");
 const editorSubtitle = document.getElementById("editorSubtitle");
 const transmitAllButton = document.getElementById("transmitAllButton");
 const transmitAllStatus = document.getElementById("transmitAllStatus");
@@ -206,9 +205,7 @@ lookupForm.addEventListener("submit", async (event) => {
         editButton.title = "Edit";
         editButton.dataset.transmittalId = claim.transmittal_id;
         editButton.dataset.claimId = claim.claim_id;
-        editButton.dataset.action = "toggle-claim-menu";
-        editButton.setAttribute("aria-haspopup", "menu");
-        editButton.setAttribute("aria-expanded", "false");
+        editButton.dataset.action = "edit-claim";
         editButton.setAttribute("aria-label", `Edit claim ${claim.claim_series || "in transmittal " + claim.transmittal_number}`);
         const transmitButton = document.createElement("button");
         transmitButton.className = "cyber-btn icon-btn";
@@ -260,6 +257,9 @@ lookupForm.addEventListener("submit", async (event) => {
       badge.append(dot, document.createTextNode(claim.transmittal_status || "-"));
       transmittalStatusCell.append(badge);
       row.append(transmittalStatusCell);
+      const beaconMessageCell = document.createElement("td");
+      beaconMessageCell.className = "beacon-message-cell";
+      row.append(beaconMessageCell);
       claimsBody.append(row);
     });
   } catch (error) {
@@ -306,16 +306,16 @@ const editorViewTitles = {
   cf2: "Change Admission and Discharge Time",
   doctor: "Change Doctor",
   cf4: "Add CF4 Vitals",
-  hpi: "History of Present Illness",
-  pmh: "Pertinent Past Medical History",
+  history: "History of Present Illness & Pertinent Past Medical History",
   course: "Update Course in the Ward",
   soa: "Generate/Remove SOA Data",
 };
 
 function applyEditorView(view) {
   document.querySelector(".editor-content").dataset.view = view;
+  const visibleSections = view === "history" ? new Set(["hpi", "pmh"]) : new Set([view]);
   document.querySelectorAll(".editor-section[data-editor-section]").forEach((section) => {
-    section.hidden = section.dataset.editorSection !== view;
+    section.hidden = !visibleSections.has(section.dataset.editorSection);
   });
   document.getElementById("editorTitle").textContent = editorViewTitles[view] || "Edit Draft Claim";
   document.querySelectorAll("#editorTabs [data-editor-view]").forEach((button) => {
@@ -379,62 +379,56 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
   }
 }
 
+async function transmitTransmittal(button) {
+  const transmittalId = button.dataset.transmittalId;
+  const row = button.closest("tr[data-claim-row]");
+  button.disabled = true;
+  button.dataset.state = "transmitting";
+  button.title = "Transmitting...";
+  try {
+    const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/transmit`, { method: "POST", body: "{}" });
+    const badge = row.querySelector(".transmittal-status");
+    if (badge) {
+      badge.className = `transmittal-status ${statusClass(result.status)}`;
+      badge.lastChild.textContent = result.status || "TRANSMITTED";
+      row.dataset.transmittalStatus = result.status || "TRANSMITTED";
+      const details = [result.e_ticket_number && `eTicket ${result.e_ticket_number}`, result.control_number && `TCN ${result.control_number}`].filter(Boolean).join(" | ");
+      if (details) badge.title = details;
+    }
+    button.dataset.state = "transmitted";
+    button.innerHTML = TRANSMITTED_ICON_SVG;
+    button.title = "Transmitted";
+    const details = [result.e_ticket_number && `eTicket ${result.e_ticket_number}`, result.control_number && `TCN ${result.control_number}`].filter(Boolean).join(" | ");
+    setBeaconMessage(row, `Transmitted successfully.${details ? ` ${details}` : ""}`);
+    return result;
+  } catch (error) {
+    button.disabled = false;
+    button.dataset.state = "ready";
+    button.innerHTML = TRANSMIT_ICON_SVG;
+    button.title = error.message || "Transmit";
+    setBeaconMessage(row, `Transmit failed: ${error.message}`, true);
+    throw error;
+  }
+}
+
+function setBeaconMessage(row, message, error = false) {
+  const cell = row.querySelector(".beacon-message-cell");
+  if (!cell) return;
+  cell.className = `beacon-message-cell${message ? (error ? " error" : " success") : ""}`;
+  cell.textContent = message;
+}
+
 claimsBody.addEventListener("click", (event) => {
   const transmitButton = event.target.closest('[data-action="transmit-claim"]');
   if (transmitButton) {
-    const transmittalId = transmitButton.dataset.transmittalId;
     const transmittalNumber = transmitButton.closest("tr").dataset.transmittalNumber;
-    showTransmitClaimConfirm(transmittalNumber, () => {
-    transmitButton.disabled = true;
-    transmitButton.dataset.state = "transmitting";
-    transmitButton.title = "Transmitting...";
-    (async () => {
-      try {
-        const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/transmit`, { method: "POST", body: "{}" });
-        const row = transmitButton.closest("tr");
-        row.querySelector(".transmittal-status").className = `transmittal-status ${statusClass(result.status)}`;
-        row.querySelector(".transmittal-status").lastChild.textContent = result.status || "TRANSMITTED";
-        row.dataset.transmittalStatus = result.status || "TRANSMITTED";
-        const details = [result.e_ticket_number && `eTicket ${result.e_ticket_number}`, result.control_number && `TCN ${result.control_number}`].filter(Boolean).join(" | ");
-        if (details) row.querySelector(".transmittal-status").title = details;
-        transmitButton.dataset.state = "transmitted";
-        transmitButton.innerHTML = TRANSMITTED_ICON_SVG;
-        transmitButton.title = "Transmitted";
-        const feedback = document.createElement("div");
-        feedback.className = "message";
-        feedback.textContent = `Transmitted successfully.${details ? ` ${details}` : ""}`;
-        transmitButton.parentElement.after(feedback);
-      } catch (error) {
-        transmitButton.disabled = false;
-        transmitButton.dataset.state = "ready";
-        transmitButton.innerHTML = TRANSMIT_ICON_SVG;
-        transmitButton.title = error.message || "Transmit";
-        const feedback = document.createElement("div");
-        feedback.className = "message error";
-        feedback.textContent = `Transmit failed: ${error.message}`;
-        transmitButton.parentElement.after(feedback);
-      }
-    })();
-    });
+    showTransmitClaimConfirm(transmittalNumber, () => transmitTransmittal(transmitButton).catch(() => {}));
     return;
   }
-  const toggle = event.target.closest('[data-action="toggle-claim-menu"]');
-  if (toggle) {
-    const shouldOpen = claimActionsMenu.hidden || claimActionsMenu.dataset.claimId !== toggle.dataset.claimId;
-    closeClaimActionsMenu();
-    if (shouldOpen) {
-      claimActionsMenu.dataset.transmittalId = toggle.dataset.transmittalId;
-      claimActionsMenu.dataset.claimId = toggle.dataset.claimId;
-      claimActionsMenu.hidden = false;
-      toggle.setAttribute("aria-expanded", "true");
-      const rect = toggle.getBoundingClientRect();
-      const menuWidth = claimActionsMenu.offsetWidth;
-      const menuHeight = claimActionsMenu.offsetHeight;
-      const left = rect.right + menuWidth + 8 <= window.innerWidth ? rect.right + 6 : Math.max(8, rect.left - menuWidth - 6);
-      const top = Math.min(Math.max(8, rect.top), window.innerHeight - menuHeight - 8);
-      claimActionsMenu.style.left = `${left}px`;
-      claimActionsMenu.style.top = `${top}px`;
-    }
+  const editButton = event.target.closest('[data-action="edit-claim"]');
+  if (editButton) {
+    selectClaimRow(editButton.closest("tr[data-claim-row]"));
+    openClaimEditor(editButton.dataset.transmittalId, editButton.dataset.claimId);
   }
 });
 
@@ -464,29 +458,6 @@ claimsBody.addEventListener("keydown", (event) => {
   toggleClaimRowSelection(row);
 });
 
-function closeClaimActionsMenu() {
-  claimActionsMenu.hidden = true;
-  claimsBody.querySelectorAll('[data-action="toggle-claim-menu"]').forEach((button) => button.setAttribute("aria-expanded", "false"));
-}
-
-claimActionsMenu.addEventListener("click", (event) => {
-  const option = event.target.closest("[data-editor-view]");
-  if (!option) return;
-  const { transmittalId, claimId } = claimActionsMenu.dataset;
-  closeClaimActionsMenu();
-  openClaimEditor(transmittalId, claimId, option.dataset.editorView);
-});
-
-document.addEventListener("click", (event) => {
-  if (!claimActionsMenu.hidden && !claimActionsMenu.contains(event.target) && !event.target.closest('[data-action="toggle-claim-menu"]')) {
-    closeClaimActionsMenu();
-  }
-});
-window.addEventListener("scroll", () => {
-  if (!claimActionsMenu.hidden) closeClaimActionsMenu();
-}, true);
-window.addEventListener("resize", closeClaimActionsMenu);
-
 document.getElementById("editDoctorSelect").addEventListener("change", populateDoctorFields);
 document.getElementById("editorClose").addEventListener("click", () => {
   claimEditor.hidden = true;
@@ -505,8 +476,7 @@ document.getElementById("editorTabs").addEventListener("click", (event) => {
 });
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
-  if (!claimActionsMenu.hidden) closeClaimActionsMenu();
-  else if (!claimEditor.hidden) document.getElementById("editorClose").click();
+  if (!claimEditor.hidden) document.getElementById("editorClose").click();
 });
 
 document.querySelectorAll("[data-save-editor]").forEach((button) => {
@@ -627,21 +597,6 @@ function setTransmitAllStatus(message, error = false) {
   transmitAllStatus.classList.toggle("error", error);
 }
 
-function waitForRowTransmit(button) {
-  const deadline = Date.now() + 120000;
-  return new Promise((resolve) => {
-    const timer = setInterval(() => {
-      if (button.dataset.state === "transmitted") {
-        clearInterval(timer);
-        resolve(true);
-      } else if (!button.disabled || !button.isConnected || Date.now() > deadline) {
-        clearInterval(timer);
-        resolve(false);
-      }
-    }, 250);
-  });
-}
-
 function markRowTransmitted(row, sourceRow) {
   const badge = row.querySelector(".transmittal-status");
   const sourceBadge = sourceRow.querySelector(".transmittal-status");
@@ -651,6 +606,8 @@ function markRowTransmitted(row, sourceRow) {
     badge.title = sourceBadge.title;
     row.dataset.transmittalStatus = sourceRow.dataset.transmittalStatus;
   }
+  const sourceMessage = sourceRow.querySelector(".beacon-message-cell");
+  if (sourceMessage) setBeaconMessage(row, sourceMessage.textContent, sourceMessage.classList.contains("error"));
   const button = row.querySelector('[data-action="transmit-claim"]');
   if (button && button.dataset.state !== "transmitted") {
     button.disabled = true;
@@ -740,6 +697,243 @@ function showTransmitAllConfirm(transmittalCount, rowCount, onConfirm) {
   document.getElementById("transmitAllCancelBtn").focus();
 }
 
+function showGenerateSoaAllConfirm(claimCount, onConfirm) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Generate SOA</h3>
+        <p>Validate, generate, and upload SOA data for ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time?</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="generateSoaAllCancelBtn" type="button">CANCEL</button>
+          <button class="cyber-btn danger" id="generateSoaAllConfirmBtn" type="button">YES, GENERATE ALL</button>
+        </div>
+      </div>
+    </div>`;
+  function close() {
+    closeTransmitAllConfirm(onKey);
+  }
+  function onKey(event) {
+    if (event.key === "Escape") close();
+  }
+  document.getElementById("generateSoaAllCancelBtn").addEventListener("click", close);
+  document.getElementById("generateSoaAllConfirmBtn").addEventListener("click", () => {
+    close();
+    onConfirm();
+  });
+  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.getElementById("generateSoaAllCancelBtn").focus();
+}
+
+function getDraftClaimsForSoa() {
+  return Array.from(claimsBody.querySelectorAll("tr[data-claim-row]"))
+    .filter((row) => row.querySelector('[data-action="edit-claim"]')
+      && String(row.dataset.transmittalStatus || "").trim().toUpperCase() === "DRAFT");
+}
+
+async function runGenerateSoaAll() {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for SOA generation.", true);
+    return;
+  }
+
+  const button = document.getElementById("generateSoaAllButton");
+  const cf4Button = document.getElementById("generateCf4AllButton");
+  const removeButton = document.getElementById("removeSoaAllButton");
+  let generated = 0;
+  let failed = 0;
+  button.disabled = true;
+  cf4Button.disabled = true;
+  removeButton.disabled = true;
+  transmitAllButton.disabled = true;
+  button.textContent = "GENERATING SOA...";
+  try {
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const claimAction = row.querySelector('[data-action="edit-claim"]');
+      const { transmittalId, claimId } = claimAction.dataset;
+      setTransmitAllStatus(`Generating SOA ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
+      try {
+        await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/soa/generate`, {
+          method: "POST",
+          body: JSON.stringify({}),
+        });
+        setBeaconMessage(row, "SOA validated, generated, and uploaded to Beacon.");
+        generated += 1;
+      } catch (error) {
+        setBeaconMessage(row, `SOA generation failed: ${error.message}`, true);
+        failed += 1;
+      }
+    }
+    setTransmitAllStatus(failed
+      ? `SOA generated for ${generated} claim${generated === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
+      : `SOA generated for all ${generated} draft claim${generated === 1 ? "" : "s"}.`, failed > 0);
+  } finally {
+    button.disabled = false;
+    button.textContent = "GENERATE SOA ALL";
+    cf4Button.disabled = false;
+    removeButton.disabled = false;
+    transmitAllButton.disabled = false;
+  }
+}
+
+function showGenerateCf4AllConfirm(claimCount, onConfirm) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Generate CF4</h3>
+        <p>Generate and upload CF4 for ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time?</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="generateCf4AllCancelBtn" type="button">CANCEL</button>
+          <button class="cyber-btn danger" id="generateCf4AllConfirmBtn" type="button">YES, GENERATE ALL</button>
+        </div>
+      </div>
+    </div>`;
+  function close() {
+    closeTransmitAllConfirm(onKey);
+  }
+  function onKey(event) {
+    if (event.key === "Escape") close();
+  }
+  document.getElementById("generateCf4AllCancelBtn").addEventListener("click", close);
+  document.getElementById("generateCf4AllConfirmBtn").addEventListener("click", () => {
+    close();
+    onConfirm();
+  });
+  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.getElementById("generateCf4AllCancelBtn").focus();
+}
+
+async function runGenerateCf4All() {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for CF4 generation.", true);
+    return;
+  }
+
+  const button = document.getElementById("generateCf4AllButton");
+  let generated = 0;
+  let failed = 0;
+  button.disabled = true;
+  document.getElementById("generateSoaAllButton").disabled = true;
+  document.getElementById("removeSoaAllButton").disabled = true;
+  transmitAllButton.disabled = true;
+  button.textContent = "GENERATING CF4...";
+  try {
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const claimAction = row.querySelector('[data-action="edit-claim"]');
+      const { transmittalId, claimId } = claimAction.dataset;
+      setTransmitAllStatus(`Generating CF4 ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
+      try {
+        await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/cf4-generate`, {
+          method: "POST",
+          body: JSON.stringify({}),
+        });
+        setBeaconMessage(row, "CF4 generated in Beacon.");
+        generated += 1;
+      } catch (error) {
+        setBeaconMessage(row, `CF4 generation failed: ${error.message}`, true);
+        failed += 1;
+      }
+    }
+    setTransmitAllStatus(failed
+      ? `CF4 generated for ${generated} claim${generated === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
+      : `CF4 generated for all ${generated} draft claim${generated === 1 ? "" : "s"}.`, failed > 0);
+  } finally {
+    button.disabled = false;
+    button.textContent = "GENERATE CF4 ALL";
+    document.getElementById("generateSoaAllButton").disabled = false;
+    document.getElementById("removeSoaAllButton").disabled = false;
+    transmitAllButton.disabled = false;
+  }
+}
+
+function showRemoveSoaAllConfirm(claimCount, onConfirm) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Remove SOA Data</h3>
+        <p>Remove SOA charge data from ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time? Claims with payment receipts will not be changed.</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="removeSoaAllCancelBtn" type="button">CANCEL</button>
+          <button class="cyber-btn danger" id="removeSoaAllConfirmBtn" type="button">YES, REMOVE ALL</button>
+        </div>
+      </div>
+    </div>`;
+  function close() {
+    closeTransmitAllConfirm(onKey);
+  }
+  function onKey(event) {
+    if (event.key === "Escape") close();
+  }
+  document.getElementById("removeSoaAllCancelBtn").addEventListener("click", close);
+  document.getElementById("removeSoaAllConfirmBtn").addEventListener("click", () => {
+    close();
+    onConfirm();
+  });
+  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.getElementById("removeSoaAllCancelBtn").focus();
+}
+
+async function runRemoveSoaAll() {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for SOA removal.", true);
+    return;
+  }
+
+  const button = document.getElementById("removeSoaAllButton");
+  const cf4Button = document.getElementById("generateCf4AllButton");
+  const generateButton = document.getElementById("generateSoaAllButton");
+  let removed = 0;
+  let failed = 0;
+  button.disabled = true;
+  cf4Button.disabled = true;
+  generateButton.disabled = true;
+  transmitAllButton.disabled = true;
+  button.textContent = "REMOVING SOA...";
+  try {
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const claimAction = row.querySelector('[data-action="edit-claim"]');
+      const { transmittalId, claimId } = claimAction.dataset;
+      setTransmitAllStatus(`Removing SOA ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
+      try {
+        const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/soa`, {
+          method: "DELETE",
+        });
+        setBeaconMessage(row, `SOA data removed (${result.med_count || 0} MED, ${result.xlso_count || 0} XLSO rows).`);
+        removed += 1;
+      } catch (error) {
+        setBeaconMessage(row, `SOA removal failed: ${error.message}`, true);
+        failed += 1;
+      }
+    }
+    setTransmitAllStatus(failed
+      ? `SOA data removed from ${removed} claim${removed === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
+      : `SOA data removed from all ${removed} draft claim${removed === 1 ? "" : "s"}.`, failed > 0);
+  } finally {
+    button.disabled = false;
+    button.textContent = "REMOVE SOA ALL";
+    cf4Button.disabled = false;
+    generateButton.disabled = false;
+    transmitAllButton.disabled = false;
+  }
+}
+
 async function runTransmitAll() {
   const { rows, groups } = getReadyTransmittalGroups();
   if (!groups.size) {
@@ -749,6 +943,9 @@ async function runTransmitAll() {
 
   const entries = Array.from(groups.entries());
   transmitAllButton.disabled = true;
+  document.getElementById("generateSoaAllButton").disabled = true;
+  document.getElementById("generateCf4AllButton").disabled = true;
+  document.getElementById("removeSoaAllButton").disabled = true;
   transmitAllButton.textContent = "TRANSMITTING ALL...";
   let transmitted = 0;
   let failed = 0;
@@ -761,9 +958,8 @@ async function runTransmitAll() {
       const transmittalNumber = primaryRow.dataset.transmittalNumber;
       setTransmitAllStatus(`Transmitting ${index + 1} of ${entries.length}: ${transmittalNumber}...`);
       if (!button || button.disabled || button.dataset.state !== "ready") continue;
-      button.click();
-      const success = await waitForRowTransmit(button);
-      if (success) {
+      try {
+        await transmitTransmittal(button);
         transmitted += 1;
         rowTotal += groupRows.length;
         rows.forEach((row) => {
@@ -771,7 +967,7 @@ async function runTransmitAll() {
           const siblingButton = row.querySelector('[data-action="transmit-claim"]');
           if (siblingButton && siblingButton.dataset.transmittalId === transmittalId) markRowTransmitted(row, primaryRow);
         });
-      } else {
+      } catch (error) {
         failed += 1;
       }
     }
@@ -782,27 +978,14 @@ async function runTransmitAll() {
     }
   } finally {
     transmitAllButton.disabled = false;
+    document.getElementById("generateSoaAllButton").disabled = false;
+    document.getElementById("generateCf4AllButton").disabled = false;
+    document.getElementById("removeSoaAllButton").disabled = false;
     transmitAllButton.textContent = "AUTO TRANSMIT ALL";
   }
 }
 
 document.getElementById("copyTransmittalsButton").addEventListener("click", async () => {
-  const numbers = [];
-  claimsBody.querySelectorAll("tr[data-claim-row]").forEach((row) => {
-    const value = row.dataset.transmittalNumber;
-    if (value && !numbers.includes(value)) numbers.push(value);
-  });
-  if (!numbers.length) {
-    setTransmitAllStatus("No transmittal numbers to copy. Run a lookup first.", true);
-    return;
-  }
-  const copied = await copyTextToClipboard(numbers.join("\n"));
-  setTransmitAllStatus(copied
-    ? `Copied ${numbers.length} transmittal number${numbers.length === 1 ? "" : "s"}.`
-    : "Copy failed. Your browser blocked clipboard access.", !copied);
-});
-
-document.getElementById("copyDraftTransmittalsButton").addEventListener("click", async () => {
   const numbers = [];
   claimsBody.querySelectorAll("tr[data-claim-row]").forEach((row) => {
     const value = row.dataset.transmittalNumber;
@@ -828,4 +1011,31 @@ transmitAllButton.addEventListener("click", () => {
   const transmittalCount = groups.size;
   const rowCount = Array.from(groups.values()).reduce((total, groupRows) => total + groupRows.length, 0);
   showTransmitAllConfirm(transmittalCount, rowCount, runTransmitAll);
+});
+
+document.getElementById("generateSoaAllButton").addEventListener("click", () => {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for SOA generation.", true);
+    return;
+  }
+  showGenerateSoaAllConfirm(rows.length, runGenerateSoaAll);
+});
+
+document.getElementById("generateCf4AllButton").addEventListener("click", () => {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for CF4 generation.", true);
+    return;
+  }
+  showGenerateCf4AllConfirm(rows.length, runGenerateCf4All);
+});
+
+document.getElementById("removeSoaAllButton").addEventListener("click", () => {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for SOA removal.", true);
+    return;
+  }
+  showRemoveSoaAllConfirm(rows.length, runRemoveSoaAll);
 });

@@ -244,14 +244,10 @@ def create_member_claim(member_pin, admission_date, discharge_date, draft_title)
     if not pin:
         raise InvalidMemberPinError("Incorrect Member PIN: empty PIN")
 
-    trans = create_transmittal(draft_title)
-    transmittal_id = int(trans["id"])
-    identity = cf2_api.get_hospital_identity(transmittal_id)
-
-    patient = None
-    confirmed_pin = None
-    lookup_found_patient = False
-    pin_verification_mismatch = False
+    # Resolve the patient before creating a transmittal. A transient lookup
+    # failure (including Beacon HTTP 500) must not leave an empty draft behind.
+    candidates_found = []
+    last_lookup_server_error = None
     attempts = [pin] + ([] if pin.startswith("0") else ["0" + pin])
     for candidate in attempts:
         try:
@@ -270,12 +266,35 @@ def create_member_claim(member_pin, admission_date, discharge_date, draft_title)
             # failures must be shown as such instead of mislabeled as a bad PIN.
             if ex.status_code in (400, 404):
                 continue
+            if ex.status_code is not None and ex.status_code >= 500:
+                # The previous flow tried the zero-padded PIN after any
+                # lookup error. Keep that fallback for transient/backend
+                # errors too, since this endpoint is a read-only GET.
+                last_lookup_server_error = ex
+                continue
             raise
 
         if not isinstance(candidate_patient, dict) or not candidate_patient:
             continue
 
-        lookup_found_patient = True
+        candidates_found.append((candidate_patient, candidate))
+
+    if not candidates_found:
+        if last_lookup_server_error is not None:
+            raise last_lookup_server_error
+        raise InvalidMemberPinError(
+            "Beacon returned no patient record for this Member PIN. Check the PIN, "
+            "dependent marker, and the account's S2/S4 server setting."
+        )
+
+    trans = create_transmittal(draft_title)
+    transmittal_id = int(trans["id"])
+    identity = cf2_api.get_hospital_identity(transmittal_id)
+
+    patient = None
+    confirmed_pin = None
+    pin_verification_mismatch = False
+    for candidate_patient, candidate in candidates_found:
         returned_pin = verify_member_pin(candidate_patient, identity)
         if returned_pin and _member_pins_match(returned_pin, candidate):
             # Keep the PIN Beacon verified, including its canonical
@@ -284,15 +303,12 @@ def create_member_claim(member_pin, admission_date, discharge_date, draft_title)
             break
         pin_verification_mismatch = True
     if patient is None:
-        if lookup_found_patient and pin_verification_mismatch:
+        if pin_verification_mismatch:
             raise InvalidMemberPinError(
                 "Beacon found the patient record, but eClaims PIN verification did not match. "
                 "Check the uploaded PIN and the account's S2/S4 server setting."
             )
-        raise InvalidMemberPinError(
-            "Beacon returned no patient record for this Member PIN. Check the PIN, "
-            "dependent marker, and the account's S2/S4 server setting."
-        )
+        raise InvalidMemberPinError("eClaims PIN verification returned no usable PIN.")
 
     duplicate_payload = _claim_payload(patient, confirmed_pin, transmittal_id, admission_date, discharge_date, include_facility=True)
     _put("/api/PHICCF1/GetDuplicatePHICCF1Entry", json_body=duplicate_payload)
