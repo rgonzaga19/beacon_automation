@@ -15,6 +15,7 @@
   .site-nav { display:flex; align-items:center; gap:8px; height:100%; margin-left:auto; }
   .site-nav button { height:100%; padding:0 13px; color:var(--text-sec); background:none; border:0; border-bottom:2px solid transparent; font:600 13px var(--font-ui); cursor:pointer; }
   .site-nav button:hover,.site-nav button.active { color:var(--text-pri); border-bottom-color:var(--accent); }
+  .site-nav button[hidden] { display:none; }
   .site-account { position:relative; }
   .account-trigger { display:flex; align-items:center; gap:9px; padding:7px 11px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:999px; cursor:pointer; }
   .account-avatar { display:grid; width:28px; height:28px; place-items:center; color:var(--bg-dark); background:var(--accent); border-radius:50%; font-size:12px; font-weight:800; }
@@ -40,6 +41,7 @@
   .sidebar-column.collapsed .sidebar-copyright, .sidebar-column.collapsed .sidebar-footer .footer-divider, .sidebar-column.collapsed .sidebar-version-full { display:none; }
   .sidebar-column.collapsed .sidebar-version-short { display:block; }
   .side-link { width:100%; height:44px; display:flex; align-items:center; gap:12px; padding:0 13px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:var(--radius-md); font:700 11px var(--font-ui); letter-spacing:.25px; white-space:nowrap; cursor:pointer; transition:color 140ms ease,background 140ms ease,border-color 140ms ease; }
+  .side-link[hidden] { display:none; }
   .side-link:hover { color:var(--text-pri); background:var(--accent-soft); border-color:var(--border); }
   .side-link.active { color:var(--text-pri); background:var(--accent-soft-strong); border-color:var(--accent); }
   .side-link .side-icon { width:20px; min-width:20px; height:20px; display:grid; place-items:center; color:var(--accent); font-size:17px; }
@@ -128,7 +130,7 @@
       <a class="site-brand" href="/dashboard.html" id="siteBrand"><img src="assets/bot.ico" alt=""><span>BEABOTS</span></a>
       <button class="mobile-menu-trigger" id="mobileMenuButton" type="button" aria-controls="dashboardSidebar" aria-expanded="false" aria-label="Open workspace menu"><span aria-hidden="true">&#9776;</span></button>
       <nav class="site-nav" aria-label="Main navigation">
-        <button id="siteHome" type="button">Home</button><button id="siteClaims" type="button">Claims</button><button id="siteAbout" type="button">About</button><button id="siteContact" type="button">Contact Us</button>
+        <button id="siteHome" type="button">Home</button><button id="siteClaims" type="button">Claims</button><button id="siteUsers" type="button" hidden>User Management</button><button id="siteAbout" type="button">About</button><button id="siteContact" type="button">Contact Us</button>
       </nav>
       <div class="site-account">
         <button class="account-trigger" id="accountTrigger" type="button" aria-expanded="false"><span class="account-avatar" id="accountAvatar">B</span><span id="accountName">Account</span><span aria-hidden="true">⌄</span></button>
@@ -188,6 +190,7 @@
           <span class="workspace-loader-text" role="status">Loading PDF Splitter…</span>
         </div>
         <iframe class="workspace-frame" data-workspace-frame="settings" title="Settings"></iframe>
+        <iframe class="workspace-frame" data-workspace-frame="users" title="User Management"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="about" title="About"></iframe>
       </div>
     </div>

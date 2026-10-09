@@ -18,6 +18,7 @@ const dashboardLayout = document.querySelector(".dashboard-layout");
 const mobileMenuButton = document.getElementById("mobileMenuButton");
 const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 let activeWorkspaceKey = null;
+let signedInIsAdmin = false;
 
 function closeMobileSidebar() {
   sidebar.classList.remove("mobile-open");
@@ -85,6 +86,7 @@ const workspaceButtons = {
   autoRename: document.getElementById("btnAutoRename"),
   pdfSplitter: document.getElementById("btnPdfSplitter"),
   settings: document.getElementById("btnSettings"),
+  users: document.getElementById("siteUsers"),
 };
 
 const workspaceColumn = document.getElementById("workspaceColumn");
@@ -98,6 +100,7 @@ const workspaceRoutes = {
   autoRename: "auto-rename.html",
   pdfSplitter: "https://rgonzaga19.github.io/pdfsplitter/",
   settings: "settings.html",
+  users: "users.html",
   about: "about.html",
 };
 const workspaceFrames = Object.fromEntries(
@@ -123,6 +126,7 @@ function showWorkspaceHome() {
 }
 
 function openWorkspace(activeKey) {
+  if (activeKey === "users" && !signedInIsAdmin) return;
   const route = workspaceRoutes[activeKey];
   const frame = workspaceFrames[activeKey];
   if (!route || !frame) return;
@@ -212,6 +216,15 @@ async function loadSignedInProfile() {
       return;
     }
     const user = result.user || {};
+    signedInIsAdmin = Boolean(user.is_admin);
+    document.getElementById("siteUsers").hidden = !signedInIsAdmin;
+    if (signedInIsAdmin) {
+      if (activeWorkspaceKey !== "users" && window.location.hash.replace("#", "") === "users") openWorkspace("users");
+    } else if (window.location.hash.replace("#", "") === "users") {
+      // The users workspace is admin-only; fall back to Home if reached directly.
+      showWorkspaceHome();
+      setTopNavigation("siteHome");
+    }
     const displayName = user.display_name || user.profile_name || user.email || "Account";
     document.getElementById("accountName").textContent = displayName;
     document.getElementById("accountAvatar").textContent = (displayName.trim()[0] || "B").toUpperCase();
@@ -288,6 +301,10 @@ document.getElementById("btnAutoRename").addEventListener("click", () => {
 document.getElementById("btnPdfSplitter").addEventListener("click", () => {
   openWorkspace("pdfSplitter");
 });
+document.getElementById("siteUsers").addEventListener("click", () => {
+  setTopNavigation("siteUsers");
+  openWorkspace("users");
+});
 document.getElementById("btnSettings").addEventListener("click", () => {
   openWorkspace("settings");
 });
@@ -322,6 +339,7 @@ if (pdfSplitterFrame && pdfSplitterLoader) {
 const initialWorkspace = window.location.hash.replace("#", "");
 if (workspaceRoutes[initialWorkspace]) {
   if (["about", "settings"].includes(initialWorkspace)) setTopNavigation(initialWorkspace === "about" ? "siteAbout" : "siteHome");
+  else if (initialWorkspace === "users") setTopNavigation("siteUsers");
   else setTopNavigation("siteClaims");
   openWorkspace(initialWorkspace);
 } else {

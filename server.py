@@ -28,7 +28,8 @@ from flask_socketio import SocketIO, join_room
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, text, or_
+from sqlalchemy.orm import selectinload
 
 from openpyxl import load_workbook
 
@@ -320,6 +321,19 @@ def login_required(handler):
     return wrapper
 
 
+def admin_required(handler):
+    @wraps(handler)
+    def wrapper(*args, **kwargs):
+        user = current_user()
+        if not user or not user.is_active:
+            return jsonify({"error": "Authentication required."}), 401
+        if not user.is_admin:
+            return jsonify({"error": "Administrator access required."}), 403
+        return handler(*args, **kwargs)
+
+    return wrapper
+
+
 def get_or_create_user_settings(user):
     settings = user.settings
     if settings is None:
@@ -557,6 +571,53 @@ def auth_me():
     if not user or not user.is_active:
         return jsonify({"authenticated": False})
     return jsonify({"authenticated": True, "user": user_payload(user)})
+
+
+@app.route("/api/admin/users", methods=["GET"])
+@admin_required
+def admin_list_users():
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+        per_page = min(100, max(1, int(request.args.get("per_page", 25))))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Page values must be integers."}), 400
+
+    search = str(request.args.get("q") or "").strip()[:120]
+    query = User.query.options(selectinload(User.settings))
+    if search:
+        pattern = f"%{search}%"
+        query = query.filter(or_(
+            User.email.ilike(pattern),
+            User.profile_name.ilike(pattern),
+            User.display_name.ilike(pattern),
+        ))
+
+    total = query.count()
+    users = (
+        query.order_by(User.created_at.desc(), User.id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+    return jsonify({
+        "users": [{
+            "id": user.id,
+            "email": user.email,
+            "profile_name": user.profile_name or "",
+            "display_name": user.display_name or "",
+            "is_active": bool(user.is_active),
+            "is_admin": bool(user.is_admin),
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "updated_at": user.updated_at.isoformat() if user.updated_at else None,
+            "beacon_connected": bool(user.settings and user.settings.beacon_validated_at),
+            "beacon_server": user.settings.server if user.settings else "",
+        } for user in users],
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "pages": max(1, (total + per_page - 1) // per_page),
+        "search": search,
+    })
 
 
 @app.route("/api/auth/register", methods=["POST"])
