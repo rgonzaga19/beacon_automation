@@ -36,7 +36,7 @@ from openpyxl import load_workbook
 from app.core.config import AppConfig
 from app.core.database import db
 import app.models  # noqa: F401 - imported so SQLAlchemy registers the tables
-from app.models import User, UserSetting, utc_now
+from app.models import UpgradeRequest, User, UserSetting, utc_now
 from app.core import browser_session
 from app.core.logger import logger
 from app.core.version import APP_VERSION
@@ -320,6 +320,7 @@ def current_user():
 
 
 def user_payload(user):
+    upgrade_request = UpgradeRequest.query.filter_by(user_id=user.id).first()
     return {
         "id": user.id,
         "email": user.email,
@@ -327,6 +328,7 @@ def user_payload(user):
         "display_name": user.display_name,
         "is_admin": user.is_admin,
         "role": user.role or ("admin" if user.is_admin else "member"),
+        "upgrade_request_status": upgrade_request.status if upgrade_request else None,
     }
 
 
@@ -603,7 +605,7 @@ def admin_list_users():
         return jsonify({"error": "Page values must be integers."}), 400
 
     search = str(request.args.get("q") or "").strip()[:120]
-    query = User.query.options(selectinload(User.settings))
+    query = User.query.options(selectinload(User.settings), selectinload(User.upgrade_request))
     if search:
         pattern = f"%{search}%"
         query = query.filter(or_(
@@ -640,6 +642,12 @@ def admin_list_users():
             "updated_at": user.updated_at.isoformat() if user.updated_at else None,
             "beacon_connected": bool(user.settings and user.settings.beacon_validated_at),
             "beacon_server": user.settings.server if user.settings else "",
+            "upgrade_request": ({
+                "id": user.upgrade_request.id,
+                "message": user.upgrade_request.message,
+                "status": user.upgrade_request.status,
+                "created_at": user.upgrade_request.created_at.isoformat() if user.upgrade_request.created_at else None,
+            } if user.upgrade_request else None),
         } for user in users],
         "page": page,
         "per_page": per_page,
@@ -672,6 +680,52 @@ def admin_update_user_role(user_id):
     target.is_admin = role == "admin"
     db.session.commit()
     return jsonify({"user_id": target.id, "role": target.role, "is_admin": target.is_admin})
+
+
+@app.route("/api/auth/upgrade-request", methods=["POST"])
+@login_required
+def auth_create_upgrade_request():
+    user = current_user()
+    if user.is_admin or user.role == "subscriber":
+        return jsonify({"error": "This account already has premium access."}), 409
+    data = request.get_json(silent=True) or {}
+    message = str(data.get("message") or "").strip()
+    if not message or len(message) > 500:
+        return jsonify({"error": "Please enter a message of 1 to 500 characters."}), 400
+    upgrade_request = UpgradeRequest.query.filter_by(user_id=user.id).first()
+    if upgrade_request and upgrade_request.status == "pending":
+        return jsonify({"error": "Your upgrade request is already awaiting review."}), 409
+    if upgrade_request:
+        upgrade_request.message = message
+        upgrade_request.status = "pending"
+        upgrade_request.created_at = utc_now()
+        upgrade_request.reviewed_at = None
+    else:
+        upgrade_request = UpgradeRequest(user_id=user.id, message=message)
+        db.session.add(upgrade_request)
+    db.session.commit()
+    return jsonify({"status": "pending"}), 201
+
+
+@app.route("/api/admin/upgrade-requests/<int:request_id>", methods=["PATCH"])
+@admin_required
+def admin_review_upgrade_request(request_id):
+    data = request.get_json(silent=True) or {}
+    decision = str(data.get("decision") or "").strip().lower()
+    if decision not in {"accepted", "declined"}:
+        return jsonify({"error": "Decision must be accepted or declined."}), 400
+    upgrade_request = db.session.get(UpgradeRequest, request_id)
+    if not upgrade_request:
+        return jsonify({"error": "Upgrade request not found."}), 404
+    if upgrade_request.status != "pending":
+        return jsonify({"error": "This request has already been reviewed."}), 409
+    upgrade_request.status = decision
+    upgrade_request.reviewed_at = utc_now()
+    if decision == "accepted":
+        upgrade_request.user.role = "subscriber"
+        upgrade_request.user.is_admin = False
+    db.session.commit()
+    return jsonify({"status": decision, "user_id": upgrade_request.user_id})
 
 
 @app.route("/api/admin/users/<int:user_id>", methods=["DELETE"])

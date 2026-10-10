@@ -37,6 +37,12 @@ class User(db.Model):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    upgrade_request = db.relationship(
+        "UpgradeRequest",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
 
 class UserSetting(db.Model):
@@ -60,6 +66,18 @@ class UserSetting(db.Model):
     )
 
     user = db.relationship("User", back_populates="settings")
+
+
+class UpgradeRequest(db.Model):
+    __tablename__ = "upgrade_requests"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    message = db.Column(db.String(500), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="pending")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now)
+    reviewed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    user = db.relationship("User", back_populates="upgrade_request")
 
 
 class AutomationJob(db.Model):

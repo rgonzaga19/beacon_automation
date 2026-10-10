@@ -34,7 +34,7 @@
   .sidebar { flex:1; display:flex; flex-direction:column; min-height:0; padding:14px 10px; overflow:hidden; background:var(--bg-panel); }
   .menu-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-md); }
   .sidebar-nav { display:flex; flex-direction:column; gap:7px; }
-  .sidebar-footer { margin-top:auto; padding:16px 6px 2px; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:3px 6px; color:var(--text-sec); font-size:9px; line-height:1.4; text-align:center; }
+  .sidebar-footer { margin-top:auto; padding:16px 6px 2px; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:3px 6px; color:var(--text-sec); font-size:9px; line-height:1.4; text-align:center; border-top:1px solid var(--border); }
   .sidebar-footer .footer-divider { color:var(--accent); }
   .sidebar-version-short { display:none; }
   .sidebar-column.collapsed .sidebar-footer { flex-direction:column; gap:4px; padding:14px 0 4px; font-size:8px; }
@@ -42,11 +42,15 @@
   .sidebar-column.collapsed .sidebar-version-short { display:block; }
   .side-link { width:100%; height:44px; display:flex; align-items:center; gap:12px; padding:0 13px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:var(--radius-md); font:700 11px var(--font-ui); letter-spacing:.25px; white-space:nowrap; cursor:pointer; transition:color 140ms ease,background 140ms ease,border-color 140ms ease; }
   .side-link[hidden] { display:none; }
+  .sidebar-nav-separator { height:1px; margin:7px 6px; background:var(--border); border:0; }
+  .side-link.external-link { text-decoration:none; }
   .side-link:hover { color:var(--text-pri); background:var(--accent-soft); border-color:var(--border); }
   .side-link.active { color:var(--text-pri); background:var(--accent-soft-strong); border-color:var(--accent); }
   .side-link .side-icon { width:20px; min-width:20px; height:20px; display:grid; place-items:center; color:var(--accent); font-size:17px; }
   .side-link .side-label { opacity:1; transition:opacity 100ms ease; }
   .sidebar-column.collapsed .side-label { opacity:0; pointer-events:none; }
+  .external-link-indicator { margin-left:auto; color:var(--text-sec); font-size:12px; line-height:1; }
+  .sidebar-column.collapsed .external-link-indicator { display:none; }
 
   .body { flex:1; display:flex; align-items:flex-start; justify-content:center; padding:clamp(28px,5vw,64px) 24px; min-width:0; min-height:0; overflow:auto; text-align:left; }
   .home-content { width:min(100%,1040px); margin:0 auto; }
@@ -72,6 +76,26 @@
   .profile-field input:focus { background:var(--bg-panel); border-color:var(--accent); outline:none; box-shadow:0 0 0 3px var(--accent-soft); }
   .profile-field small { color:var(--text-sec); font-size:10.5px; line-height:1.4; }
   .profile-save { justify-self:start; }
+  .profile-actions { display:flex; flex-wrap:wrap; gap:9px; }
+  .upgrade-button { justify-self:start; min-height:40px; padding:9px 13px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:700 11px var(--font-ui); cursor:pointer; }
+  .upgrade-button:hover { border-color:var(--accent); }
+  .upgrade-button:disabled { opacity:.6; cursor:not-allowed; }
+  .upgrade-dialog { width:min(480px,calc(100vw - 28px)); padding:0; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); }
+  .upgrade-dialog::backdrop { background:rgba(0,0,0,.68); }
+  .upgrade-dialog form { padding:24px; }
+  .upgrade-dialog h2 { margin:0 0 8px; font-size:20px; }
+  .upgrade-dialog p { margin:0 0 16px; color:var(--text-sec); font-size:12px; line-height:1.55; }
+  .upgrade-account { margin:0 0 14px; padding:11px 13px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font-size:12px; }
+  .upgrade-account strong,.upgrade-account span { display:block; }
+  .upgrade-account span { margin-top:4px; color:var(--text-sec); font-size:11px; overflow-wrap:anywhere; }
+  .upgrade-dialog label { display:block; margin-bottom:6px; font-size:11px; font-weight:700; }
+  .upgrade-dialog textarea { width:100%; min-height:96px; resize:vertical; padding:10px 12px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:12px var(--font-ui); }
+  .upgrade-dialog textarea:focus { border-color:var(--accent); outline:2px solid var(--accent-soft); }
+  #upgradeRequestStatus { min-height:17px; margin-top:9px; color:var(--success); font-size:11px; }
+  .upgrade-dialog .dialog-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+  .upgrade-dialog .dialog-actions button { min-height:38px; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius-md); font:700 11px var(--font-ui); cursor:pointer; }
+  #cancelUpgradeRequest { color:var(--text-pri); background:var(--bg-card); }
+  #submitUpgradeRequest:disabled { opacity:.55; cursor:not-allowed; }
   #profileStatus { min-height:18px; color:var(--success); font-size:12px; }
   @media(max-width:760px) { .home-columns { grid-template-columns:1fr; } }
   @media(max-width:500px) { .site-header { height:auto; min-height:64px; flex-wrap:wrap; gap:0; padding:8px 12px; } .site-nav { order:3; width:100%; height:40px; justify-content:space-between; } .site-nav button { padding:0 5px; font-size:11px; } .site-account { margin-left:auto; } .tool-list { grid-template-columns:1fr; } }
@@ -154,9 +178,10 @@
             <button class="side-link" id="btnCf4" type="button" title="Claim Form 4"><span class="side-icon" aria-hidden="true">▤</span><span class="side-label">Claim Form 4</span></button>
             <button class="side-link" id="btnFinalizeClaims" type="button" title="Edit Claims"><span class="side-icon" aria-hidden="true">&#10003;</span><span class="side-label">Edit Claims</span></button>
             <button class="side-link" id="btnRunAll" type="button" title="Run CF2, SOA, and CF4"><span class="side-icon" aria-hidden="true">▶</span><span class="side-label">Run All</span></button>
-            <button class="side-link" id="btnPdfSplitter" type="button" title="PDF Splitter"><span class="side-icon" aria-hidden="true">&#9986;</span><span class="side-label">PDF Splitter</span></button>
             <button class="side-link" id="btnAutoRename" type="button" title="PDF Auto Rename"><span class="side-icon" aria-hidden="true">↻</span><span class="side-label">PDF Auto Rename</span></button>
             <button class="side-link" id="btnSettings" type="button" title="Settings"><span class="side-icon" aria-hidden="true">⚙</span><span class="side-label">Settings</span></button>
+            <hr class="sidebar-nav-separator" aria-hidden="true">
+            <a class="side-link external-link" href="https://rgonzaga19.github.io/pdfsplitter/" target="_blank" rel="noopener noreferrer" title="PDF Splitter"><span class="side-icon" aria-hidden="true">&#9986;</span><span class="side-label">PDF Splitter</span><span class="external-link-indicator" aria-hidden="true">&#8599;</span></a>
           </nav>
           <footer class="sidebar-footer" aria-label="Beabots version and copyright"><span class="sidebar-copyright">&#169; <span id="sidebarCopyrightYear"></span> Beabots. All rights reserved.</span><span class="footer-divider" aria-hidden="true">&#183;</span><span class="sidebar-version-full" id="sidebarVersionFull">Version web</span><span class="sidebar-version-short" id="sidebarVersionShort">vweb</span></footer>
         </aside>
@@ -170,10 +195,10 @@
               <section class="home-card"><h2>Claims tools</h2><p>Choose a tool to continue your work.</p><div class="tool-list">
                 <button class="tool-card" data-open-tool="soaExcel"><strong>SOA Excel Generator</strong><span>Prepare claim workbooks</span></button><button class="tool-card" data-open-tool="cf2"><strong>Claim Form 2</strong><span>Prepare CF2 drafts</span></button>
                 <button class="tool-card" data-open-tool="uploadSoa"><strong>Upload SOA</strong><span>Upload supporting documents</span></button><button class="tool-card" data-open-tool="cf4"><strong>Claim Form 4</strong><span>Configure CF4 details</span></button>
-                <button class="tool-card" data-open-tool="finalizeClaims"><strong>Edit Claims</strong><span>Review and finalize claims</span></button><button class="tool-card" data-open-tool="autoRename"><strong>PDF Auto Rename</strong><span>Organize claim documents</span></button><button class="tool-card" data-open-tool="pdfSplitter"><strong>PDF Splitter</strong><span>Split document files</span></button>
+                <button class="tool-card" data-open-tool="finalizeClaims"><strong>Edit Claims</strong><span>Review and finalize claims</span></button><button class="tool-card" data-open-tool="autoRename"><strong>PDF Auto Rename</strong><span>Organize claim documents</span></button>
               <button class="tool-card" data-open-tool="runAll"><strong>Run All</strong><span>Create CF2 drafts, upload SOAs, and generate CF4</span></button>
               </div></section>
-              <section class="home-card" id="profileCard"><h2>Your profile</h2><p>Set how your account appears in Beabots.</p><form class="profile-fields" id="profileForm"><div class="profile-field"><label for="profileNameInput">Profile name</label><input id="profileNameInput" maxlength="120" autocomplete="name" placeholder="Your name"><small>Your name on your account profile.</small></div><div class="profile-field"><label for="displayNameInput">Display name</label><input id="displayNameInput" maxlength="120" placeholder="Name shown in the header"><small>Used for your greeting and account menu.</small></div><button class="solid-btn profile-save" type="submit">Save profile</button><div id="profileStatus" role="status" aria-live="polite"></div></form></section>
+              <section class="home-card" id="profileCard"><h2>Your profile</h2><p>Set how your account appears in Beabots.</p><form class="profile-fields" id="profileForm"><div class="profile-field"><label for="profileNameInput">Profile name</label><input id="profileNameInput" maxlength="120" autocomplete="name" placeholder="Your name"><small>Your name on your account profile.</small></div><div class="profile-field"><label for="displayNameInput">Display name</label><input id="displayNameInput" maxlength="120" placeholder="Name shown in the header"><small>Used for your greeting and account menu.</small></div><div class="profile-actions"><button class="solid-btn profile-save" type="submit">Save profile</button><button class="upgrade-button" id="upgradeAccountButton" type="button">Upgrade account</button></div><div id="profileStatus" role="status" aria-live="polite"></div></form></section>
             </div>
           </div>
         </main>
@@ -184,11 +209,6 @@
         <iframe class="workspace-frame" data-workspace-frame="finalizeClaims" title="Edit Claims"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="soaExcel" title="SOA Excel Generator"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="autoRename" title="PDF Auto Rename"></iframe>
-        <iframe class="workspace-frame" data-workspace-frame="pdfSplitter" title="PDF Splitter"></iframe>
-        <div class="workspace-loader" id="pdfSplitterLoader" hidden>
-          <span class="workspace-loader-ring" aria-hidden="true"></span>
-          <span class="workspace-loader-text" role="status">Loading PDF Splitter…</span>
-        </div>
         <iframe class="workspace-frame" data-workspace-frame="settings" title="Settings"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="users" title="User Management"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="about" title="About"></iframe>
@@ -196,6 +216,7 @@
     </div>
   </div>
   <div id="modalRoot"></div>
+  <dialog class="upgrade-dialog" id="upgradeDialog" aria-labelledby="upgradeDialogTitle"><form id="upgradeRequestForm"><h2 id="upgradeDialogTitle">Upgrade to have access on premium features</h2><p>Request an account upgrade from an administrator. Include a short message explaining the access you need.</p><div class="upgrade-account"><strong id="upgradeAccountName">Your account</strong><span id="upgradeAccountEmail"></span></div><label for="upgradeRequestMessage">Message</label><textarea id="upgradeRequestMessage" maxlength="500" required placeholder="Tell the admin why you need premium access."></textarea><div id="upgradeRequestStatus" role="status" aria-live="polite"></div><div class="dialog-actions"><button id="cancelUpgradeRequest" type="button">Cancel</button><button class="solid-btn" id="submitUpgradeRequest" type="submit">Request access</button></div></form></dialog>
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script src="js/common.js"></script>
   <script src="js/dashboard.js"></script>

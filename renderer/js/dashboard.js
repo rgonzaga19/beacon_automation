@@ -84,7 +84,6 @@ const workspaceButtons = {
   finalizeClaims: document.getElementById("btnFinalizeClaims"),
   soaExcel: document.getElementById("btnSoaExcel"),
   autoRename: document.getElementById("btnAutoRename"),
-  pdfSplitter: document.getElementById("btnPdfSplitter"),
   settings: document.getElementById("btnSettings"),
   users: document.getElementById("siteUsers"),
 };
@@ -98,7 +97,6 @@ const workspaceRoutes = {
   finalizeClaims: "edit-claims.html",
   soaExcel: "soa-excel.html",
   autoRename: "auto-rename.html",
-  pdfSplitter: "https://rgonzaga19.github.io/pdfsplitter/",
   settings: "settings.html",
   users: "users.html",
   about: "about.html",
@@ -231,6 +229,15 @@ async function loadSignedInProfile() {
     document.getElementById("homeGreeting").textContent = `Welcome${user.display_name ? `, ${user.display_name}` : " to Beabots"}`;
     document.getElementById("profileNameInput").value = user.profile_name || "";
     document.getElementById("displayNameInput").value = user.display_name || "";
+    document.getElementById("upgradeAccountName").textContent = displayName;
+    document.getElementById("upgradeAccountEmail").textContent = user.email || "";
+    const upgradeButton = document.getElementById("upgradeAccountButton");
+    if (user.is_admin || user.role === "subscriber") {
+      upgradeButton.hidden = true;
+    } else if (user.upgrade_request_status === "pending") {
+      upgradeButton.textContent = "Request pending";
+      upgradeButton.disabled = true;
+    }
   } catch {
     window.location.replace("/login");
   }
@@ -259,6 +266,36 @@ document.getElementById("profileForm").addEventListener("submit", async (event) 
   }
 });
 loadSignedInProfile();
+
+const upgradeDialog = document.getElementById("upgradeDialog");
+const upgradeRequestForm = document.getElementById("upgradeRequestForm");
+document.getElementById("upgradeAccountButton").addEventListener("click", () => {
+  document.getElementById("upgradeRequestMessage").value = "";
+  document.getElementById("upgradeRequestStatus").textContent = "";
+  upgradeDialog.showModal();
+});
+document.getElementById("cancelUpgradeRequest").addEventListener("click", () => upgradeDialog.close());
+upgradeRequestForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submit = document.getElementById("submitUpgradeRequest");
+  const status = document.getElementById("upgradeRequestStatus");
+  submit.disabled = true;
+  status.textContent = "Sending request…";
+  try {
+    await fetchJSON("/api/auth/upgrade-request", {
+      method: "POST",
+      body: JSON.stringify({ message: document.getElementById("upgradeRequestMessage").value }),
+    });
+    status.textContent = "Request sent. An administrator will review it.";
+    const upgradeButton = document.getElementById("upgradeAccountButton");
+    upgradeButton.textContent = "Request pending";
+    upgradeButton.disabled = true;
+    setTimeout(() => upgradeDialog.close(), 1100);
+  } catch (error) {
+    status.textContent = error.message || "Could not send your request.";
+    submit.disabled = false;
+  }
+});
 
 const sidebarCopyrightYear = document.getElementById("sidebarCopyrightYear");
 const sidebarVersionFull = document.getElementById("sidebarVersionFull");
@@ -298,9 +335,6 @@ document.getElementById("btnSoaExcel").addEventListener("click", () => {
 document.getElementById("btnAutoRename").addEventListener("click", () => {
   openWorkspace("autoRename");
 });
-document.getElementById("btnPdfSplitter").addEventListener("click", () => {
-  openWorkspace("pdfSplitter");
-});
 document.getElementById("siteUsers").addEventListener("click", () => {
   setTopNavigation("siteUsers");
   openWorkspace("users");
@@ -308,32 +342,6 @@ document.getElementById("siteUsers").addEventListener("click", () => {
 document.getElementById("btnSettings").addEventListener("click", () => {
   openWorkspace("settings");
 });
-// ---------------------------------------------------------------------------
-// PDF Splitter loading indicator
-// ---------------------------------------------------------------------------
-// The embedded PDF Splitter is a hosted page that can take a moment to appear;
-// keep a loader visible while its frame is active and still loading.
-const pdfSplitterFrame = document.querySelector('[data-workspace-frame="pdfSplitter"]');
-const pdfSplitterLoader = document.getElementById("pdfSplitterLoader");
-
-if (pdfSplitterFrame && pdfSplitterLoader) {
-  let pdfSplitterLoaded = false;
-  const syncPdfSplitterLoader = () => {
-    const active = pdfSplitterFrame.classList.contains("active");
-    pdfSplitterLoader.hidden = pdfSplitterLoaded || !active;
-  };
-  new MutationObserver(syncPdfSplitterLoader).observe(pdfSplitterFrame, {
-    attributes: true,
-    attributeFilter: ["src", "class"],
-  });
-  pdfSplitterFrame.addEventListener("load", () => {
-    pdfSplitterLoaded = true;
-    syncPdfSplitterLoader();
-  });
-  syncPdfSplitterLoader();
-}
-
-// ---------------------------------------------------------------------------
 // Initial state
 // ---------------------------------------------------------------------------
 const initialWorkspace = window.location.hash.replace("#", "");
