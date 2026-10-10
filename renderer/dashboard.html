@@ -12,6 +12,9 @@
   .site-header { height:72px; flex:0 0 72px; display:flex; align-items:center; gap:34px; padding:0 clamp(20px,4vw,56px); background:var(--bg-panel); border-bottom:1px solid var(--border); }
   .site-brand { display:flex; align-items:center; gap:10px; color:var(--text-pri); font-weight:800; letter-spacing:.7px; text-decoration:none; }
   .site-brand img { width:30px; height:30px; object-fit:contain; }
+  .workspace-heartbeat { width:clamp(110px,16vw,220px); height:24px; flex:0 1 clamp(110px,16vw,220px); min-width:72px; overflow:visible; color:var(--accent); opacity:.8; }
+  .workspace-heartbeat path { fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:150; stroke-dashoffset:150; animation:heartbeat-trace 2.8s ease-in-out infinite; }
+  @keyframes heartbeat-trace { 0%,12% { stroke-dashoffset:150; opacity:.35; } 52%,78% { stroke-dashoffset:0; opacity:1; } 100% { stroke-dashoffset:-150; opacity:.35; } }
   .site-nav { display:flex; align-items:center; gap:8px; height:100%; margin-left:auto; }
   .site-nav button { height:100%; padding:0 13px; color:var(--text-sec); background:none; border:0; border-bottom:2px solid transparent; font:600 13px var(--font-ui); cursor:pointer; }
   .site-nav button:hover,.site-nav button.active { color:var(--text-pri); border-bottom-color:var(--accent); }
@@ -34,11 +37,14 @@
   .sidebar { flex:1; display:flex; flex-direction:column; min-height:0; padding:14px 10px; overflow:hidden; background:var(--bg-panel); }
   .menu-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-md); }
   .sidebar-nav { display:flex; flex-direction:column; gap:7px; }
-  .sidebar-footer { margin-top:auto; padding:16px 6px 2px; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:3px 6px; color:var(--text-sec); font-size:9px; line-height:1.4; text-align:center; border-top:1px solid var(--border); }
-  .sidebar-footer .footer-divider { color:var(--accent); }
+  .sidebar-footer { margin-top:auto; padding:18px 9px 8px; color:var(--text-sec); }
+  .sidebar-tagline { display:flex; align-items:flex-start; gap:9px; padding:10px 3px 2px; border-top:1px solid var(--border); color:var(--text-sec); font-size:9px; font-weight:600; line-height:1.5; letter-spacing:.2px; }
+  .sidebar-tagline::before { content:""; flex:0 0 7px; width:7px; height:7px; margin-top:3px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent); }
   .sidebar-version-short { display:none; }
-  .sidebar-column.collapsed .sidebar-footer { flex-direction:column; gap:4px; padding:14px 0 4px; font-size:8px; }
-  .sidebar-column.collapsed .sidebar-copyright, .sidebar-column.collapsed .sidebar-footer .footer-divider, .sidebar-column.collapsed .sidebar-version-full { display:none; }
+  .sidebar-column.collapsed .sidebar-footer { padding:14px 0 4px; }
+  .sidebar-column.collapsed .sidebar-tagline { justify-content:center; padding:10px 0 2px; font-size:0; }
+  .sidebar-column.collapsed .sidebar-tagline::before { flex-basis:7px; margin-top:0; }
+  .sidebar-column.collapsed .sidebar-copyright, .sidebar-column.collapsed .sidebar-version-full { display:none; }
   .sidebar-column.collapsed .sidebar-version-short { display:block; }
   .side-link { width:100%; height:44px; display:flex; align-items:center; gap:12px; padding:0 13px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:var(--radius-md); font:700 11px var(--font-ui); letter-spacing:.25px; white-space:nowrap; cursor:pointer; transition:color 140ms ease,background 140ms ease,border-color 140ms ease; }
   .side-link[hidden] { display:none; }
@@ -126,10 +132,12 @@
     .app-window.dashboard-entering .titlebar,
     .app-window.dashboard-entering .sidebar-column,
     .app-window.dashboard-entering .body { animation-duration:160ms; animation-delay:0ms; }
+    .workspace-heartbeat path { animation:none; stroke-dasharray:none; stroke-dashoffset:0; opacity:.75; }
   }
   @media (max-width:760px) {
     .site-header { height:auto; min-height:64px; flex:0 0 auto; flex-wrap:wrap; gap:6px; padding:8px 12px 0; }
     .site-brand { order:0; margin-right:auto; }
+    .workspace-heartbeat { order:1; width:clamp(56px,12vw,100px); flex-basis:clamp(56px,12vw,100px); margin-right:8px; }
     .mobile-menu-trigger { display:inline-flex; order:1; }
     .site-account { order:2; }
     .site-nav { order:3; width:100%; height:40px; justify-content:center; gap:2px; margin:0; }
@@ -145,13 +153,15 @@
     .home-columns { grid-template-columns:1fr; }
     .tool-list { grid-template-columns:1fr; }
   }
+  @media (max-width:500px) { .workspace-heartbeat { width:34px; flex-basis:34px; min-width:34px; margin-right:4px; } }
 </style>
 <link rel="stylesheet" href="css/site-header.css" />
 </head>
 <body>
   <div class="app-window no-glow" id="dashboardShell">
     <header class="site-header">
-      <a class="site-brand" href="/dashboard.html" id="siteBrand"><img src="assets/bot.ico" alt=""><span>BEABOTS</span></a>
+      <a class="site-brand" href="/dashboard.html" id="siteBrand"><img src="assets/bot.ico" alt=""><span class="header-brand-copy"><span>BEABOTS</span><span class="brand-tagline">Beacon Automation</span></span></a>
+      <svg class="workspace-heartbeat" viewBox="0 0 100 24" aria-hidden="true"><path d="M2 13h23l7-1 5-7 8 15 8-12 5 5h10l4-1h26" /></svg>
       <button class="mobile-menu-trigger" id="mobileMenuButton" type="button" aria-controls="dashboardSidebar" aria-expanded="false" aria-label="Open workspace menu"><span aria-hidden="true">&#9776;</span></button>
       <nav class="site-nav" aria-label="Main navigation">
         <button id="siteHome" type="button">Home</button><button id="siteClaims" type="button">Claims</button><button id="siteAbout" type="button">About</button><button id="siteContact" type="button">Contact Us</button><button id="siteUsers" type="button" hidden>User Management</button>
@@ -183,7 +193,7 @@
             <hr class="sidebar-nav-separator" aria-hidden="true">
             <a class="side-link external-link" href="https://rgonzaga19.github.io/pdfsplitter/" target="_blank" rel="noopener noreferrer" title="PDF Splitter"><span class="side-icon" aria-hidden="true">&#9986;</span><span class="side-label">PDF Splitter</span><span class="external-link-indicator" aria-hidden="true">&#8599;</span></a>
           </nav>
-          <footer class="sidebar-footer" aria-label="Beabots version and copyright"><span class="sidebar-copyright">&#169; <span id="sidebarCopyrightYear"></span> Beabots. All rights reserved.</span><span class="footer-divider" aria-hidden="true">&#183;</span><span class="sidebar-version-full" id="sidebarVersionFull">Version web</span><span class="sidebar-version-short" id="sidebarVersionShort">vweb</span></footer>
+          <footer class="sidebar-footer" aria-label="Beabots"><span class="sidebar-tagline">Secure automation with Beabots</span></footer>
         </aside>
       </div>
       <button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="Close workspace menu" hidden></button>

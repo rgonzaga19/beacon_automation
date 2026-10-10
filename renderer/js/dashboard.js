@@ -297,19 +297,6 @@ upgradeRequestForm.addEventListener("submit", async (event) => {
   }
 });
 
-const sidebarCopyrightYear = document.getElementById("sidebarCopyrightYear");
-const sidebarVersionFull = document.getElementById("sidebarVersionFull");
-const sidebarVersionShort = document.getElementById("sidebarVersionShort");
-sidebarCopyrightYear.textContent = String(new Date().getFullYear());
-fetchJSON("/api/app/version").then((result) => {
-  const version = result.version || "web";
-  sidebarVersionFull.textContent = `Version ${version}`;
-  sidebarVersionShort.textContent = `v${version}`;
-}).catch(() => {
-  sidebarVersionFull.textContent = "Version web";
-  sidebarVersionShort.textContent = "vweb";
-});
-
 window.openBeabotsWorkspace = openWorkspace;
 
 window.beabots?.onWorkspaceActive(setWorkspaceActive);

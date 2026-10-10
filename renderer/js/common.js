@@ -50,8 +50,11 @@ if (!window.beabots) {
       return result.version || "web";
     },
     getSettings: async () => fetchJSON("/api/settings"),
-    getTheme: async () => localStorage.getItem("beabotsTheme") || "dark",
-    setTheme: async (theme) => localStorage.setItem("beabotsTheme", theme),
+    getTheme: async () => window.beabotsTheme?.getTheme() || localStorage.getItem("beabots-theme") || "light",
+    setTheme: async (theme) => {
+      if (window.beabotsTheme?.setTheme) window.beabotsTheme.setTheme(theme);
+      else localStorage.setItem("beabots-theme", theme);
+    },
     onThemeChanged: () => {},
   };
 }

@@ -33,6 +33,23 @@
   white-space:nowrap;
 }
 
+.header-brand-copy {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+  line-height:1;
+}
+
+.brand-tagline {
+  color:var(--text-sec);
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:.35px;
+  line-height:1.2;
+  text-transform:uppercase;
+}
+
 .site-brand img,
 .auth-site-brand img,
 .about-brand img {
