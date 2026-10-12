@@ -114,6 +114,14 @@ class TeamMessage(db.Model):
         nullable=True,
         index=True,
     )
+    support_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     sender_name = db.Column(db.String(120), nullable=False)
     body = db.Column(db.String(2000), nullable=False)
+    image_data = db.Column(db.LargeBinary, nullable=True)
+    image_mime = db.Column(db.String(30), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now, index=True)

@@ -28,8 +28,8 @@ from flask_socketio import SocketIO, join_room
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from sqlalchemy import inspect, text, or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy import LargeBinary, inspect, text, or_, func
+from sqlalchemy.orm import load_only, selectinload
 
 from openpyxl import load_workbook
 
@@ -297,6 +297,22 @@ def init_database():
             column = db.engine.dialect.identifier_preparer.quote("role")
             db.session.execute(text(
                 f"ALTER TABLE {table} ADD COLUMN {column} VARCHAR(20) NOT NULL DEFAULT 'member'"
+            ))
+            db.session.commit()
+        team_message_columns = {
+            column["name"] for column in inspect(db.engine).get_columns("team_messages")
+        }
+        if "image_data" not in team_message_columns:
+            binary_type = LargeBinary().compile(dialect=db.engine.dialect)
+            db.session.execute(text(f"ALTER TABLE team_messages ADD COLUMN image_data {binary_type}"))
+            db.session.commit()
+        if "image_mime" not in team_message_columns:
+            db.session.execute(text("ALTER TABLE team_messages ADD COLUMN image_mime VARCHAR(30)"))
+            db.session.commit()
+        if "support_user_id" not in team_message_columns:
+            db.session.execute(text(
+                "ALTER TABLE team_messages ADD COLUMN support_user_id INTEGER "
+                "REFERENCES users(id) ON DELETE CASCADE"
             ))
             db.session.commit()
         # Keep the legacy flag aligned because existing authorization checks
@@ -595,44 +611,115 @@ def auth_me():
     return jsonify({"authenticated": True, "user": user_payload(user)})
 
 
-@app.route("/api/team-chat/messages", methods=["GET"])
+@app.route("/api/support/threads", methods=["GET"])
+@admin_required
+def support_list_threads():
+    latest = db.session.query(
+        TeamMessage.support_user_id.label("user_id"),
+        func.max(TeamMessage.id).label("message_id"),
+    ).filter(TeamMessage.support_user_id.isnot(None)).group_by(TeamMessage.support_user_id).subquery()
+    rows = db.session.query(User, TeamMessage).join(latest, latest.c.user_id == User.id).join(
+        TeamMessage, TeamMessage.id == latest.c.message_id
+    ).order_by(TeamMessage.id.desc()).all()
+    return jsonify({"threads": [{
+        "user_id": user.id,
+        "user_name": user.display_name or user.profile_name or user.email,
+        "last_message": message.body or ("Image attachment" if message.image_mime else ""),
+        "updated_at": message.created_at.isoformat() if message.created_at else None,
+    } for user, message in rows]})
+
+
+@app.route("/api/support/messages", methods=["GET"])
 @login_required
-def team_chat_list_messages():
+def support_list_messages():
+    user = current_user()
+    target_id = request.args.get("user_id", type=int) if user.is_admin else user.id
+    if not target_id:
+        return jsonify({"error": "Choose a support conversation."}), 400
+    if user.is_admin and not db.session.get(User, target_id):
+        return jsonify({"error": "Support conversation not found."}), 404
     after_id = request.args.get("after_id", type=int)
     if after_id is not None and after_id < 0:
         return jsonify({"error": "Invalid message cursor."}), 400
 
-    query = TeamMessage.query
+    query = TeamMessage.query.options(load_only(
+        TeamMessage.id,
+        TeamMessage.sender_id,
+        TeamMessage.support_user_id,
+        TeamMessage.sender_name,
+        TeamMessage.body,
+        TeamMessage.image_mime,
+        TeamMessage.created_at,
+    )).filter(TeamMessage.support_user_id == target_id)
     if after_id:
         messages = query.filter(TeamMessage.id > after_id).order_by(TeamMessage.id.asc()).limit(100).all()
     else:
         messages = query.order_by(TeamMessage.id.desc()).limit(100).all()
         messages.reverse()
 
-    return jsonify({"current_user_id": current_user().id, "messages": [{
+    return jsonify({"current_user_id": user.id, "support_user_id": target_id, "messages": [{
         "id": message.id,
         "sender_id": message.sender_id,
         "sender_name": message.sender_name,
         "body": message.body,
+        "has_image": bool(message.image_mime),
         "created_at": message.created_at.isoformat() if message.created_at else None,
     } for message in messages]})
 
 
-@app.route("/api/team-chat/messages", methods=["POST"])
+@app.route("/api/support/messages", methods=["POST"])
 @login_required
-def team_chat_send_message():
+def support_send_message():
     user = current_user()
-    data = request.get_json(silent=True) or {}
-    body = str(data.get("body") or "").strip()
-    if not body:
-        return jsonify({"error": "Write a message before sending."}), 400
+    target_id = request.form.get("user_id", type=int) if request.mimetype == "multipart/form-data" else None
+    if user.is_admin:
+        if target_id is None:
+            data = request.get_json(silent=True) or {}
+            target_id = data.get("user_id")
+        try:
+            target_id = int(target_id)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Choose a support conversation."}), 400
+        if not db.session.get(User, target_id):
+            return jsonify({"error": "Support conversation not found."}), 404
+    else:
+        target_id = user.id
+    if request.mimetype == "multipart/form-data":
+        body = str(request.form.get("body") or "").strip()
+        uploaded_image = request.files.get("image")
+    else:
+        data = request.get_json(silent=True) or {}
+        body = str(data.get("body") or "").strip()
+        uploaded_image = None
+
+    image_data = None
+    image_mime = None
+    if uploaded_image and uploaded_image.filename:
+        image_data = uploaded_image.stream.read(5 * 1024 * 1024 + 1)
+        if len(image_data) > 5 * 1024 * 1024:
+            return jsonify({"error": "Images must be 5 MB or smaller."}), 413
+        if image_data.startswith(b"\x89PNG\r\n\x1a\n"):
+            image_mime = "image/png"
+        elif image_data.startswith(b"\xff\xd8\xff"):
+            image_mime = "image/jpeg"
+        elif image_data.startswith((b"GIF87a", b"GIF89a")):
+            image_mime = "image/gif"
+        elif len(image_data) >= 12 and image_data[:4] == b"RIFF" and image_data[8:12] == b"WEBP":
+            image_mime = "image/webp"
+        else:
+            return jsonify({"error": "Choose a valid PNG, JPEG, GIF, or WebP image."}), 400
+    if not body and not image_data:
+        return jsonify({"error": "Write a message or attach an image before sending."}), 400
     if len(body) > 2000:
         return jsonify({"error": "Messages must be 2,000 characters or fewer."}), 400
 
     message = TeamMessage(
         sender_id=user.id,
+        support_user_id=target_id,
         sender_name=user.display_name or user.profile_name or user.email,
         body=body,
+        image_data=image_data,
+        image_mime=image_mime,
     )
     db.session.add(message)
     db.session.commit()
@@ -641,8 +728,29 @@ def team_chat_send_message():
         "sender_id": message.sender_id,
         "sender_name": message.sender_name,
         "body": message.body,
+        "has_image": bool(message.image_mime),
         "created_at": message.created_at.isoformat() if message.created_at else None,
     }), 201
+
+
+@app.route("/api/support/messages/<int:message_id>/image", methods=["GET"])
+@login_required
+def support_get_image(message_id):
+    message = db.session.get(TeamMessage, message_id)
+    user = current_user()
+    if (not message or not message.support_user_id
+            or (not user.is_admin and message.support_user_id != user.id)
+            or not message.image_data or not message.image_mime):
+        return jsonify({"error": "Image not found."}), 404
+    response = send_file(
+        BytesIO(message.image_data),
+        mimetype=message.image_mime,
+        as_attachment=False,
+        download_name=f"team-chat-image-{message.id}",
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @app.route("/api/admin/users", methods=["GET"])
