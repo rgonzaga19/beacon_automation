@@ -9,11 +9,11 @@
 
 :root {
   /* ---- Dark theme (default) ---- */
-  --bg-dark: #0a0e16;
-  --bg-base: #0a0e16;
-  --bg-panel: #10151f;
-  --bg-card: #161e2b;
-  --border: #232c3d;
+  --bg-dark: #0D1422;
+  --bg-base: #111B2B;
+  --bg-panel: #182438;
+  --bg-card: #202F46;
+  --border: #34445D;
   --accent: #2dd4bf;
   --accent2: #14b8a6;
   --accent-soft: rgba(45, 212, 191, 0.12);
@@ -22,13 +22,13 @@
   --warning: #fbbf24;
   --error: #f87171;
   --text-pri: #eef2f6;
-  --text-sec: #7d8ba0;
+  --text-sec: #A4B1C3;
 
   /* Elevation is mostly a light-mode concern (see below); dark mode
      keeps this minimal so panels don't look muddy against a near-
      black page. */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
-  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.32);
+  --shadow-sm: 0 1px 3px rgba(2, 8, 18, 0.38);
+  --shadow-md: 0 8px 24px rgba(2, 8, 18, 0.46);
   --window-edge: none;
   --window-frame: transparent;
 

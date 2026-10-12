@@ -8,7 +8,7 @@ const saveBtn = document.getElementById("saveBtn");
 const saveStatus = document.getElementById("saveStatus");
 const themeButtons = [...document.querySelectorAll(".choice-btn[data-theme]")];
 const serverButtons = [...document.querySelectorAll(".choice-btn[data-server]")];
-let currentTheme = "dark";
+let currentTheme = "light";
 let currentServer = "s4";
 
 function selectChoice(buttons, attribute, value) {
@@ -62,7 +62,7 @@ async function loadSettings() {
     beaconUsernameInput.value = settings.username || "";
     beaconPasswordInput.value = settings.password || "";
     currentServer = settings.server === "s2" ? "s2" : "s4";
-    currentTheme = theme === "light" ? "light" : "dark";
+    currentTheme = theme === "dark" ? "dark" : "light";
     selectChoice(serverButtons, "server", currentServer);
     selectChoice(themeButtons, "theme", currentTheme);
     renderBeaconStatus(settings);
