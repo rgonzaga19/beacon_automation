@@ -36,7 +36,7 @@ from openpyxl import load_workbook
 from app.core.config import AppConfig
 from app.core.database import db
 import app.models  # noqa: F401 - imported so SQLAlchemy registers the tables
-from app.models import UpgradeRequest, User, UserSetting, utc_now
+from app.models import TeamMessage, UpgradeRequest, User, UserSetting, utc_now
 from app.core import browser_session
 from app.core.logger import logger
 from app.core.version import APP_VERSION
@@ -593,6 +593,56 @@ def auth_me():
     if not user or not user.is_active:
         return jsonify({"authenticated": False})
     return jsonify({"authenticated": True, "user": user_payload(user)})
+
+
+@app.route("/api/team-chat/messages", methods=["GET"])
+@login_required
+def team_chat_list_messages():
+    after_id = request.args.get("after_id", type=int)
+    if after_id is not None and after_id < 0:
+        return jsonify({"error": "Invalid message cursor."}), 400
+
+    query = TeamMessage.query
+    if after_id:
+        messages = query.filter(TeamMessage.id > after_id).order_by(TeamMessage.id.asc()).limit(100).all()
+    else:
+        messages = query.order_by(TeamMessage.id.desc()).limit(100).all()
+        messages.reverse()
+
+    return jsonify({"current_user_id": current_user().id, "messages": [{
+        "id": message.id,
+        "sender_id": message.sender_id,
+        "sender_name": message.sender_name,
+        "body": message.body,
+        "created_at": message.created_at.isoformat() if message.created_at else None,
+    } for message in messages]})
+
+
+@app.route("/api/team-chat/messages", methods=["POST"])
+@login_required
+def team_chat_send_message():
+    user = current_user()
+    data = request.get_json(silent=True) or {}
+    body = str(data.get("body") or "").strip()
+    if not body:
+        return jsonify({"error": "Write a message before sending."}), 400
+    if len(body) > 2000:
+        return jsonify({"error": "Messages must be 2,000 characters or fewer."}), 400
+
+    message = TeamMessage(
+        sender_id=user.id,
+        sender_name=user.display_name or user.profile_name or user.email,
+        body=body,
+    )
+    db.session.add(message)
+    db.session.commit()
+    return jsonify({
+        "id": message.id,
+        "sender_id": message.sender_id,
+        "sender_name": message.sender_name,
+        "body": message.body,
+        "created_at": message.created_at.isoformat() if message.created_at else None,
+    }), 201
 
 
 @app.route("/api/admin/users", methods=["GET"])

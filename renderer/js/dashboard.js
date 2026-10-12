@@ -86,6 +86,7 @@ const workspaceButtons = {
   autoRename: document.getElementById("btnAutoRename"),
   settings: document.getElementById("btnSettings"),
   users: document.getElementById("siteUsers"),
+  teamChat: document.getElementById("btnTeamChat"),
 };
 
 const workspaceColumn = document.getElementById("workspaceColumn");
@@ -99,6 +100,7 @@ const workspaceRoutes = {
   autoRename: "auto-rename.html",
   settings: "settings.html",
   users: "users.html",
+  teamChat: "team-chat.html",
   about: "about.html",
 };
 const workspaceFrames = Object.fromEntries(
@@ -321,6 +323,9 @@ document.getElementById("btnSoaExcel").addEventListener("click", () => {
 });
 document.getElementById("btnAutoRename").addEventListener("click", () => {
   openWorkspace("autoRename");
+});
+document.getElementById("btnTeamChat").addEventListener("click", () => {
+  openWorkspace("teamChat");
 });
 document.getElementById("siteUsers").addEventListener("click", () => {
   setTopNavigation("siteUsers");
