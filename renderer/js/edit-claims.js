@@ -9,6 +9,7 @@ const transmitAllButton = document.getElementById("transmitAllButton");
 const transmitAllStatus = document.getElementById("transmitAllStatus");
 let activeEditClaim = null;
 let courseInWardRowIndex = 0;
+let editorDirty = false;
 
 const EDIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 const TRANSMIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
@@ -327,6 +328,8 @@ function applyEditorView(view) {
 
 async function openClaimEditor(transmittalId, claimId, view = "cf2") {
   activeEditClaim = { transmittalId, claimId, view };
+  editorDirty = false;
+  updateEditorNextButton();
   applyEditorView(view);
   claimEditor.hidden = false;
   editorSubtitle.textContent = "Loading draft claim...";
@@ -378,6 +381,34 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
     editorSubtitle.textContent = error.message || "Unable to load this draft claim.";
   }
 }
+
+function getNextEditableClaimButton() {
+  if (!activeEditClaim) return null;
+  const buttons = Array.from(claimsBody.querySelectorAll('[data-action="edit-claim"]'));
+  const currentIndex = buttons.findIndex((button) =>
+    String(button.dataset.transmittalId) === String(activeEditClaim.transmittalId)
+    && String(button.dataset.claimId) === String(activeEditClaim.claimId));
+  return currentIndex >= 0 ? buttons[currentIndex + 1] || null : null;
+}
+
+function updateEditorNextButton() {
+  const button = document.getElementById("editorNext");
+  const nextClaim = getNextEditableClaimButton();
+  button.disabled = !nextClaim;
+  button.title = nextClaim ? "Open the next draft claim in the table" : "No more draft claims in the table";
+}
+
+document.getElementById("editorNext").addEventListener("click", () => {
+  const nextButton = getNextEditableClaimButton();
+  if (!nextButton) return;
+  if (editorDirty && !window.confirm("You have unsaved changes. Move to the next claim and discard them?")) return;
+  const row = nextButton.closest("tr[data-claim-row]");
+  selectClaimRow(row);
+  openClaimEditor(nextButton.dataset.transmittalId, nextButton.dataset.claimId, activeEditClaim.view);
+});
+
+document.querySelector(".editor-content").addEventListener("input", () => { editorDirty = true; });
+document.querySelector(".editor-content").addEventListener("change", () => { editorDirty = true; });
 
 async function transmitTransmittal(button) {
   const transmittalId = button.dataset.transmittalId;
