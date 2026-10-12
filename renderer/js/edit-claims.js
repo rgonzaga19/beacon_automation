@@ -11,6 +11,12 @@ let activeEditClaim = null;
 let courseInWardRowIndex = 0;
 let editorDirty = false;
 
+function setToolbarLoading(button, loading) {
+  button.classList.toggle("is-loading", loading);
+  if (loading) button.setAttribute("aria-busy", "true");
+  else button.removeAttribute("aria-busy");
+}
+
 const EDIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 const TRANSMIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
 const TRANSMITTED_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -383,29 +389,44 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
 }
 
 function getNextEditableClaimButton() {
+  return getAdjacentEditableClaimButton(1);
+}
+
+function getPreviousEditableClaimButton() {
+  return getAdjacentEditableClaimButton(-1);
+}
+
+function getAdjacentEditableClaimButton(direction) {
   if (!activeEditClaim) return null;
   const buttons = Array.from(claimsBody.querySelectorAll('[data-action="edit-claim"]'));
   const currentIndex = buttons.findIndex((button) =>
     String(button.dataset.transmittalId) === String(activeEditClaim.transmittalId)
     && String(button.dataset.claimId) === String(activeEditClaim.claimId));
-  return currentIndex >= 0 ? buttons[currentIndex + 1] || null : null;
+  return currentIndex >= 0 ? buttons[currentIndex + direction] || null : null;
 }
 
 function updateEditorNextButton() {
-  const button = document.getElementById("editorNext");
+  const nextButton = document.getElementById("editorNext");
+  const previousButton = document.getElementById("editorPrevious");
   const nextClaim = getNextEditableClaimButton();
-  button.disabled = !nextClaim;
-  button.title = nextClaim ? "Open the next draft claim in the table" : "No more draft claims in the table";
+  const previousClaim = getPreviousEditableClaimButton();
+  nextButton.disabled = !nextClaim;
+  nextButton.title = nextClaim ? "Open the next draft claim in the table" : "No more draft claims in the table";
+  previousButton.disabled = !previousClaim;
+  previousButton.title = previousClaim ? "Open the previous draft claim in the table" : "No previous draft claims in the table";
 }
 
-document.getElementById("editorNext").addEventListener("click", () => {
-  const nextButton = getNextEditableClaimButton();
-  if (!nextButton) return;
-  if (editorDirty && !window.confirm("You have unsaved changes. Move to the next claim and discard them?")) return;
-  const row = nextButton.closest("tr[data-claim-row]");
+function navigateClaim(direction) {
+  const targetButton = direction > 0 ? getNextEditableClaimButton() : getPreviousEditableClaimButton();
+  if (!targetButton) return;
+  if (editorDirty && !window.confirm("You have unsaved changes. Move to another claim and discard them?")) return;
+  const row = targetButton.closest("tr[data-claim-row]");
   selectClaimRow(row);
-  openClaimEditor(nextButton.dataset.transmittalId, nextButton.dataset.claimId, activeEditClaim.view);
-});
+  openClaimEditor(targetButton.dataset.transmittalId, targetButton.dataset.claimId, activeEditClaim.view);
+}
+
+document.getElementById("editorNext").addEventListener("click", () => navigateClaim(1));
+document.getElementById("editorPrevious").addEventListener("click", () => navigateClaim(-1));
 
 document.querySelector(".editor-content").addEventListener("input", () => { editorDirty = true; });
 document.querySelector(".editor-content").addEventListener("change", () => { editorDirty = true; });
@@ -782,6 +803,7 @@ async function runGenerateSoaAll() {
   removeButton.disabled = true;
   transmitAllButton.disabled = true;
   button.textContent = "GENERATING SOA...";
+  setToolbarLoading(button, true);
   try {
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
@@ -804,6 +826,7 @@ async function runGenerateSoaAll() {
       ? `SOA generated for ${generated} claim${generated === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
       : `SOA generated for all ${generated} draft claim${generated === 1 ? "" : "s"}.`, failed > 0);
   } finally {
+    setToolbarLoading(button, false);
     button.disabled = false;
     button.textContent = "GENERATE SOA ALL";
     cf4Button.disabled = false;
@@ -858,6 +881,7 @@ async function runGenerateCf4All() {
   document.getElementById("removeSoaAllButton").disabled = true;
   transmitAllButton.disabled = true;
   button.textContent = "GENERATING CF4...";
+  setToolbarLoading(button, true);
   try {
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
@@ -880,6 +904,7 @@ async function runGenerateCf4All() {
       ? `CF4 generated for ${generated} claim${generated === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
       : `CF4 generated for all ${generated} draft claim${generated === 1 ? "" : "s"}.`, failed > 0);
   } finally {
+    setToolbarLoading(button, false);
     button.disabled = false;
     button.textContent = "GENERATE CF4 ALL";
     document.getElementById("generateSoaAllButton").disabled = false;
@@ -936,6 +961,7 @@ async function runRemoveSoaAll() {
   generateButton.disabled = true;
   transmitAllButton.disabled = true;
   button.textContent = "REMOVING SOA...";
+  setToolbarLoading(button, true);
   try {
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
@@ -957,6 +983,7 @@ async function runRemoveSoaAll() {
       ? `SOA data removed from ${removed} claim${removed === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
       : `SOA data removed from all ${removed} draft claim${removed === 1 ? "" : "s"}.`, failed > 0);
   } finally {
+    setToolbarLoading(button, false);
     button.disabled = false;
     button.textContent = "REMOVE SOA ALL";
     cf4Button.disabled = false;
@@ -978,6 +1005,7 @@ async function runTransmitAll() {
   document.getElementById("generateCf4AllButton").disabled = true;
   document.getElementById("removeSoaAllButton").disabled = true;
   transmitAllButton.textContent = "TRANSMITTING ALL...";
+  setToolbarLoading(transmitAllButton, true);
   let transmitted = 0;
   let failed = 0;
   let rowTotal = 0;
@@ -1008,6 +1036,7 @@ async function runTransmitAll() {
       setTransmitAllStatus(`${transmitted} transmittal${transmitted === 1 ? "" : "s"} transmitted, ${failed} failed. Check the row messages for details.`, true);
     }
   } finally {
+    setToolbarLoading(transmitAllButton, false);
     transmitAllButton.disabled = false;
     document.getElementById("generateSoaAllButton").disabled = false;
     document.getElementById("generateCf4AllButton").disabled = false;
