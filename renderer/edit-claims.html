@@ -97,6 +97,7 @@
     .editor-doc-list { display:grid; gap:7px; margin:0; padding:0; list-style:none; color:var(--text-sec); font-size:10px; }
     .editor-doc-list li { overflow-wrap:anywhere; }
     .editor-note { margin:10px 0 0; color:var(--text-sec); font-size:10px; line-height:1.5; }
+    .editor-warning { margin:10px 0 14px; padding:10px 12px; border:1px solid color-mix(in srgb,#f0ad4e 55%,transparent); border-radius:var(--radius-sm); background:color-mix(in srgb,#f0ad4e 10%,transparent); color:#f0c477; font-size:11px; line-height:1.5; }
     @media(max-width:700px) { .editor-overlay { padding:10px; } .editor-content { grid-template-columns:1fr; padding:12px; } .editor-dialog { max-height:96vh; } .editor-header { flex-wrap:wrap; gap:8px; padding:15px; } .editor-heading { flex:1 0 100%; } .editor-next { margin-left:auto; } .editor-close { margin-left:0; } }
     @media(max-width:420px) { .editor-grid { grid-template-columns:1fr; gap:9px; } .editor-section { padding:13px; } }
     @media(max-width:620px) { .course-ward-row { grid-template-columns:1fr; } .course-ward-remove { width:100%; } }
@@ -194,6 +195,7 @@
       <div class="editor-content">
         <section class="editor-section" data-editor-section="cf2">
           <h3>CF2 Admission and Discharge</h3>
+          <p class="editor-warning"><strong>Reminder:</strong> If you change the admission or discharge date here, you may also need to update the treatment session date(s) manually in Beacon. This app does not change session dates.</p>
           <div class="editor-grid">
             <div class="editor-field"><label for="editAdmissionDate">Admission Date</label><input id="editAdmissionDate" type="date"></div>
             <div class="editor-field"><label for="editAdmissionTime">Admission Time</label><input id="editAdmissionTime" type="time"></div>
