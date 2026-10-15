@@ -16,7 +16,7 @@ import uuid
 import re
 import json
 from io import BytesIO
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from contextvars import ContextVar
 from pathlib import Path
 
@@ -41,7 +41,7 @@ from app.core import browser_session
 from app.core.logger import logger
 from app.core.version import APP_VERSION
 from app.domain.patient_record import PatientRecord
-from app.domain.date_parser import parse_dates
+from app.domain.date_parser import MONTHS, parse_dates
 from app.domain.time_parser import parse_time_range, format_beacon_time
 from app.domain.cf2_mapper import build_cf2_data
 from app.automation.cf2 import CF2Automation
@@ -53,6 +53,8 @@ from app.automation.auto_rename_service import build_renamed_archive, build_temp
 from app.api import beacon as beacon_api
 from app.api import cf2 as cf2_api
 from app.api import soa as soa_api
+from app.api import documents as documents_api
+from app.automation.soa import _split_surname_and_given, _normalize
 from app.domain.time_parser import format_beacon_time
 from app.domain.soa_excel import batch_workbooks, build_batch_template, generate_workbook
 from app.core.security import decrypt_field, encrypt_field
@@ -87,6 +89,7 @@ _emit_room = ContextVar("beabots_emit_room", default=None)
 _cf2_states = {}
 _cf2_runs = {}
 _soa_runs = {}
+_document_runs = {}
 _beacon_runs = {}
 _run_all_runs = {}
 _run_all_retry_states = {}
@@ -2296,6 +2299,246 @@ def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop
         _emit_room.reset(room_token)
 
 
+def _run_document_automation(user_id, beacon_settings, files_root, relative_paths, transmittals, stop_event):
+    room_token = _emit_room.set(user_room(user_id))
+    results = []
+    try:
+        auth_key = browser_session.auth_context_key(beacon_settings, user_key=f"user:{user_id}")
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            facility_ids = soa_api.get_client_ids()
+            for number in transmittals:
+                if stop_event.is_set():
+                    break
+                try:
+                    transmittal = None
+                    for facility_id in facility_ids:
+                        transmittal = soa_api.get_transmittal(number, client_id=facility_id)
+                        if transmittal:
+                            break
+                    if not transmittal:
+                        raise ValueError("Transmittal not found.")
+                    claims = soa_api.get_claims(int(transmittal["id"])) or []
+                    if isinstance(claims, dict):
+                        claims = claims.get("phicClaims") or claims.get("claims") or claims.get("claimList") or []
+                    if not claims:
+                        raise ValueError("No claim found in transmittal.")
+                    claim_id = int(claims[0]["id"])
+                    patient = soa_api.get_cf1(claim_id) or {}
+                    patient_name = str(patient.get("patientFullname") or "").strip()
+                    surname, given = _split_surname_and_given(patient_name)
+                    if not surname or not given:
+                        raise ValueError("Patient surname and first name are required to match duplicate surnames.")
+                    surname_tokens = [_normalize(token) for token in surname if _normalize(token)]
+                    first_key = _normalize(given[0])
+                    cf2_record = cf2_api.get_cf2(claim_id) or {}
+                    raw_treatment_dates = []
+                    procedures = beacon_api.get_surgical_procedures(claim_id) or []
+                    for procedure in procedures:
+                        raw_treatment_dates.extend(
+                            session.get("sessionDate")
+                            for session in procedure.get("sessions") or []
+                            if session.get("sessionDate")
+                        )
+                    if not raw_treatment_dates:
+                        raw_treatment_dates.extend([
+                            cf2_record.get("admissionDateTime") or cf2_record.get("admissionDate"),
+                            cf2_record.get("dischargeDateTime") or cf2_record.get("dischargeDate"),
+                        ])
+                    treatment_dates = set()
+                    for raw_date in raw_treatment_dates:
+                        if not raw_date:
+                            continue
+                        date_text = str(raw_date).strip()
+                        parsed_date = None
+                        try:
+                            parsed_datetime = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+                            if parsed_datetime.tzinfo is not None:
+                                parsed_datetime = parsed_datetime.astimezone(timezone(timedelta(hours=8)))
+                            parsed_date = parsed_datetime.date()
+                        except ValueError:
+                            for date_format in ("%m-%d-%Y", "%m/%d/%Y", "%Y-%m-%d", "%m-%d-%y", "%m/%d/%y"):
+                                try:
+                                    parsed_date = datetime.strptime(date_text, date_format).date()
+                                    break
+                                except ValueError:
+                                    continue
+                        if parsed_date:
+                            treatment_dates.add(parsed_date)
+                    surname_matches = {}
+                    for relative in relative_paths:
+                        parts = Path(relative).parts
+                        for part_index, part in enumerate(parts[:-1]):
+                            raw_tokens = [_normalize(token) for token in re.split(r"[\W_]+", part) if _normalize(token)]
+                            # Folder suffixes often include dates, batch numbers, or
+                            # other digits. Ignore those when comparing names.
+                            tokens = [token for token in raw_tokens if not any(char.isdigit() for char in token)]
+                            if len(tokens) < len(surname_tokens) or tokens[:len(surname_tokens)] != surname_tokens:
+                                continue
+                            folder = Path(*parts[:part_index + 1]).as_posix()
+                            surname_matches.setdefault(folder, {"given_token": "", "dates": set(), "days": set(), "files": set()})
+                            surname_matches[folder]["files"].add(relative)
+                            month_tokens = {_normalize(month) for month in MONTHS}
+                            name_suffix_tokens = [token for token in tokens[len(surname_tokens):] if token not in month_tokens]
+                            if not surname_matches[folder]["given_token"] and name_suffix_tokens:
+                                surname_matches[folder]["given_token"] = name_suffix_tokens[0]
+                            for number in re.findall(r"(?<!\d)(\d{1,2})(?!\d)", part):
+                                day_number = int(number)
+                                if 1 <= day_number <= 31:
+                                    surname_matches[folder]["days"].add(day_number)
+                            for first_day, last_day in re.findall(r"(?<!\d)(\d{1,2})\s*-\s*(\d{1,2})(?!\d)", part):
+                                first_day, last_day = int(first_day), int(last_day)
+                                if 1 <= first_day <= last_day <= 31:
+                                    surname_matches[folder]["days"].update(range(first_day, last_day + 1))
+                            for month, day, year in re.findall(r"(?<!\d)(\d{1,2})[-_./ ](\d{1,2})[-_./ ](\d{2,4})(?!\d)", part):
+                                year_number = int(year)
+                                if year_number < 100:
+                                    year_number += 2000 if year_number < 70 else 1900
+                                try:
+                                    surname_matches[folder]["dates"].add(date(year_number, int(month), int(day)))
+                                except ValueError:
+                                    pass
+                            for year, month, day in re.findall(r"(?<!\d)(\d{4})[-_./ ](\d{1,2})[-_./ ](\d{1,2})(?!\d)", part):
+                                try:
+                                    surname_matches[folder]["dates"].add(date(int(year), int(month), int(day)))
+                                except ValueError:
+                                    pass
+                            for compact_date in re.findall(r"(?<!\d)(\d{8})(?!\d)", part):
+                                for date_format in ("%Y%m%d", "%m%d%Y"):
+                                    try:
+                                        surname_matches[folder]["dates"].add(datetime.strptime(compact_date, date_format).date())
+                                    except ValueError:
+                                        continue
+                            month_date_texts = re.findall(
+                                r"(?i)\b(?:JAN(?:UARY)?|FEB(?:RUARY)?|MAR(?:CH)?|APR(?:IL)?|MAY|JUN(?:E)?|JUL(?:Y)?|AUG(?:UST)?|SEP(?:T(?:EMBER)?)?|OCT(?:OBER)?|NOV(?:EMBER)?|DEC(?:EMBER)?)\.?\s+\d{1,2}(?:\s*-\s*\d{1,2})?(?:,?\s+\d{4})?",
+                                part.replace("_", " "),
+                            )
+                            default_year = min(treatment_dates).year if treatment_dates else datetime.now().year
+                            for month_date_text in month_date_texts:
+                                try:
+                                    parsed_dates = parse_dates(month_date_text, default_year=default_year)
+                                except ValueError:
+                                    parsed_dates = []
+                                surname_matches[folder]["dates"].update(parsed_dates)
+                                day_range = re.search(r"(\d{1,2})\s*-\s*(\d{1,2})", month_date_text)
+                                if day_range and parsed_dates:
+                                    start_day, end_day = map(int, day_range.groups())
+                                    month_date = parsed_dates[0]
+                                    if start_day <= end_day:
+                                        for day_number in range(start_day, end_day + 1):
+                                            try:
+                                                surname_matches[folder]["dates"].add(
+                                                    date(month_date.year, month_date.month, day_number)
+                                                )
+                                            except ValueError:
+                                                continue
+                    if len(surname_matches) > 1:
+                        date_matches = {
+                            folder: match for folder, match in surname_matches.items()
+                            if match["dates"] & treatment_dates
+                        }
+                        if date_matches:
+                            surname_matches = date_matches
+                    if len(surname_matches) > 1:
+                        day_matches = {
+                            folder: match for folder, match in surname_matches.items()
+                            if match["days"] & {treatment_date.day for treatment_date in treatment_dates}
+                        }
+                        if day_matches:
+                            surname_matches = day_matches
+                    if len(surname_matches) > 1:
+                        surname_matches = {
+                            folder: match for folder, match in surname_matches.items()
+                            if match["given_token"] and (
+                                first_key.startswith(match["given_token"])
+                                or match["given_token"].startswith(first_key[:1])
+                            )
+                        }
+                    if len(surname_matches) != 1:
+                        raise ValueError("No unique patient folder matched the surname; first name is used only to resolve duplicate surnames.")
+                    unique_files = sorted(next(iter(surname_matches.values()))["files"])
+                    paths = [Path(files_root) / Path(relative) for relative in unique_files]
+                    if sum(path.stat().st_size for path in paths) > 50 * 1024 * 1024:
+                        raise ValueError("Matched patient documents exceed Beacon's 50 MB per-upload limit.")
+                    details = beacon_api.get_transmittal_by_id(int(transmittal["id"])) or {}
+                    documents_api.upload_documents(claim_id, details, paths)
+                    result = {"transmittal": number, "status": "success", "message": f"Uploaded {len(paths)} document(s)."}
+                    socketio.emit("documents_log", {"message": f"{number}: uploaded {len(paths)} document(s).", "level": "SUCCESS"}, room=user_room(user_id))
+                except Exception as exc:
+                    result = {"transmittal": number, "status": "failed", "message": str(exc)}
+                    socketio.emit("documents_log", {"message": f"{number}: {exc}", "level": "ERROR"}, room=user_room(user_id))
+                results.append(result)
+    except Exception as exc:
+        socketio.emit("documents_log", {"message": f"FATAL ERROR: {exc}", "level": "ERROR"}, room=user_room(user_id))
+    finally:
+        shutil.rmtree(files_root, ignore_errors=True)
+        _document_runs.pop(user_id, None)
+        socketio.emit("documents_done", {"results": results, "stopped": stop_event.is_set()}, room=user_room(user_id))
+        _emit_room.reset(room_token)
+
+
+@app.route("/api/documents/start", methods=["POST"])
+@login_required
+@serialize_job_start
+def documents_start():
+    user, beacon_settings, error_response = require_beacon_connection()
+    if error_response:
+        return error_response
+    transmittals = list(dict.fromkeys(line.strip() for line in request.form.get("transmittals", "").splitlines() if line.strip()))
+    uploads = request.files.getlist("documents")
+    try:
+        relative_paths = json.loads(request.form.get("relative_paths", "[]"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid folder paths."}), 400
+    if not transmittals:
+        return jsonify({"error": "Please enter at least one transmittal number."}), 400
+    if not uploads or len(uploads) != len(relative_paths):
+        return jsonify({"error": "Select a patient folder containing documents."}), 400
+    for upload in uploads:
+        if upload and upload.filename:
+            upload.stream.seek(0, os.SEEK_END)
+            size = upload.stream.tell()
+            upload.stream.seek(0)
+            if size > 2 * 1024 * 1024:
+                return jsonify({"error": "Beacon allows a maximum of 2 MB per document."}), 413
+    if user.id in _document_runs:
+        return jsonify({"error": "Document upload is already running."}), 409
+    allowed = {".pdf", ".jpg", ".jpeg", ".png", ".tif", ".tiff"}
+    root = UPLOAD_DIR / uuid.uuid4().hex
+    root.mkdir(parents=True, exist_ok=True)
+    kept_paths = []
+    for upload, relative in zip(uploads, relative_paths):
+        if not upload or not upload.filename or Path(upload.filename).suffix.lower() not in allowed:
+            continue
+        rel = Path(str(relative).replace("\\", "/"))
+        if rel.is_absolute() or ".." in rel.parts or not rel.parts:
+            continue
+        safe_parts = [secure_filename(part) for part in rel.parts]
+        if any(not part for part in safe_parts):
+            continue
+        target = root.joinpath(*safe_parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        upload.save(target)
+        kept_paths.append(Path(*safe_parts).as_posix())
+    if not kept_paths:
+        shutil.rmtree(root, ignore_errors=True)
+        return jsonify({"error": "No supported documents found. Use PDF or image files."}), 400
+    stop_event = threading.Event()
+    _document_runs[user.id] = {"stop_event": stop_event}
+    threading.Thread(target=_run_document_automation, args=(user.id, beacon_settings, str(root), kept_paths, transmittals, stop_event), daemon=True).start()
+    return jsonify({"started": True})
+
+
+@app.route("/api/documents/stop", methods=["POST"])
+@login_required
+def documents_stop():
+    run = _document_runs.get(current_user().id)
+    if not run:
+        return jsonify({"stopped": False, "running": False})
+    run["stop_event"].set()
+    return jsonify({"stopped": True, "running": True})
+
+
 @app.route("/api/soa/start", methods=["POST"])
 @login_required
 @serialize_job_start
@@ -2719,7 +2962,7 @@ def run_all_start():
     finally:
         _emit_room.reset(match_token)
 
-    active_runs = (_cf2_runs, _soa_runs, _beacon_runs, _run_all_runs)
+    active_runs = (_cf2_runs, _soa_runs, _document_runs, _beacon_runs, _run_all_runs)
     if any(user.id in runs for runs in active_runs):
         shutil.rmtree(soa_folder_path, ignore_errors=True)
         return jsonify({"error": "Another automation is already running for this account."}), 409

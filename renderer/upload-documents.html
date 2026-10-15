@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auto Upload Documents</title>
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="css/theme.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; padding:24px; color:var(--text-pri); background:var(--bg-base); font:13px var(--font-ui); }
+    .page { max-width:1100px; min-height:calc(100vh - 48px); margin:auto; display:flex; flex-direction:column; gap:16px; }
+    header h1 { margin:0 0 5px; font-size:23px; } header p { margin:0; color:var(--text-sec); }
+    .card { padding:17px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; }
+    .label { display:block; margin-bottom:9px; font-size:11px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; }
+    .folder-row { display:flex; gap:10px; align-items:center; }
+    input[readonly] { flex:1; min-width:0; padding:11px; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; }
+    textarea { width:100%; height:170px; resize:vertical; padding:12px; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; font:13px var(--font-ui); }
+    button { padding:10px 14px; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; cursor:pointer; font-weight:700; }
+    button.primary { color:white; background:var(--accent); border-color:var(--accent); } button:disabled { opacity:.55; cursor:default; }
+    .hint { margin:9px 0 0; color:var(--text-sec); font-size:11px; line-height:1.5; }
+    .actions { display:flex; gap:9px; margin-top:12px; }
+    .logs { flex:1; min-height:130px; overflow:auto; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; padding:12px; font:12px/1.7 Consolas,monospace; }
+    .SUCCESS { color:var(--success); } .ERROR { color:var(--error); } .WARNING { color:var(--warning); }
+    @media(max-width:600px) { body{padding:15px}.folder-row{align-items:stretch;flex-direction:column}.folder-row input{width:100%} }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header><h1>Auto Upload Documents</h1><p>Match patient folders to transmittals and upload all supported documents in each matched folder.</p></header>
+    <section class="card">
+      <label class="label" for="folderPath">Patient document folder</label>
+      <div class="folder-row"><input id="folderPath" readonly placeholder="No folder selected"><button id="browseFolder" type="button">Choose Folder</button></div>
+      <p class="hint">Choose the parent folder containing patient folders. Folders are matched by surname. If multiple folders share a surname, a date, month/day range, or standalone number from 1 to 31 is matched to the CF2 treatment day; the patient first name or initial can also narrow the match. Examples: <strong>MICAYAS 15</strong> or <strong>MICAYAS AUG 13-15</strong>. Files may be nested inside the patient folder. PDF and common image files are supported.</p>
+    </section>
+    <section class="card">
+      <label class="label" for="transmittals">Transmittal numbers</label>
+      <textarea id="transmittals" placeholder="One transmittal number per line"></textarea>
+      <div class="actions"><button id="startUpload" class="primary" type="button">Start Upload</button><button id="clear" type="button">Clear</button><span id="count" class="hint">0 transmittals</span></div>
+    </section>
+    <section class="card" style="flex:1;display:flex;flex-direction:column"><span class="label">Automation log</span><div id="logs" class="logs" aria-live="polite">Ready.</div></section>
+  </main>
+  <input id="folderPicker" type="file" webkitdirectory directory multiple hidden>
+  <div id="modalRoot"></div>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/upload-documents.js"></script>
+</body>
+</html>

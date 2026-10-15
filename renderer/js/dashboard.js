@@ -80,6 +80,7 @@ const workspaceButtons = {
   cf2: document.getElementById("btnCf2"),
   runAll: document.getElementById("btnRunAll"),
   uploadSoa: document.getElementById("btnUploadSoa"),
+  uploadDocuments: document.getElementById("btnUploadDocuments"),
   cf4: document.getElementById("btnCf4"),
   finalizeClaims: document.getElementById("btnFinalizeClaims"),
   soaExcel: document.getElementById("btnSoaExcel"),
@@ -94,6 +95,7 @@ const workspaceRoutes = {
   cf2: "cf2.html",
   runAll: "run-all.html",
   uploadSoa: "upload-soa.html",
+  uploadDocuments: "upload-documents.html",
   cf4: "cf4.html",
   finalizeClaims: "edit-claims.html",
   soaExcel: "soa-excel.html",
@@ -311,6 +313,9 @@ document.getElementById("btnRunAll").addEventListener("click", () => {
 });
 document.getElementById("btnUploadSoa").addEventListener("click", () => {
   openWorkspace("uploadSoa");
+});
+document.getElementById("btnUploadDocuments").addEventListener("click", () => {
+  openWorkspace("uploadDocuments");
 });
 document.getElementById("btnCf4").addEventListener("click", () => {
   openWorkspace("cf4");
