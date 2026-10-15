@@ -1583,6 +1583,23 @@ def save_finalize_claim_cf4_vitals(transmittal_id, claim_id):
             if not isinstance(cf4, dict) or not cf4:
                 raise RuntimeError("Beacon did not return the CF4 record.")
             payload = beacon_automation._normalize_cf4_save_payload(cf4, claim_id, False, {}, [])
+            # Beacon timestamps for Course in the Ward are date-only values
+            # represented through UTC. Canonicalize them on every full-CF4
+            # save so an unrelated vitals edit cannot shift their local date.
+            orders = payload.get("phiccF4DoctorsOrder") or []
+            normalized_orders = []
+            for order in orders:
+                if not isinstance(order, dict):
+                    normalized_orders.append(order)
+                    continue
+                normalized_order = dict(order)
+                local_order_date = _beacon_local_datetime(order.get("date"))
+                if local_order_date:
+                    normalized_order["date"] = beacon_automation._local_date_to_beacon_utc(
+                        local_order_date.date()
+                    )
+                normalized_orders.append(normalized_order)
+            payload["phiccF4DoctorsOrder"] = normalized_orders
             exam = dict(payload.get("phiccF4PhysicalExam") or {})
             exam.update(submitted)
             payload["phiccF4PhysicalExam"] = exam
