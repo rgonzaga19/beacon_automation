@@ -1367,6 +1367,7 @@ def _beacon_local_datetime(value):
     if not value:
         return None
     text = str(value).strip()
+    has_iso_time = "T" in text
     try:
         parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError:
@@ -1379,6 +1380,10 @@ def _beacon_local_datetime(value):
                 continue
         if parsed is None:
             raise
+    # Beacon may return UTC CF2 timestamps without a timezone suffix on
+    # drafts; normalize them like the same values returned with a trailing Z.
+    if parsed.tzinfo is None and has_iso_time:
+        parsed = parsed.replace(tzinfo=timezone.utc)
     if parsed.tzinfo is not None:
         parsed = parsed.astimezone(timezone(timedelta(hours=8))).replace(tzinfo=None)
     return parsed
