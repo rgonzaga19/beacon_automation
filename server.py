@@ -1484,6 +1484,10 @@ def save_finalize_claim_cf2(transmittal_id, claim_id):
                 "surgicalProcedures": cf2_api.build_surgical_procedures_for_cf2(claim_id),
             })
             cf2_api.edit_cf2(cf2)
+            # A later CF4 save round-trips the full CF4 object. Drop any
+            # editor-load cache so that it cannot write CF4 values captured
+            # before this CF2 update.
+            beacon_api._cf4_cache.pop((browser_session._context_key(), int(claim_id)), None)
         return jsonify({"saved": True})
     except (ValueError, LookupError) as exc:
         return jsonify({"error": str(exc)}), 400
@@ -1571,6 +1575,10 @@ def save_finalize_claim_cf4_vitals(transmittal_id, claim_id):
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             _require_draft_claim(transmittal_id, claim_id)
+            cache_key = (browser_session._context_key(), int(claim_id))
+            # Do not send an editor-load snapshot back to Beacon; it may be
+            # stale if another CF2/CF4 operation has happened since then.
+            beacon_api._cf4_cache.pop(cache_key, None)
             cf4 = beacon_api.get_cf4_values(claim_id)
             if not isinstance(cf4, dict) or not cf4:
                 raise RuntimeError("Beacon did not return the CF4 record.")
@@ -1581,7 +1589,7 @@ def save_finalize_claim_cf4_vitals(transmittal_id, claim_id):
             payload.update(submitted)
             if not beacon_api.save_cf4_values(payload):
                 raise RuntimeError("Beacon returned an empty CF4 save response.")
-            beacon_api._cf4_cache.pop((browser_session._context_key(), int(claim_id)), None)
+            beacon_api._cf4_cache.pop(cache_key, None)
         return jsonify({"saved": True})
     except (ValueError, LookupError) as exc:
         return jsonify({"error": str(exc)}), 400
