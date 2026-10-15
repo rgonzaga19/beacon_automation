@@ -2449,10 +2449,7 @@ def _run_document_automation(user_id, beacon_settings, files_root, relative_path
                     if len(surname_matches) > 1:
                         surname_matches = {
                             folder: match for folder, match in surname_matches.items()
-                            if match["given_token"] and (
-                                first_key.startswith(match["given_token"])
-                                or match["given_token"].startswith(first_key[:1])
-                            )
+                            if match["given_token"] and first_key.startswith(match["given_token"])
                         }
                     if len(surname_matches) != 1:
                         raise ValueError("No unique patient folder matched the surname; first name is used only to resolve duplicate surnames.")

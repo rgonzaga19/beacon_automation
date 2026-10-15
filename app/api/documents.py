@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 import mimetypes
 from pathlib import Path
+import re
 
 from app.core import browser_session
 
@@ -29,11 +30,12 @@ def upload_documents(claim_id, transmittal, files):
         for index, path in enumerate(files):
             path = Path(path)
             name = path.stem.upper()
+            name_tokens = set(re.split(r"[^A-Z0-9]+", name))
             doc_type = (
                 "CSF" if "CSF" in name else
                 "COE" if "PBEF" in name or "COE" in name else
                 "SOA" if "SOA" in name else
-                "HDA" if " AF" in f" {name}" or "AGREEMENT" in name else
+                "HDA" if "AF" in name_tokens or "AGREEMENT" in name else
                 "OTH"
             )
             stream = path.open("rb")
