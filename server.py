@@ -1615,6 +1615,11 @@ def save_finalize_claim_cf4_text(transmittal_id, claim_id):
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             _require_draft_claim(transmittal_id, claim_id)
+            cache_key = (browser_session._context_key(), int(claim_id))
+            # Render keeps its worker alive across requests, so the CF4 object
+            # loaded by the editor may still be cached when this save runs.
+            # Fetch the latest record before round-tripping the full payload.
+            beacon_api._cf4_cache.pop(cache_key, None)
             cf4 = beacon_api.get_cf4_values(claim_id)
             if not isinstance(cf4, dict) or not cf4:
                 raise RuntimeError("Beacon did not return the CF4 record.")
@@ -1658,6 +1663,11 @@ def save_finalize_claim_course_in_ward(transmittal_id, claim_id):
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             _require_draft_claim(transmittal_id, claim_id)
+            cache_key = (browser_session._context_key(), int(claim_id))
+            # Render keeps its worker alive across requests, so the CF4 object
+            # loaded by the editor may still be cached when this save runs.
+            # Fetch the latest record before round-tripping the full payload.
+            beacon_api._cf4_cache.pop(cache_key, None)
             cf4 = beacon_api.get_cf4_values(claim_id)
             if not isinstance(cf4, dict) or not cf4:
                 raise RuntimeError("Beacon did not return the CF4 record.")
@@ -1677,7 +1687,7 @@ def save_finalize_claim_course_in_ward(transmittal_id, claim_id):
             ]
             if not beacon_api.save_cf4_values(payload):
                 raise RuntimeError("Beacon returned an empty CF4 save response.")
-            beacon_api._cf4_cache.pop((browser_session._context_key(), int(claim_id)), None)
+            beacon_api._cf4_cache.pop(cache_key, None)
         return jsonify({"saved": True, "entries": len(submitted)})
     except (ValueError, LookupError) as exc:
         return jsonify({"error": str(exc)}), 400
