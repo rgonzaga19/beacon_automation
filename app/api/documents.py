@@ -31,6 +31,7 @@ def upload_documents(claim_id, transmittal, files):
             path = Path(path)
             name = path.stem.upper()
             name_tokens = set(re.split(r"[^A-Z0-9]+", name))
+            upload_name = path.name.replace("_", " ")
             doc_type = (
                 "CSF" if "CSF" in name else
                 "COE" if "PBEF" in name or "COE" in name else
@@ -44,7 +45,7 @@ def upload_documents(claim_id, transmittal, files):
                 (f"remarks_{index}", (None, "")),
                 (f"documenttype_{index}", (None, doc_type)),
                 (f"documentvalue_{index}", (None, DOCUMENT_TYPES[doc_type])),
-                (f"file_{index}", (path.name, stream, mimetypes.guess_type(path.name)[0] or "application/octet-stream")),
+                (f"file_{index}", (upload_name, stream, mimetypes.guess_type(upload_name)[0] or "application/octet-stream")),
             ])
         now = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
         token = browser_session.require_auth_token()
