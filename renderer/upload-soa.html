@@ -25,14 +25,15 @@
   .page-header {
     display: flex;
     align-items: center;
-    padding: 18px var(--gap-3) 16px var(--gap-3);
+    padding: 22px var(--gap-3) 19px var(--gap-3);
     border-bottom: 1px solid var(--border);
+    background:linear-gradient(100deg,color-mix(in srgb,var(--accent) 7%,var(--bg-base)),var(--bg-base) 58%);
   }
   .page-header .title-block { line-height: 1.3; }
   .page-header .title {
     font-family: var(--font-ui);
     color: var(--text-pri);
-    font-size: 15px;
+    font-size: 19px;
     font-weight: 700;
     letter-spacing: 0.4px;
     text-transform: uppercase;
@@ -40,13 +41,17 @@
   .page-header .subtitle {
     font-family: var(--font-ui);
     color: var(--text-sec);
-    font-size: 10.5px;
+    font-size: 11px;
     letter-spacing: 0.3px;
   }
 
   /* ---------- SOA folder ---------- */
   .folder-section {
-    padding: var(--gap-2) var(--gap-3) 4px var(--gap-3);
+    margin: var(--gap-2) var(--gap-3) 0;
+    padding: 16px 18px;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
   }
   .section-row {
     margin: 10px 0 0 0;
@@ -78,8 +83,8 @@
 
   /* ---------- Compact file-naming guide ---------- */
   .soa-guide {
-    margin: var(--gap-1) var(--gap-3) 0;
-    padding: 9px 12px;
+    margin: var(--gap-2) var(--gap-3) 0;
+    padding: 13px 15px;
     display: flex;
     align-items: center;
     gap: 12px;

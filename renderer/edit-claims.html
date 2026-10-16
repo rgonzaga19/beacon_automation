@@ -9,11 +9,11 @@
   <style>
     body { min-height:100vh; }
     .page { display:flex; flex-direction:column; height:100vh; min-height:0; }
-    .header { padding:20px 24px 16px; border-bottom:1px solid var(--border); }
-    .header h1 { margin:0; color:var(--text-pri); font-size:16px; letter-spacing:.4px; text-transform:uppercase; }
-    .header p { margin:5px 0 0; color:var(--text-sec); font-size:11px; }
-    main { flex:1; min-height:0; overflow:auto; padding:20px 24px; }
-    .lookup-card { min-width:0; padding:18px; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); }
+    .header { padding:23px 28px 20px; border-bottom:1px solid var(--border); background:linear-gradient(100deg,color-mix(in srgb,var(--accent) 7%,var(--bg-base)),var(--bg-base) 58%); }
+    .header h1 { margin:0; color:var(--text-pri); font-size:21px; letter-spacing:-.25px; }
+    .header p { margin:6px 0 0; color:var(--text-sec); font-size:12px; }
+    main { flex:1; min-height:0; overflow:auto; padding:24px 28px; }
+    .lookup-card { min-width:0; padding:21px; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); }
     .lookup-form { display:block; }
     .lookup-control-row { display:flex; align-items:center; gap:10px; }
     .field { flex:1; min-width:0; }
@@ -129,7 +129,7 @@
     }
     @media(max-width:560px) {
       main { padding:10px; }
-      .header { padding:16px; }
+      .header { padding:17px 16px; }
       .lookup-card { padding:12px; }
       .lookup-control-row { align-items:stretch; flex-direction:column; }
       .lookup-control-row > button { width:100%; }
