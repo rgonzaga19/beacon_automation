@@ -27,7 +27,7 @@
     align-items: center;
     padding: 14px var(--gap-3) 12px var(--gap-3);
     border-bottom: 1px solid var(--border);
-    background:linear-gradient(100deg,color-mix(in srgb,var(--accent) 7%,var(--bg-base)),var(--bg-base) 58%);
+    background:var(--bg-base);
   }
   .page-header .title-block { line-height: 1.3; }
   .page-header .title {
@@ -47,23 +47,23 @@
 
   /* ---------- SOA folder ---------- */
   .folder-section {
-    margin: var(--gap-2) var(--gap-3) 0;
-    padding: 16px 18px;
+    margin: 10px var(--gap-3) 0;
+    padding: 8px 12px;
     background:var(--bg-panel);
     border:1px solid var(--border);
     border-radius:var(--radius-lg);
   }
   .section-row {
-    margin: 10px 0 0 0;
+    margin: 4px 0 0 0;
     display: flex;
-    gap: 10px;
+    gap: 8px;
   }
   .folder-input-wrapper {
     flex: 1;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 9px 10px;
+    padding: 6px 8px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -79,7 +79,7 @@
     font-size: 11.5px;
   }
   #soaFolderInput::placeholder { color: var(--text-sec); }
-  #browseBtn { flex: none; display: inline-flex; align-items: center; gap: 8px; }
+  #browseBtn { flex: none; min-height:36px; padding:7px 12px; display: inline-flex; align-items: center; gap: 8px; }
 
   /* ---------- Compact file-naming guide ---------- */
   .soa-guide {
@@ -176,8 +176,11 @@
 
   #automateBtn {
     width: 100%;
-    padding: 12px;
-    font-size: 11pt;
+    min-width: 0;
+    padding: 11px 10px;
+    font-size: 10.5pt;
+    line-height: 1.25;
+    line-height: 1.25;
     margin-top: auto;
     display: flex;
     align-items: center;
@@ -187,7 +190,8 @@
   }
   #automateBtn:hover { box-shadow: none; }
   .automation-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(72px, 88px);
     gap: 8px;
     margin-top: auto;
   }
@@ -196,9 +200,9 @@
     margin-top: 0;
   }
   #clearBtn {
-    flex: 0 0 auto;
-    min-width: 120px;
-    padding: 12px 16px;
+    width: 100%;
+    min-width: 0;
+    padding: 11px 10px;
   }
   @property --soa-progress-angle {
     syntax: "<angle>";
@@ -432,7 +436,7 @@
           <span class="count text-sec text-small" id="countLabel">0 transmittals</span>
         </div>
         <div class="automation-actions">
-          <button class="solid-btn" id="automateBtn">
+          <button class="cyber-btn" id="automateBtn">
             <span class="icon-flat"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 4.5v15l13-7.5z"/></svg></span>
             <span id="automateBtnLabel">AUTOMATE UPLOAD</span>
           </button>
