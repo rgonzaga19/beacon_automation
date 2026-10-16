@@ -7,38 +7,95 @@
   <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/theme.css">
   <style>
-    * { box-sizing: border-box; }
-    body { margin:0; padding:24px; color:var(--text-pri); background:var(--bg-base); font:13px var(--font-ui); }
-    .page { max-width:1100px; min-height:calc(100vh - 48px); margin:auto; display:flex; flex-direction:column; gap:16px; }
-    header h1 { margin:0 0 5px; font-size:23px; } header p { margin:0; color:var(--text-sec); }
-    .card { padding:17px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; }
-    .label { display:block; margin-bottom:9px; font-size:11px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; }
-    .folder-row { display:flex; gap:10px; align-items:center; }
-    input[readonly] { flex:1; min-width:0; padding:11px; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; }
-    textarea { width:100%; height:170px; resize:vertical; padding:12px; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; font:13px var(--font-ui); }
-    button { padding:10px 14px; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; cursor:pointer; font-weight:700; }
-    button.primary { color:white; background:var(--accent); border-color:var(--accent); } button:disabled { opacity:.55; cursor:default; }
-    .hint { margin:9px 0 0; color:var(--text-sec); font-size:11px; line-height:1.5; }
-    .actions { display:flex; gap:9px; margin-top:12px; }
-    .logs { flex:1; min-height:130px; overflow:auto; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; padding:12px; font:12px/1.7 Consolas,monospace; }
+    html { height:auto; min-height:100%; overflow-y:auto; }
+    body { min-height:100%; height:auto; overflow:visible; padding:clamp(16px,3vw,34px); color:var(--text-pri); background:var(--bg-base); font:13px/1.5 var(--font-ui); }
+    .page { width:min(100%,1120px); min-height:calc(100vh - 68px); margin:0 auto; display:flex; flex-direction:column; gap:20px; }
+    .page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:22px; padding:4px 2px 2px; }
+    .eyebrow { display:flex; align-items:center; gap:8px; margin:0 0 8px; color:var(--accent); font-size:10px; font-weight:800; letter-spacing:1.1px; text-transform:uppercase; }
+    .eyebrow::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 4px var(--accent-soft); }
+    h1 { margin:0; font-size:clamp(22px,3vw,29px); line-height:1.2; letter-spacing:-.45px; }
+    .page-header p { max-width:650px; margin:8px 0 0; color:var(--text-sec); font-size:12px; }
+    .secure-badge { display:inline-flex; flex:none; align-items:center; gap:8px; margin-top:4px; padding:8px 11px; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:999px; font-size:10px; font-weight:700; white-space:nowrap; }
+    .secure-badge svg { width:14px; height:14px; color:var(--success); }
+    .steps { display:grid; grid-template-columns:repeat(3,1fr); overflow:hidden; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); }
+    .step { display:flex; align-items:center; gap:11px; min-width:0; padding:13px 17px; }
+    .step + .step { border-left:1px solid var(--border); }
+    .step-num { display:grid; width:29px; height:29px; flex:none; place-items:center; color:var(--accent); background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border)); border-radius:9px; font-size:11px; font-weight:800; }
+    .step strong { display:block; font-size:11px; }
+    .step span:last-child { display:block; overflow:hidden; color:var(--text-sec); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+    .content-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr); gap:16px; align-items:stretch; }
+    .card { min-width:0; padding:20px; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); }
+    .card-heading { display:flex; align-items:flex-start; gap:12px; margin-bottom:17px; }
+    .card-icon { display:grid; width:36px; height:36px; flex:none; place-items:center; color:var(--accent); background:var(--accent-soft); border-radius:10px; }
+    .card-icon svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+    .card-heading h2 { margin:1px 0 3px; font-size:14px; }
+    .card-heading p { margin:0; color:var(--text-sec); font-size:10.5px; line-height:1.45; }
+    .field-label { display:block; margin:0 0 8px; color:var(--text-pri); font-size:10px; font-weight:800; letter-spacing:.55px; text-transform:uppercase; }
+    .folder-row { display:flex; gap:9px; align-items:center; }
+    input[readonly] { width:100%; min-width:0; height:42px; padding:0 12px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font-size:11px; }
+    button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:0 14px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); cursor:pointer; font:700 11px var(--font-ui); transition:background .15s ease,border-color .15s ease,transform .1s ease; white-space:nowrap; }
+    button:hover:not(:disabled) { background:var(--accent-soft); border-color:var(--accent); }
+    button:active:not(:disabled) { transform:translateY(1px); }
+    button:focus-visible,textarea:focus-visible,input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+    button.primary { color:var(--bg-dark); background:var(--accent); border-color:var(--accent); }
+    button.primary:hover:not(:disabled) { background:var(--accent2); border-color:var(--accent2); }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .folder-button svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .folder-note { margin:14px 0 0; padding:11px 12px; color:var(--text-sec); background:color-mix(in srgb,var(--accent-soft) 48%,transparent); border:1px solid color-mix(in srgb,var(--accent) 18%,var(--border)); border-radius:var(--radius-md); font-size:10px; line-height:1.55; }
+    .folder-note strong { color:var(--text-pri); }
+    textarea { display:block; width:100%; min-height:166px; resize:vertical; padding:12px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:12px/1.6 var(--font-ui); }
+    textarea::placeholder,input::placeholder { color:color-mix(in srgb,var(--text-sec) 78%,transparent); }
+    .transmittal-footer { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-top:13px; }
+    .hint { color:var(--text-sec); font-size:10px; }
+    .actions { display:flex; gap:8px; }
+    #count { display:inline-flex; align-items:center; gap:6px; }
+    #count::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--accent); }
+    .log-card { display:flex; flex:1; min-height:200px; flex-direction:column; }
+    .log-card .card-heading { align-items:center; margin-bottom:13px; }
+    .log-heading-copy { flex:1; }
+    .live-badge { display:inline-flex; align-items:center; gap:7px; padding:5px 8px; color:var(--success); background:color-mix(in srgb,var(--success) 9%,transparent); border:1px solid color-mix(in srgb,var(--success) 26%,var(--border)); border-radius:999px; font-size:9px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; }
+    .live-badge::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+    .logs { flex:1; min-height:120px; overflow:auto; padding:12px 14px; color:var(--text-sec); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:11px/1.75 Consolas,"SFMono-Regular",monospace; }
+    .logs > div { overflow-wrap:anywhere; }
+    .logs > div + div { border-top:1px solid color-mix(in srgb,var(--border) 65%,transparent); }
     .SUCCESS { color:var(--success); } .ERROR { color:var(--error); } .WARNING { color:var(--warning); }
-    @media(max-width:600px) { body{padding:15px}.folder-row{align-items:stretch;flex-direction:column}.folder-row input{width:100%} }
+    @media(max-width:760px) { .content-grid { grid-template-columns:1fr; } .page { min-height:0; } }
+    @media(max-width:560px) { body { padding:15px; } .page { gap:14px; } .page-header { display:block; } .secure-badge { margin-top:14px; } .steps { grid-template-columns:1fr; } .step { padding:10px 13px; } .step + .step { border-top:1px solid var(--border); border-left:0; } .card { padding:16px; } .folder-row { align-items:stretch; flex-direction:column; } .folder-row button { width:100%; } .transmittal-footer { align-items:stretch; flex-direction:column; } .actions { display:grid; grid-template-columns:1fr 1fr; } }
   </style>
 </head>
 <body>
   <main class="page">
-    <header><h1>Auto Upload Documents</h1><p>Match patient folders to transmittals and upload all supported documents in each matched folder.</p></header>
-    <section class="card">
-      <label class="label" for="folderPath">Patient document folder</label>
-      <div class="folder-row"><input id="folderPath" readonly placeholder="No folder selected"><button id="browseFolder" type="button">Choose Folder</button></div>
-      <p class="hint">Choose the parent folder containing patient folders. Folders are matched by surname. If multiple folders share a surname, a date, month/day range, or standalone number from 1 to 31 is matched to the CF2 treatment day; the patient first name or initial can also narrow the match. Examples: <strong>MICAYAS 15</strong> or <strong>MICAYAS AUG 13-15</strong>. Files may be nested inside the patient folder. PDF and common image files are supported.</p>
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Document operations</div>
+        <h1>Auto Upload Documents</h1>
+        <p>Match patient folders to transmittals and send supported documents through your upload workflow.</p>
+      </div>
+      <div class="secure-badge"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5 16 5v4.7c0 3.8-2.5 6.3-6 7.8-3.5-1.5-6-4-6-7.8V5l6-2.5Z" stroke="currentColor" stroke-width="1.5"/><path d="m7.2 9.9 1.8 1.8 3.8-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Managed document workflow</div>
+    </header>
+    <section class="steps" aria-label="Upload steps">
+      <div class="step"><span class="step-num">01</span><div><strong>Select source folder</strong><span>Choose patient documents</span></div></div>
+      <div class="step"><span class="step-num">02</span><div><strong>Enter transmittals</strong><span>One number per line</span></div></div>
+      <div class="step"><span class="step-num">03</span><div><strong>Run and monitor</strong><span>Follow progress below</span></div></div>
     </section>
-    <section class="card">
-      <label class="label" for="transmittals">Transmittal numbers</label>
-      <textarea id="transmittals" placeholder="One transmittal number per line"></textarea>
-      <div class="actions"><button id="startUpload" class="primary" type="button">Start Upload</button><button id="clear" type="button">Clear</button><span id="count" class="hint">0 transmittals</span></div>
+    <div class="content-grid">
+      <section class="card">
+        <div class="card-heading"><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5h6l2 2h9v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2h4l2 2"/><path d="M12 13v5m-2-2 2 2 2-2"/></svg></div><div><h2>Document source</h2><p>Select the parent folder containing your patient folders.</p></div></div>
+        <label class="field-label" for="folderPath">Patient document folder</label>
+        <div class="folder-row"><input id="folderPath" readonly placeholder="No folder selected"><button id="browseFolder" class="folder-button" type="button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5a2 2 0 0 1 2-2h4l2 2h5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-9Z"/><path d="M10 8v5m-2-2 2 2 2-2"/></svg>Choose folder</button></div>
+        <p class="folder-note"><strong>Matching guidance</strong><br>Folders are matched by surname. When surnames repeat, a date or day number (1–31) can match the CF2 treatment day; first name or initial can narrow the match. Examples: <strong>MICAYAS 15</strong> or <strong>MICAYAS AUG 13-15</strong>. Nested PDF and common image files are supported.</p>
+      </section>
+      <section class="card">
+        <div class="card-heading"><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M14 3.5v5h5M8 13h7M8 16.5h7"/></svg></div><div><h2>Transmittal list</h2><p>Paste the numbers you want to process, one per line.</p></div></div>
+        <label class="field-label" for="transmittals">Transmittal numbers</label>
+        <textarea id="transmittals" placeholder="e.g.&#10;1234567890&#10;1234567891"></textarea>
+        <div class="transmittal-footer"><span id="count" class="hint">0 transmittals</span><div class="actions"><button id="clear" type="button">Clear all</button><button id="startUpload" class="primary" type="button">Start upload <span aria-hidden="true">→</span></button></div></div>
+      </section>
+    </div>
+    <section class="card log-card">
+      <div class="card-heading"><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM8 9h8M8 12.5h5M8 16h3"/></svg></div><div class="log-heading-copy"><h2>Automation activity</h2><p>Upload progress and processing messages appear here.</p></div><span class="live-badge">Activity log</span></div>
+      <div id="logs" class="logs" aria-live="polite">Ready.</div>
     </section>
-    <section class="card" style="flex:1;display:flex;flex-direction:column"><span class="label">Automation log</span><div id="logs" class="logs" aria-live="polite">Ready.</div></section>
   </main>
   <input id="folderPicker" type="file" webkitdirectory directory multiple hidden>
   <div id="modalRoot"></div>
