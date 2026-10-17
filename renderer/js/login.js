@@ -142,6 +142,13 @@ loginForm.addEventListener("submit", async (event) => {
 
     if (result.error) throw new Error(result.error);
 
+    const agreementKey = `beabots-agreement-ack:${encodeURIComponent(email)}`;
+    if (localStorage.getItem(agreementKey) !== "v1") {
+      sessionStorage.setItem("beabots-agreement-pending", email);
+    } else {
+      sessionStorage.removeItem("beabots-agreement-pending");
+    }
+
     submitLabel.textContent = registering ? "Account created" : "Signed in";
     loginStatus.textContent = registering
       ? "Your account is ready. Opening your workspace…"

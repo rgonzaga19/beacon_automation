@@ -46,6 +46,16 @@
 .privacy-section { padding:22px 24px; background:var(--bg-card); border:1px solid var(--border); border-radius:11px; }
 .privacy-section h2 { margin:8px 0; color:var(--text-pri); font-family:Georgia,"Times New Roman",serif; font-size:23px; font-weight:500; }
 .privacy-section p { max-width:760px; margin:0; color:var(--text-sec); font-size:12px; line-height:1.75; }
+.privacy-section p a { color:var(--accent); font-weight:700; }
+.agreement-content { padding-top:clamp(30px,5vw,60px); }
+.agreement-sections { display:grid; gap:14px; padding:28px 0; }
+.agreement-card { padding:22px 24px; background:var(--bg-panel); border:1px solid var(--border); border-radius:11px; }
+.agreement-card h2 { margin:9px 0 10px; color:var(--text-pri); font-family:Georgia,"Times New Roman",serif; font-size:23px; font-weight:500; }
+.agreement-card p { margin:8px 0 0; color:var(--text-sec); font-size:12px; line-height:1.8; }
+.agreement-notice { border-left:3px solid var(--warning); }
+.agreement-card strong { color:var(--text-pri); }
+.agreement-acknowledge { margin-left:auto; padding:10px 14px; color:var(--bg-dark); background:var(--accent); border:0; border-radius:7px; font:700 11px var(--font-ui); cursor:pointer; }
+.agreement-acknowledge:hover { filter:brightness(.95); }
 .about-footer { display:flex; align-items:center; gap:15px; padding-top:18px; border-top:1px solid var(--border); color:var(--text-sec); font-size:11px; }
 .about-footer a { color:var(--accent); font-weight:650; text-decoration:none; }
 .about-footer a:last-child { margin-left:auto; }
@@ -59,6 +69,8 @@
   .back-workspace { padding:9px 11px; font-size:11px; }
   .about-content { padding:30px 16px 22px; }
   .developer-card { grid-template-columns:1fr; gap:15px; padding:20px; }
+  .agreement-card { padding:18px; }
+  .agreement-acknowledge { margin-left:0; }
   .contact-grid,.capability-grid { grid-template-columns:1fr; }
   .section-heading h2,.capabilities-section h2 { font-size:25px; }
 }

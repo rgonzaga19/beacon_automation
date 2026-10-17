@@ -104,6 +104,7 @@ const workspaceRoutes = {
   users: "users.html",
   teamChat: "team-chat.html",
   about: "about.html",
+  agreement: "agreement.html",
 };
 const workspaceFrames = Object.fromEntries(
   [...document.querySelectorAll("[data-workspace-frame]")]
@@ -134,7 +135,7 @@ function openWorkspace(activeKey) {
   if (!route || !frame) return;
   activeWorkspaceKey = activeKey;
   closeMobileSidebar();
-  dashboardLayout.classList.toggle("claims-mode", activeKey !== "about");
+  dashboardLayout.classList.toggle("claims-mode", !["about", "agreement"].includes(activeKey));
   workspaceColumn.classList.add("workspace-active");
   Object.entries(workspaceFrames).forEach(([key, item]) => {
     item.classList.toggle("active", key === activeKey);
@@ -226,6 +227,14 @@ async function loadSignedInProfile() {
       // The users workspace is admin-only; fall back to Home if reached directly.
       showWorkspaceHome();
       setTopNavigation("siteHome");
+    }
+    const pendingAgreementEmail = sessionStorage.getItem("beabots-agreement-pending");
+    const pendingAgreementKey = pendingAgreementEmail && `beabots-agreement-ack:${encodeURIComponent(pendingAgreementEmail)}`;
+    if (pendingAgreementEmail && localStorage.getItem(pendingAgreementKey) !== "v1") {
+      setTopNavigation("siteAbout");
+      openWorkspace("agreement");
+    } else if (pendingAgreementEmail) {
+      sessionStorage.removeItem("beabots-agreement-pending");
     }
     const displayName = user.display_name || user.profile_name || user.email || "Account";
     document.getElementById("accountName").textContent = displayName;
@@ -343,7 +352,7 @@ document.getElementById("btnSettings").addEventListener("click", () => {
 // ---------------------------------------------------------------------------
 const initialWorkspace = window.location.hash.replace("#", "");
 if (workspaceRoutes[initialWorkspace]) {
-  if (["about", "settings"].includes(initialWorkspace)) setTopNavigation(initialWorkspace === "about" ? "siteAbout" : "siteHome");
+  if (["about", "agreement", "settings"].includes(initialWorkspace)) setTopNavigation(["about", "agreement"].includes(initialWorkspace) ? "siteAbout" : "siteHome");
   else if (initialWorkspace === "users") setTopNavigation("siteUsers");
   else setTopNavigation("siteClaims");
   openWorkspace(initialWorkspace);
