@@ -34,9 +34,9 @@
   .menu-toggle { width:44px; height:44px; flex:0 0 44px; display:flex; align-items:center; justify-content:center; padding:0 13px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:var(--radius-md); cursor:pointer; transition:color 140ms ease,background 140ms ease,border-color 140ms ease; }
   .menu-toggle:hover { color:var(--text-pri); background:var(--accent-soft); border-color:var(--border); }
   .menu-toggle .side-icon { width:20px; min-width:20px; height:20px; display:grid; place-items:center; color:var(--accent); font-size:17px; line-height:1; }
-  .sidebar { flex:1; display:flex; flex-direction:column; min-height:0; padding:14px 10px; overflow:hidden; background:var(--bg-panel); }
+  .sidebar { flex:1; display:flex; flex-direction:column; min-height:0; padding:14px 10px; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; background:var(--bg-panel); }
   .menu-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-md); }
-  .sidebar-nav { display:flex; flex-direction:column; gap:7px; }
+  .sidebar-nav { flex:0 0 auto; display:flex; flex-direction:column; gap:7px; }
   .sidebar-footer { margin-top:auto; padding:18px 9px 8px; color:var(--text-sec); }
   .sidebar-tagline { display:flex; align-items:flex-start; gap:9px; padding:10px 3px 2px; border-top:1px solid var(--border); color:var(--text-sec); font-size:9px; font-weight:600; line-height:1.5; letter-spacing:.2px; }
   .sidebar-tagline::before { content:""; flex:0 0 7px; width:7px; height:7px; margin-top:3px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent); }
@@ -78,6 +78,7 @@
   .tool-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
   .tool-card { padding:13px; color:var(--text-pri); text-align:left; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); cursor:pointer; }
   .tool-card:hover { border-color:var(--accent); }
+  .tool-card.external-link { text-decoration:none; }
   .tool-card strong { display:block; font-size:13px; }
   .tool-card span { color:var(--text-sec); font-size:11px; }
   .profile-fields { display:grid; gap:14px; }
@@ -155,7 +156,6 @@
     .dashboard-layout.claims-mode .sidebar-column.mobile-open { transform:translateX(0); visibility:visible; pointer-events:auto; }
     .dashboard-layout.claims-mode .sidebar-column.collapsed { width:min(84vw,300px); flex-basis:min(84vw,300px); }
     .sidebar-column .sidebar-topbar { display:none; }
-    .sidebar { overflow-y:auto; overscroll-behavior:contain; }
     .sidebar-backdrop:not([hidden]) { position:absolute; z-index:20; inset:0; display:block; width:100%; height:100%; padding:0; background:rgba(0,0,0,.48); border:0; }
     .body { padding:22px 14px; }
     .home-columns { grid-template-columns:1fr; }
@@ -201,6 +201,7 @@
             <button class="side-link" id="btnSettings" type="button" title="Settings"><span class="side-icon" aria-hidden="true">⚙</span><span class="side-label">Settings</span></button>
             <hr class="sidebar-nav-separator" aria-hidden="true">
             <a class="side-link external-link" href="https://rgonzaga19.github.io/pdfsplitter/" target="_blank" rel="noopener noreferrer" title="PDF Splitter"><span class="side-icon" aria-hidden="true">&#9986;</span><span class="side-label">PDF Splitter</span><span class="external-link-indicator" aria-hidden="true">&#8599;</span></a>
+            <a class="side-link external-link" href="https://rgonzaga19.github.io/pdfeditor/" target="_blank" rel="noopener noreferrer" title="PDF Editor"><span class="side-icon" aria-hidden="true">&#9998;</span><span class="side-label">PDF Editor</span><span class="external-link-indicator" aria-hidden="true">&#8599;</span></a>
             <button class="side-link" id="btnTeamChat" type="button" title="Help & Support"><span class="side-icon" aria-hidden="true">&#9993;</span><span class="side-label">Help & Support</span></button>
           </nav>
           <footer class="sidebar-footer" aria-label="Claims workflow scope"><span class="sidebar-tagline">For Nephro Group Dialysis Center claims only</span></footer>
@@ -216,6 +217,7 @@
                 <button class="tool-card" data-open-tool="soaExcel"><strong>SOA Excel Generator</strong><span>Prepare claim workbooks</span></button><button class="tool-card" data-open-tool="cf2"><strong>Claim Form 2</strong><span>Prepare CF2 drafts</span></button>
                 <button class="tool-card" data-open-tool="uploadSoa"><strong>Upload SOA</strong><span>Upload supporting documents</span></button><button class="tool-card" data-open-tool="cf4"><strong>Claim Form 4</strong><span>Configure CF4 details</span></button>
                 <button class="tool-card" data-open-tool="finalizeClaims"><strong>Edit Claims</strong><span>Review and finalize claims</span></button><button class="tool-card" data-open-tool="autoRename"><strong>PDF Auto Rename</strong><span>Organize claim documents</span></button>
+              <a class="tool-card external-link" href="https://rgonzaga19.github.io/pdfeditor/" target="_blank" rel="noopener noreferrer"><strong>PDF Editor <span class="external-link-indicator" aria-hidden="true">&#8599;</span></strong><span>Edit PDF text, images, and shapes</span></a>
               <button class="tool-card" data-open-tool="uploadDocuments"><strong>Auto Upload Documents</strong><span>Upload documents from patient folders</span></button>
               <button class="tool-card" data-open-tool="runAll"><strong>Run All</strong><span>Create CF2 drafts, upload SOAs, and generate CF4</span></button>
               <button class="tool-card" data-open-tool="teamChat"><strong>Help &amp; Support</strong><span>Get help from an administrator</span></button>
