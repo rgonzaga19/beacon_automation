@@ -987,6 +987,25 @@ def get_settings():
     return jsonify(user_settings_payload(settings))
 
 
+@app.route("/api/cf2/account-receivable", methods=["GET", "POST"])
+@login_required
+def cf2_account_receivable_settings():
+    settings = get_or_create_user_settings(current_user())
+    all_settings = dict(settings.cf4_settings or {})
+    if request.method == "GET":
+        return jsonify(all_settings.get("account_receivable") or {"name": "", "designation": "", "number": ""})
+
+    data = request.get_json(silent=True) or {}
+    all_settings["account_receivable"] = {
+        "name": str(data.get("name") or "").strip(),
+        "designation": str(data.get("designation") or "").strip(),
+        "number": str(data.get("number") or "").strip(),
+    }
+    settings.cf4_settings = all_settings
+    db.session.commit()
+    return jsonify(all_settings["account_receivable"])
+
+
 @app.route("/api/settings", methods=["POST"])
 @login_required
 def post_settings():
@@ -1529,11 +1548,6 @@ def save_finalize_claim_account_receivable(transmittal_id, claim_id):
             browser_session.invalidate_auth_token()
             _require_draft_claim(transmittal_id, claim_id)
 
-            pdf_data = cf2_api.get_cf2_pdf_details(claim_id, cf2_api.get_client_id())
-            if not isinstance(pdf_data, dict) or not pdf_data:
-                raise RuntimeError("Beacon did not return the CF2 PDF data.")
-            pdf_data["signatureOverPrintedNameOfAuthHCIRep"] = name
-            pdf_data["officialCapacityDesignation"] = designation
             procedures = beacon_api.get_surgical_procedures(claim_id) or []
             session_dates = [
                 parsed for procedure in procedures
@@ -1545,6 +1559,12 @@ def save_finalize_claim_account_receivable(transmittal_id, claim_id):
             if not session_dates:
                 raise RuntimeError("No CF2 treatment session date was found for this claim.")
             last_treatment = max(session_dates).date()
+
+            pdf_data = cf2_api.get_cf2_pdf_details(claim_id, cf2_api.get_client_id())
+            if not isinstance(pdf_data, dict) or not pdf_data:
+                raise RuntimeError("Beacon did not return the CF2 PDF data.")
+            pdf_data["signatureOverPrintedNameOfAuthHCIRep"] = name
+            pdf_data["officialCapacityDesignation"] = designation
             # Match CF2 automation's confirmed local-midnight date encoding.
             pdf_data["dateSigned"] = cf2_api.to_utc_midnight_iso(last_treatment)
             cf2_api.new_pdf_claim_form_two(claim_id, pdf_data)

@@ -621,6 +621,15 @@ const startBtnLabel = document.getElementById("startBtnLabel");
 const clearBtn = document.getElementById("clearBtn");
 const accountReceivableBtn = document.getElementById("accountReceivableBtn");
 const accountReceivable = { name: "", designation: "", number: "" };
+fetchJSON("/api/cf2/account-receivable").then((saved) => {
+  accountReceivable.name = saved.name || "";
+  accountReceivable.designation = saved.designation || "";
+  accountReceivable.number = saved.number || "";
+  const summary = document.getElementById("arSummary");
+  summary.textContent = accountReceivable.name
+    ? `${accountReceivable.name}${accountReceivable.designation ? ` / ${accountReceivable.designation}` : ""}`
+    : "No details saved for this session.";
+}).catch(() => {});
 accountReceivableBtn.addEventListener("click", () => {
   const root = document.getElementById("modalRoot");
   root.innerHTML = `
@@ -637,10 +646,26 @@ accountReceivableBtn.addEventListener("click", () => {
       </div>
     </div>`;
   document.getElementById("arCancelBtn").addEventListener("click", () => { root.innerHTML = ""; });
-  document.getElementById("arSaveBtn").addEventListener("click", () => {
-    accountReceivable.name = document.getElementById("arName").value.trim();
-    accountReceivable.designation = document.getElementById("arDesignation").value.trim();
-    accountReceivable.number = document.getElementById("arNumber").value.trim();
+  document.getElementById("arSaveBtn").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    const values = {
+      name: document.getElementById("arName").value.trim(),
+      designation: document.getElementById("arDesignation").value.trim(),
+      number: document.getElementById("arNumber").value.trim(),
+    };
+    try {
+      const result = await fetchJSON("/api/cf2/account-receivable", {
+        method: "POST",
+        body: JSON.stringify(values),
+      });
+      if (result.error) throw new Error(result.error);
+      Object.assign(accountReceivable, values);
+    } catch (error) {
+      button.disabled = false;
+      showModal("Save Failed", `Unable to save account receivable details.\n\n${error.message}`);
+      return;
+    }
     const summary = document.getElementById("arSummary");
     summary.textContent = accountReceivable.name
       ? `${accountReceivable.name}${accountReceivable.designation ? ` / ${accountReceivable.designation}` : ""}`

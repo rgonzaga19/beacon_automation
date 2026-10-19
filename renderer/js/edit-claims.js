@@ -1002,6 +1002,92 @@ async function runRemoveSoaAll() {
   }
 }
 
+async function runChangeArAll() {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for Account Receivable updates.", true);
+    return;
+  }
+
+  const saved = await editorRequest("/api/cf2/account-receivable");
+  if (!saved.name && !saved.designation && !saved.number) {
+    setTransmitAllStatus("Save Account Receivable details in CF2 first.", true);
+    return;
+  }
+
+  const button = document.getElementById("changeArAllButton");
+  const controls = [
+    button,
+    transmitAllButton,
+    document.getElementById("generateSoaAllButton"),
+    document.getElementById("generateCf4AllButton"),
+    document.getElementById("removeSoaAllButton"),
+  ];
+  controls.forEach((control) => { control.disabled = true; });
+  button.textContent = "CHANGING AR INFO...";
+  setToolbarLoading(button, true);
+  let updated = 0;
+  let failed = 0;
+  try {
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const editButton = row.querySelector('[data-action="edit-claim"]');
+      const { transmittalId, claimId } = editButton.dataset;
+      setTransmitAllStatus(`Updating Account Receivable ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
+      try {
+        await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/receivable`, {
+          method: "POST",
+          body: JSON.stringify(saved),
+        });
+        setBeaconMessage(row, "Account Receivable and CF2 PDF Date Signed updated.");
+        updated += 1;
+      } catch (error) {
+        setBeaconMessage(row, `Account Receivable update failed: ${error.message}`, true);
+        failed += 1;
+      }
+    }
+    setTransmitAllStatus(failed
+      ? `Account Receivable updated for ${updated} claim${updated === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
+      : `Account Receivable updated for all ${updated} draft claim${updated === 1 ? "" : "s"}.`, failed > 0);
+  } finally {
+    setToolbarLoading(button, false);
+    button.disabled = false;
+    button.textContent = "CHANGE AR INFO ALL";
+    controls.slice(1).forEach((control) => { control.disabled = false; });
+  }
+}
+
+function showChangeArAllConfirm(claimCount, onConfirm) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Account Receivable Update</h3>
+        <p>Apply the saved CF2 Account Receivable name, designation, and contact number to ${claimCount} draft claim${claimCount === 1 ? "" : "s"}? Each CF2 PDF Date Signed will use that claim's latest treatment date.</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="changeArAllCancelBtn" type="button">CANCEL</button>
+          <button class="cyber-btn danger" id="changeArAllConfirmBtn" type="button">YES, UPDATE ALL</button>
+        </div>
+      </div>
+    </div>`;
+  function close() {
+    closeTransmitAllConfirm(onKey);
+  }
+  function onKey(event) {
+    if (event.key === "Escape") close();
+  }
+  document.getElementById("changeArAllCancelBtn").addEventListener("click", close);
+  document.getElementById("changeArAllConfirmBtn").addEventListener("click", () => {
+    close();
+    onConfirm().catch((error) => setTransmitAllStatus(error.message || "Account Receivable update failed.", true));
+  });
+  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.getElementById("changeArAllCancelBtn").focus();
+}
+
 async function runTransmitAll() {
   const { rows, groups } = getReadyTransmittalGroups();
   if (!groups.size) {
@@ -1099,6 +1185,15 @@ document.getElementById("generateCf4AllButton").addEventListener("click", () => 
     return;
   }
   showGenerateCf4AllConfirm(rows.length, runGenerateCf4All);
+});
+
+document.getElementById("changeArAllButton").addEventListener("click", () => {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for Account Receivable updates.", true);
+    return;
+  }
+  showChangeArAllConfirm(rows.length, runChangeArAll);
 });
 
 document.getElementById("removeSoaAllButton").addEventListener("click", () => {
