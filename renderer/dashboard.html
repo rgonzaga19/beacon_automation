@@ -231,8 +231,13 @@
                 <a class="side-link external-link" href="https://www.ilovepdf.com/compress_pdf" target="_blank" rel="noopener noreferrer" title="Compress PDF"><span class="side-label">Compress PDF</span><span class="external-link-indicator" aria-hidden="true">&#8599;</span></a>
               </div>
             </section>
-            <button class="side-link" id="btnTeamChat" type="button" title="Help & Support"><span class="side-icon" aria-hidden="true">&#9993;</span><span class="side-label">Help & Support</span></button>
-            <button class="side-link" id="btnCollaborationChat" type="button" title="Team Chat"><span class="side-icon" aria-hidden="true">&#128101;</span><span class="side-label">Team Chat</span></button>
+            <section class="sidebar-group">
+              <button class="side-link sidebar-group-toggle" type="button" data-sidebar-group="support" aria-expanded="false" aria-controls="supportSubnav" title="Team Support"><span class="side-icon" aria-hidden="true">&#9993;</span><span class="side-label">Team Support</span><span class="group-chevron" aria-hidden="true">&#8250;</span></button>
+              <div class="sidebar-subnav" id="supportSubnav" hidden>
+                <button class="side-link" id="btnTeamChat" type="button" title="Team Support"><span class="side-label">Team Support</span></button>
+                <button class="side-link" id="btnCollaborationChat" type="button" title="Team Chat"><span class="side-label">Team Chat</span></button>
+              </div>
+            </section>
           </nav>
           <footer class="sidebar-footer" aria-label="Claims workflow scope"><span class="sidebar-tagline">For Nephro Group Dialysis Center claims only</span></footer>
         </aside>
@@ -251,7 +256,7 @@
               <a class="tool-card external-link" href="https://rgonzaga19.github.io/pdfsplitter/" target="_blank" rel="noopener noreferrer"><strong>PDF Splitter <span class="external-link-indicator" aria-hidden="true">&#8599;</span></strong><span>Split PDF files into smaller documents</span></a>
               <button class="tool-card" data-open-tool="uploadDocuments"><strong>Auto Upload Documents</strong><span>Upload documents from patient folders</span></button>
               <button class="tool-card" data-open-tool="runAll"><strong>Run All</strong><span>Create CF2 drafts, upload SOAs, and generate CF4</span></button>
-              <button class="tool-card" data-open-tool="teamChat"><strong>Help &amp; Support</strong><span>Get help from an administrator</span></button>
+              <button class="tool-card" data-open-tool="teamChat"><strong>Team Support</strong><span>Get help from an administrator</span></button>
               <button class="tool-card" data-open-tool="teamCollab"><strong>Team Chat</strong><span>Collaborate with everyone on your team</span></button>
               </div></section>
               <section class="home-card" id="profileCard"><h2>Your profile</h2><p>Set how your account appears in Beabots.</p><form class="profile-fields" id="profileForm"><div class="profile-field"><label for="profileNameInput">Profile name</label><input id="profileNameInput" maxlength="120" autocomplete="name" placeholder="Your name"><small>Your name on your account profile.</small></div><div class="profile-field"><label for="displayNameInput">Display name</label><input id="displayNameInput" maxlength="120" placeholder="Name shown in the header"><small>Used for your greeting and account menu.</small></div><div class="profile-actions"><button class="solid-btn profile-save" type="submit">Save profile</button><button class="upgrade-button" id="upgradeAccountButton" type="button">Upgrade account</button></div><div id="profileStatus" role="status" aria-live="polite"></div></form></section>
@@ -268,7 +273,7 @@
         <iframe class="workspace-frame" data-workspace-frame="autoRename" title="PDF Auto Rename"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="settings" title="Settings"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="users" title="User Management"></iframe>
-        <iframe class="workspace-frame" data-workspace-frame="teamChat" title="Help and Support"></iframe>
+        <iframe class="workspace-frame" data-workspace-frame="teamChat" title="Team Support"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="teamCollab" title="Team Chat"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="about" title="About"></iframe>
         <iframe class="workspace-frame" data-workspace-frame="agreement" title="Security, Privacy and Output Agreement"></iframe>
