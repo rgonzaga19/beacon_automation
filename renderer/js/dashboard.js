@@ -66,6 +66,14 @@ sidebarToggle.addEventListener("click", () => {
   window.beabots?.setWorkspaceSidebarWidth(collapsed ? 68 : 232);
 });
 
+document.querySelectorAll("[data-sidebar-group]").forEach((toggle) => {
+  toggle.addEventListener("click", () => {
+    const expanded = toggle.getAttribute("aria-expanded") !== "true";
+    toggle.setAttribute("aria-expanded", String(expanded));
+    document.getElementById(toggle.getAttribute("aria-controls")).hidden = !expanded;
+  });
+});
+
 function playDashboardEntrance() {
   const shell = document.getElementById("dashboardShell");
   shell.classList.remove("dashboard-entering");
@@ -83,7 +91,8 @@ const workspaceButtons = {
   uploadDocuments: document.getElementById("btnUploadDocuments"),
   cf4: document.getElementById("btnCf4"),
   finalizeClaims: document.getElementById("btnFinalizeClaims"),
-  soaExcel: document.getElementById("btnSoaExcel"),
+  soaExcelIndividual: document.getElementById("btnSoaIndividual"),
+  soaExcelBatch: document.getElementById("btnSoaBatch"),
   autoRename: document.getElementById("btnAutoRename"),
   settings: document.getElementById("btnSettings"),
   users: document.getElementById("siteUsers"),
@@ -146,6 +155,21 @@ function openWorkspace(activeKey) {
   setWorkspaceActive(activeKey);
   history.replaceState(null, "", `dashboard.html#${activeKey}`);
 }
+
+function openSoaExcelSubtab(subtab) {
+  setTopNavigation("siteClaims");
+  const frame = workspaceFrames.soaExcel;
+  const frameWasLoaded = frame.getAttribute("src") === workspaceRoutes.soaExcel
+    && frame.contentDocument?.readyState === "complete";
+  openWorkspace("soaExcel");
+  const selectTab = () => frame.contentWindow?.postMessage({ type: "soa-excel-tab", tab: subtab }, location.origin);
+  if (frameWasLoaded) selectTab();
+  else frame.addEventListener("load", selectTab, { once: true });
+  setWorkspaceActive(subtab === "batch" ? "soaExcelBatch" : "soaExcelIndividual");
+}
+
+document.getElementById("btnSoaIndividual").addEventListener("click", () => openSoaExcelSubtab("individual"));
+document.getElementById("btnSoaBatch").addEventListener("click", () => openSoaExcelSubtab("batch"));
 
 function setTopNavigation(active) {
   document.querySelectorAll(".site-nav button").forEach((button) => {
@@ -331,9 +355,6 @@ document.getElementById("btnCf4").addEventListener("click", () => {
 });
 document.getElementById("btnFinalizeClaims").addEventListener("click", () => {
   openWorkspace("finalizeClaims");
-});
-document.getElementById("btnSoaExcel").addEventListener("click", () => {
-  openWorkspace("soaExcel");
 });
 document.getElementById("btnAutoRename").addEventListener("click", () => {
   openWorkspace("autoRename");

@@ -305,6 +305,10 @@ downloadTemplateButton.addEventListener("click", downloadBatchTemplate);
 document.getElementById("batchClearBtn").addEventListener("click", clearBatch);
 tabButtons.individual.addEventListener("click", () => openSubtab("individual"));
 tabButtons.batch.addEventListener("click", () => openSubtab("batch"));
+window.addEventListener("message", (event) => {
+  if (event.origin !== window.location.origin || event.data?.type !== "soa-excel-tab") return;
+  if (event.data.tab === "individual" || event.data.tab === "batch") openSubtab(event.data.tab);
+});
 batchButton.addEventListener("click", async () => {
   const file = batchFile.files[0];
   if (!file) return;
