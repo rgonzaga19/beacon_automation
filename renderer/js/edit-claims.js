@@ -353,6 +353,7 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
     setInputValue("editReceivableName", data.account_receivable.name);
     setInputValue("editReceivableDesignation", data.account_receivable.designation);
     setInputValue("editReceivableNumber", data.account_receivable.number);
+    setInputValue("editReceivableDateSigned", data.account_receivable.date_signed);
 
     const doctorSelect = document.getElementById("editDoctorSelect");
     doctorSelect.replaceChildren();

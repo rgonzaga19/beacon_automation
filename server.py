@@ -1404,6 +1404,14 @@ def get_finalize_claim_edit_data(transmittal_id, claim_id):
             cf2 = cf2_api.get_cf2(claim_id) or {}
             cf2_pdf = cf2_api.get_cf2_pdf_details(claim_id, cf2_api.get_client_id()) or {}
             signatories = cf2_api.get_esoa_signatories(claim_id) or {}
+            session_dates = [
+                parsed for procedure in (beacon_api.get_surgical_procedures(claim_id) or [])
+                for session in (procedure.get("sessions") or [])
+                if isinstance(session, dict)
+                for parsed in [_beacon_local_datetime(session.get("sessionDate"))]
+                if parsed is not None
+            ]
+            last_treatment = max(session_dates) if session_dates else None
             doctors = cf2_api.get_doctors(claim_id) or []
             cf4 = beacon_api.get_cf4_values(claim_id) or {}
             meds, xlso = soa_api.get_charges(claim_id)
@@ -1436,6 +1444,7 @@ def get_finalize_claim_edit_data(transmittal_id, claim_id):
                 "name": cf2_pdf.get("signatureOverPrintedNameOfAuthHCIRep") or signatories.get("preparedBy") or "",
                 "designation": cf2_pdf.get("officialCapacityDesignation") or "",
                 "number": signatories.get("adminContactNo") or "",
+                "date_signed": last_treatment.strftime("%Y-%m-%d") if last_treatment else "",
             },
             "doctors": [
                 {
@@ -1525,6 +1534,19 @@ def save_finalize_claim_account_receivable(transmittal_id, claim_id):
                 raise RuntimeError("Beacon did not return the CF2 PDF data.")
             pdf_data["signatureOverPrintedNameOfAuthHCIRep"] = name
             pdf_data["officialCapacityDesignation"] = designation
+            procedures = beacon_api.get_surgical_procedures(claim_id) or []
+            session_dates = [
+                parsed for procedure in procedures
+                for session in (procedure.get("sessions") or [])
+                if isinstance(session, dict)
+                for parsed in [_beacon_local_datetime(session.get("sessionDate"))]
+                if parsed is not None
+            ]
+            if not session_dates:
+                raise RuntimeError("No CF2 treatment session date was found for this claim.")
+            last_treatment = max(session_dates).date()
+            # Match CF2 automation's confirmed local-midnight date encoding.
+            pdf_data["dateSigned"] = cf2_api.to_utc_midnight_iso(last_treatment)
             cf2_api.new_pdf_claim_form_two(claim_id, pdf_data)
 
             signatories = cf2_api.get_esoa_signatories(claim_id)
