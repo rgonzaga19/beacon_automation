@@ -97,6 +97,7 @@ const workspaceButtons = {
   settings: document.getElementById("btnSettings"),
   users: document.getElementById("siteUsers"),
   teamChat: document.getElementById("btnTeamChat"),
+  teamCollab: document.getElementById("btnCollaborationChat"),
 };
 
 const workspaceColumn = document.getElementById("workspaceColumn");
@@ -112,6 +113,7 @@ const workspaceRoutes = {
   settings: "settings.html",
   users: "users.html",
   teamChat: "team-chat.html",
+  teamCollab: "team-chat.html?channel=team",
   about: "about.html",
   agreement: "agreement.html",
 };
@@ -361,6 +363,9 @@ document.getElementById("btnAutoRename").addEventListener("click", () => {
 });
 document.getElementById("btnTeamChat").addEventListener("click", () => {
   openWorkspace("teamChat");
+});
+document.getElementById("btnCollaborationChat").addEventListener("click", () => {
+  openWorkspace("teamCollab");
 });
 document.getElementById("siteUsers").addEventListener("click", () => {
   setTopNavigation("siteUsers");

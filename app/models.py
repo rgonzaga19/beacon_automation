@@ -104,8 +104,8 @@ class AutomationJob(db.Model):
     user = db.relationship("User", back_populates="jobs")
 
 
-class TeamMessage(db.Model):
-    __tablename__ = "team_messages"
+class TeamSupportMessage(db.Model):
+    __tablename__ = "team_support"
 
     id = db.Column(db.Integer, primary_key=True)
     sender_id = db.Column(
@@ -117,6 +117,23 @@ class TeamMessage(db.Model):
     support_user_id = db.Column(
         db.Integer,
         db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    sender_name = db.Column(db.String(120), nullable=False)
+    body = db.Column(db.String(2000), nullable=False)
+    image_data = db.Column(db.LargeBinary, nullable=True)
+    image_mime = db.Column(db.String(30), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now, index=True)
+
+
+class TeamChatMessage(db.Model):
+    __tablename__ = "team_chat"
+
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

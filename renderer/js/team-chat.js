@@ -21,6 +21,20 @@ let selectedImage = null;
 let selectedImageUrl = null;
 let isAdmin = false;
 let activeThreadId = null;
+const teamMode = new URLSearchParams(window.location.search).get("channel") === "team";
+const messageApi = teamMode ? "/api/team/messages" : "/api/support/messages";
+const imageApi = teamMode ? "/api/team/messages" : "/api/support/messages";
+if (teamMode) {
+  document.title = "Team Chat | Beabots";
+  document.querySelector(".eyebrow").textContent = "Team collaboration";
+  document.querySelector("h1").textContent = "Team Chat";
+  document.querySelector(".chat-heading p").textContent = "Share updates and coordinate with everyone on your team. All team members can see this conversation.";
+  document.querySelector(".viber-contact").hidden = true;
+  threadList.hidden = true;
+  document.querySelector(".chat-panel").setAttribute("aria-label", "Team chat messages");
+  document.getElementById("emptyState").textContent = "No team messages yet. Start the conversation.";
+  messageInput.placeholder = "Write to your team…";
+}
 
 function messageTime(value) {
   if (!value) return "";
@@ -54,7 +68,7 @@ function appendMessage(message, currentUserId) {
   if (message.has_image) {
     const imageLink = document.createElement("a");
     imageLink.className = "message-image-link";
-    imageLink.href = `/api/support/messages/${message.id}/image`;
+    imageLink.href = `${imageApi}/${message.id}/image`;
     imageLink.target = "_blank";
     imageLink.rel = "noopener noreferrer";
     const image = document.createElement("img");
@@ -130,13 +144,13 @@ async function selectThread(userId, name) {
 }
 
 async function loadMessages(initial = false) {
-  if (polling || (isAdmin && !activeThreadId)) return;
+  if (polling || (!teamMode && isAdmin && !activeThreadId)) return;
   polling = true;
   try {
     const params = new URLSearchParams();
-    if (isAdmin) params.set("user_id", activeThreadId);
+    if (!teamMode && isAdmin) params.set("user_id", activeThreadId);
     if (!initial) params.set("after_id", String(newestMessageId));
-    const result = await fetchJSON(`/api/support/messages?${params}`);
+    const result = await fetchJSON(`${messageApi}?${params}`);
     if (result.error) {
       if (result.error === "Authentication required.") window.top.location.replace("/login");
       throw new Error(result.error);
@@ -144,12 +158,13 @@ async function loadMessages(initial = false) {
     for (const message of result.messages || []) appendMessage(message, result.current_user_id);
     if (initial) {
       hasLoadedHistory = true;
-      if (!isAdmin) chatStatus.textContent = "Private conversation with the admin team.";
+      if (teamMode) chatStatus.textContent = "Shared conversation with your team.";
+      else if (!isAdmin) chatStatus.textContent = "Private conversation with the admin team.";
     }
     chatError.textContent = "";
   } catch (error) {
     chatError.textContent = error.message || "Could not load the support conversation.";
-    chatStatus.textContent = "Support is temporarily unavailable.";
+    chatStatus.textContent = teamMode ? "Team chat is temporarily unavailable." : "Support is temporarily unavailable.";
   } finally {
     polling = false;
   }
@@ -190,15 +205,15 @@ copyViber.addEventListener("click", async () => {
 messageForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const body = messageInput.value.trim();
-  if ((!body && !selectedImage) || sendButton.disabled || (isAdmin && !activeThreadId)) return;
+  if ((!body && !selectedImage) || sendButton.disabled || (!teamMode && isAdmin && !activeThreadId)) return;
   sendButton.disabled = true;
   chatError.textContent = "";
   try {
     const formData = new FormData();
     formData.set("body", body);
-    if (isAdmin) formData.set("user_id", activeThreadId);
+    if (!teamMode && isAdmin) formData.set("user_id", activeThreadId);
     if (selectedImage) formData.set("image", selectedImage);
-    const response = await fetch("/api/support/messages", { method: "POST", body: formData });
+    const response = await fetch(messageApi, { method: "POST", body: formData });
     const result = await response.json();
     if (result.error) throw new Error(result.error);
     appendMessage(result, result.sender_id);
@@ -206,7 +221,7 @@ messageForm.addEventListener("submit", async (event) => {
     clearSelectedImage();
     chatMessages.scrollTop = chatMessages.scrollHeight;
     messageInput.focus();
-    if (isAdmin) await refreshThreads();
+    if (!teamMode && isAdmin) await refreshThreads();
   } catch (error) {
     chatError.textContent = error.message || "Could not send your message.";
   } finally {
@@ -221,14 +236,14 @@ messageInput.addEventListener("keydown", (event) => {
   }
 });
 
-async function initializeSupport() {
+async function initializeChat() {
   try {
     const auth = await fetchJSON("/api/auth/me");
     if (!auth.authenticated) {
       window.top.location.replace("/login");
       return;
     }
-    isAdmin = Boolean(auth.user?.is_admin);
+    isAdmin = !teamMode && Boolean(auth.user?.is_admin);
     if (isAdmin) {
       chatStatus.textContent = "Loading support inbox…";
       await refreshThreads();
@@ -238,12 +253,12 @@ async function initializeSupport() {
     }
   } catch (error) {
     chatError.textContent = error.message || "Could not load support.";
-    chatStatus.textContent = "Support is temporarily unavailable.";
+    chatStatus.textContent = teamMode ? "Team chat is temporarily unavailable." : "Support is temporarily unavailable.";
   }
 }
 
-initializeSupport();
+initializeChat();
 window.setInterval(() => {
-  if (isAdmin) refreshThreads().catch(() => {});
+  if (!teamMode && isAdmin) refreshThreads().catch(() => {});
   loadMessages(false);
 }, 4000);
