@@ -1402,6 +1402,8 @@ def get_finalize_claim_edit_data(transmittal_id, claim_id):
             browser_session.invalidate_auth_token()
             transmittal, claim_row = _require_draft_claim(transmittal_id, claim_id)
             cf2 = cf2_api.get_cf2(claim_id) or {}
+            cf2_pdf = cf2_api.get_cf2_pdf_details(claim_id, cf2_api.get_client_id()) or {}
+            signatories = cf2_api.get_esoa_signatories(claim_id) or {}
             doctors = cf2_api.get_doctors(claim_id) or []
             cf4 = beacon_api.get_cf4_values(claim_id) or {}
             meds, xlso = soa_api.get_charges(claim_id)
@@ -1429,6 +1431,11 @@ def get_finalize_claim_edit_data(transmittal_id, claim_id):
                 "admission_time": admission.strftime("%H:%M") if admission else "",
                 "discharge_date": discharge.strftime("%Y-%m-%d") if discharge else "",
                 "discharge_time": discharge.strftime("%H:%M") if discharge else "",
+            },
+            "account_receivable": {
+                "name": cf2_pdf.get("signatureOverPrintedNameOfAuthHCIRep") or signatories.get("preparedBy") or "",
+                "designation": cf2_pdf.get("officialCapacityDesignation") or "",
+                "number": signatories.get("adminContactNo") or "",
             },
             "doctors": [
                 {
@@ -1497,6 +1504,44 @@ def save_finalize_claim_cf2(transmittal_id, claim_id):
     except Exception as exc:
         logger.error(f"Finalize Claims CF2 save failed for claim {claim_id}: {exc}")
         return jsonify({"error": "Beacon could not save the CF2 date and time changes."}), 502
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/receivable", methods=["POST"])
+@login_required
+def save_finalize_claim_account_receivable(transmittal_id, claim_id):
+    data = request.get_json(silent=True) or {}
+    name = str(data.get("name") or "").strip()
+    designation = str(data.get("designation") or "").strip()
+    number = str(data.get("number") or "").strip()
+    try:
+        user = current_user()
+        beacon_settings, auth_key = _beacon_edit_settings(user)
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+
+            pdf_data = cf2_api.get_cf2_pdf_details(claim_id, cf2_api.get_client_id())
+            if not isinstance(pdf_data, dict) or not pdf_data:
+                raise RuntimeError("Beacon did not return the CF2 PDF data.")
+            pdf_data["signatureOverPrintedNameOfAuthHCIRep"] = name
+            pdf_data["officialCapacityDesignation"] = designation
+            cf2_api.new_pdf_claim_form_two(claim_id, pdf_data)
+
+            signatories = cf2_api.get_esoa_signatories(claim_id)
+            if not isinstance(signatories, dict) or signatories.get("id") is None:
+                raise RuntimeError("Beacon did not return the eSOA signatory record.")
+            signatories.update({
+                "phicClaimId": claim_id,
+                "preparedBy": name,
+                "adminContactNo": number,
+            })
+            cf2_api.update_esoa_signatories(signatories)
+        return jsonify({"saved": True})
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims account receivable save failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not save the account receivable details."}), 502
 
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/doctor", methods=["POST"])

@@ -188,6 +188,7 @@
         <button class="editor-tab" type="button" role="tab" data-editor-view="cf4" aria-selected="false">Add vitals</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="doctor" aria-selected="false">Change doctor</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="cf2" aria-selected="false">Change time</button>
+        <button class="editor-tab" type="button" role="tab" data-editor-view="receivable" aria-selected="false">Account receivable</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="soa" aria-selected="false">Generate/Remove SOA Data</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="history" aria-selected="false">HPI &amp; Pertinent Past Medical History</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="course" aria-selected="false">Update Course in the Ward</button>
@@ -204,6 +205,17 @@
           </div>
           <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="cf2">SAVE CF2</button></div>
           <div class="editor-message" id="cf2EditorMessage" aria-live="polite"></div>
+        </section>
+        <section class="editor-section" data-editor-section="receivable" hidden>
+          <h3>CF2 Account Receivable</h3>
+          <div class="editor-grid">
+            <div class="editor-field"><label for="editReceivableName">Name</label><input id="editReceivableName" type="text" autocomplete="name"></div>
+            <div class="editor-field"><label for="editReceivableDesignation">Designation</label><input id="editReceivableDesignation" type="text"></div>
+            <div class="editor-field"><label for="editReceivableNumber">Number</label><input id="editReceivableNumber" type="text" inputmode="tel"></div>
+          </div>
+          <p class="editor-note">These values update the CF2 HCI representative and eSOA prepared by/contact fields.</p>
+          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="receivable">SAVE ACCOUNT RECEIVABLE</button></div>
+          <div class="editor-message" id="receivableEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="doctor">
           <h3>CF2 Doctor and Sign Date</h3>

@@ -311,6 +311,7 @@ function populateDoctorFields() {
 
 const editorViewTitles = {
   cf2: "Change Admission and Discharge Time",
+  receivable: "Account Receivable",
   doctor: "Change Doctor",
   cf4: "Add CF4 Vitals",
   history: "History of Present Illness & Pertinent Past Medical History",
@@ -340,7 +341,7 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
   claimEditor.hidden = false;
   editorSubtitle.textContent = "Loading draft claim...";
   document.getElementById("editorSoaSummary").textContent = "Loading SOA rows...";
-  ["cf2", "doctor", "cf4", "hpi", "pmh", "course", "soa"].forEach((section) => setEditorMessage(section, ""));
+  ["cf2", "receivable", "doctor", "cf4", "hpi", "pmh", "course", "soa"].forEach((section) => setEditorMessage(section, ""));
   try {
     const data = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/edit`);
     editorSubtitle.textContent = `${data.patient_name || "Draft claim"} | ${data.transmittal_number} | ${data.claim_series || "Claim series pending"}`;
@@ -349,6 +350,9 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
     setInputValue("editAdmissionTime", data.cf2.admission_time);
     setInputValue("editDischargeDate", data.cf2.discharge_date);
     setInputValue("editDischargeTime", data.cf2.discharge_time);
+    setInputValue("editReceivableName", data.account_receivable.name);
+    setInputValue("editReceivableDesignation", data.account_receivable.designation);
+    setInputValue("editReceivableNumber", data.account_receivable.number);
 
     const doctorSelect = document.getElementById("editDoctorSelect");
     doctorSelect.replaceChildren();
@@ -543,6 +547,11 @@ document.querySelectorAll("[data-save-editor]").forEach((button) => {
         admission_time: document.getElementById("editAdmissionTime").value,
         discharge_date: document.getElementById("editDischargeDate").value,
         discharge_time: document.getElementById("editDischargeTime").value,
+      },
+      receivable: {
+        name: document.getElementById("editReceivableName").value.trim(),
+        designation: document.getElementById("editReceivableDesignation").value.trim(),
+        number: document.getElementById("editReceivableNumber").value.trim(),
       },
       doctor: {
         doctor_id: document.getElementById("editDoctorSelect").value,
