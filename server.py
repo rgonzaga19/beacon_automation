@@ -2534,6 +2534,13 @@ def _run_document_automation(user_id, beacon_settings, files_root, relative_path
                         if day_matches:
                             surname_matches = day_matches
                     if len(surname_matches) > 1:
+                        full_first_name_matches = {
+                            folder: match for folder, match in surname_matches.items()
+                            if match["given_token"] == first_key
+                        }
+                        if full_first_name_matches:
+                            surname_matches = full_first_name_matches
+                    if len(surname_matches) > 1:
                         surname_matches = {
                             folder: match for folder, match in surname_matches.items()
                             if match["given_token"] and first_key.startswith(match["given_token"])
@@ -3026,7 +3033,11 @@ def run_all_start():
                 if surname.strip() and given.strip():
                     soa_match_name = f"{given.strip()} {surname.strip()}"
             try:
-                matched_file = _find_soa_file(soa_match_name, soa_folder_path)
+                matched_file = _find_soa_file(
+                    soa_match_name,
+                    soa_folder_path,
+                    treatment_dates=getattr(record, "treatment_dates", None),
+                )
             except Exception as ex:
                 match_errors.append(str(ex))
                 continue

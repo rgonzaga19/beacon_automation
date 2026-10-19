@@ -124,8 +124,8 @@
     color: var(--accent);
     font-weight: 800;
   }
-  .soa-guide-list li:nth-child(7),
-  .soa-guide-list li:nth-child(7)::before {
+  .soa-guide-list li:nth-child(9),
+  .soa-guide-list li:nth-child(9)::before {
     color: var(--error);
     font-weight: 800;
   }
@@ -417,10 +417,12 @@
       <div class="soa-guide-title">User Guide</div>
       <ol class="soa-guide-list">
         <li>Create the patient SOA</li>
-        <li>Name it using the patient surname</li>
-        <li>Use the surname only—no special characters</li>
-        <li>For two-word surnames, use one space: <strong>DEL ROSARIO</strong></li>
-        <li>For matching surnames, add an initial: <strong>ABAO A</strong> or <strong>ABAO B</strong></li>
+        <li>Name the file with the surname first, followed by the patient's first name: <strong>ABAO ALLEN</strong></li>
+        <li>A surname-only filename is accepted when it identifies one patient: <strong>ABAO</strong></li>
+        <li>For two-word surnames, keep one space between the surname words: <strong>DEL ROSARIO JUAN</strong></li>
+        <li>For matching surnames, an initial can distinguish patients when the initials differ: <strong>ABAO A</strong> or <strong>ABAO B</strong></li>
+        <li>If patients share both surname and first initial, use the full first name: <strong>ABAO ARWIN</strong> and <strong>ABAO ALLEN</strong></li>
+        <li>Add a treatment date or day to help distinguish matching surnames: <strong>ABAO AUG 13-15</strong> or <strong>ABAO 15</strong></li>
         <li>Do not include suffixes such as <strong>Jr.</strong>, <strong>Sr.</strong>, <strong>II</strong>, or <strong>III</strong></li>
         <li>Upload accuracy depends on the SOA Excel filename</li>
       </ol>

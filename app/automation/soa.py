@@ -1,12 +1,15 @@
 from pathlib import Path
 import re
 import unicodedata
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
 
 from app.core.logger import logger
 from app.domain.reports import report, summarize_error
 from app.api import soa as soa_api
+from app.api import beacon as beacon_api
+from app.api import cf2 as cf2_api
 from app.core.settings import load_settings
+from app.domain.date_parser import MONTHS, parse_dates
 
 
 DEFAULT_SOA_FOLDER = Path.home() / "Downloads" / "SOA"
@@ -197,22 +200,90 @@ def _filename_tokens(filename):
     return [token for token in re.split(r"[^\w]+|_", stem) if token]
 
 
-def _find_soa_file(patient_name, soa_folder):
+def _calendar_date(value):
+    """Parse Beacon dates using the same Philippine-local date rule as documents."""
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, date):
+        return value
+    else:
+        text = str(value or "").strip()
+        if not text:
+            return None
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            for date_format in ("%m-%d-%Y", "%m/%d/%Y", "%Y-%m-%d", "%m-%d-%y", "%m/%d/%y"):
+                try:
+                    return datetime.strptime(text, date_format).date()
+                except ValueError:
+                    continue
+            return None
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone(timedelta(hours=8)))
+    return parsed.date()
+
+
+def _filename_date_hints(filename, default_year):
+    """Extract full dates and day numbers from a surname-first filename."""
+    text = Path(filename).stem.upper().replace("_", " ")
+    dates = set()
+    days = {
+        int(number)
+        for number in re.findall(r"(?<!\d)(\d{1,2})(?!\d)", text)
+        if 1 <= int(number) <= 31
+    }
+    for first_day, last_day in re.findall(r"(?<!\d)(\d{1,2})\s*-\s*(\d{1,2})(?!\d)", text):
+        first_day, last_day = int(first_day), int(last_day)
+        if 1 <= first_day <= last_day <= 31:
+            days.update(range(first_day, last_day + 1))
+
+    month_pattern = r"(?i)\b(?:JAN(?:UARY)?|FEB(?:RUARY)?|MAR(?:CH)?|APR(?:IL)?|MAY|JUN(?:E)?|JUL(?:Y)?|AUG(?:UST)?|SEP(?:T(?:EMBER)?)?|OCT(?:OBER)?|NOV(?:EMBER)?|DEC(?:EMBER)?)\.?\s+\d{1,2}(?:\s*[-,]\s*\d{1,2})*(?:,?\s+\d{4})?"
+    for value in re.findall(month_pattern, text):
+        try:
+            dates.update(parse_dates(value, default_year=default_year))
+        except ValueError:
+            pass
+
+    for month, day, year in re.findall(r"(?<!\d)(\d{1,2})[-_./ ](\d{1,2})[-_./ ](\d{2,4})(?!\d)", text):
+        year = int(year)
+        if year < 100:
+            year += 2000 if year < 70 else 1900
+        try:
+            dates.add(date(year, int(month), int(day)))
+        except ValueError:
+            pass
+    for year, month, day in re.findall(r"(?<!\d)(\d{4})[-_./ ](\d{1,2})[-_./ ](\d{1,2})(?!\d)", text):
+        try:
+            dates.add(date(int(year), int(month), int(day)))
+        except ValueError:
+            pass
+    for compact in re.findall(r"(?<!\d)(\d{8})(?!\d)", text):
+        for date_format in ("%Y%m%d", "%m%d%Y"):
+            try:
+                dates.add(datetime.strptime(compact, date_format).date())
+            except ValueError:
+                continue
+    return dates, days
+
+
+def _find_soa_file(patient_name, soa_folder, treatment_dates=None):
     """
     Find exactly one SOA workbook using the proven filename-selection rules.
 
-    Selection order is unchanged:
-    1. exact-length compound surname;
-    2. loose compound surname;
-    3. bare surname fallback for compound surnames;
-    4. if ambiguous, narrow with given name / given-name initial;
-    5. never guess when zero or multiple files remain.
+    Local filenames use surname-first order. Matching first narrows by surname,
+    then uses treatment dates/day numbers and first name/initial to resolve
+    duplicate surnames. Compound surnames can fall back to their final token;
+    zero or multiple remaining files are never guessed.
     """
     normalized_patient_name = _normalize_name_text(patient_name)
     surname_tokens, given_tokens = _split_surname_and_given(patient_name)
     surname_key = _normalize("".join(surname_tokens))
     bare_surname_key = _normalize(surname_tokens[-1]) if surname_tokens else ""
     given_initial = _normalize(given_tokens[0])[:1] if given_tokens else ""
+    treatment_dates = {_calendar_date(value) for value in (treatment_dates or [])}
+    treatment_dates.discard(None)
+    default_year = min(treatment_dates).year if treatment_dates else datetime.now().year
 
     if not soa_folder.exists():
         raise Exception(f"SOA folder does not exist: {soa_folder}")
@@ -234,6 +305,7 @@ def _find_soa_file(patient_name, soa_folder):
         tokens_to_match = [_comparison_text(token) for token in tokens_to_match]
         matches = []
         allowed_after = {_comparison_text(token) for token in given_tokens}
+        allowed_after.update(_comparison_text(month) for month in MONTHS)
         if given_initial:
             allowed_after.add(given_initial)
 
@@ -254,11 +326,7 @@ def _find_soa_file(patient_name, soa_folder):
                 j = i + len(tokens_to_match)
                 following = tokens[j] if j < len(tokens) else None
 
-                if (
-                    following is not None
-                    and not following.isdigit()
-                    and following not in allowed_after
-                ):
+                if following is not None and not following.isdigit() and following not in allowed_after:
                     continue
 
                 matches.append(file_path)
@@ -292,13 +360,52 @@ def _find_soa_file(patient_name, soa_folder):
 
         return False
 
-    matches = matching(surname_tokens, True) or matching(surname_tokens)
+    def candidate_files(tokens_to_match):
+        matches = matching(tokens_to_match, True) or matching(tokens_to_match)
+        if not matches and len(tokens_to_match) > 1 and bare_surname_key != surname_key:
+            matches = matching([tokens_to_match[len(surname_tokens) - 1]], True) or matching([tokens_to_match[len(surname_tokens) - 1]])
+        return matches
 
+    # Match by surname first, then use the same date/day/name tie breakers as
+    # document folder matching. Surname-first full-name filenames are
+    # represented by the first token following the surname.
+    matches = candidate_files(surname_tokens)
     if not matches and bare_surname_key != surname_key:
-        matches = (
-            matching([surname_tokens[-1]], True)
-            or matching([surname_tokens[-1]])
-        )
+        matches = matching([surname_tokens[-1]], True) or matching([surname_tokens[-1]])
+
+    if len(matches) > 1 and treatment_dates:
+        date_matches = [
+            file_path for file_path in matches
+            if _filename_date_hints(file_path.name, default_year)[0] & treatment_dates
+        ]
+        if date_matches:
+            matches = date_matches
+    if len(matches) > 1 and treatment_dates:
+        treatment_days = {value.day for value in treatment_dates}
+        day_matches = [
+            file_path for file_path in matches
+            if _filename_date_hints(file_path.name, default_year)[1] & treatment_days
+        ]
+        if day_matches:
+            matches = day_matches
+
+    if len(matches) > 1 and given_tokens:
+        first_name = _comparison_text(given_tokens[0])
+        exact_name_matches = []
+        for file_path in matches:
+            tokens = _filename_tokens(file_path.name)
+            for index in range(len(tokens) - len(surname_tokens) + 1):
+                if tokens[index:index + len(surname_tokens)] != [
+                    _comparison_text(token) for token in surname_tokens
+                ]:
+                    continue
+                after = tokens[index + len(surname_tokens)] if index + len(surname_tokens) < len(tokens) else None
+                before = tokens[index - 1] if index > 0 else None
+                if after == first_name or before == first_name:
+                    exact_name_matches.append(file_path)
+                    break
+        if exact_name_matches:
+            matches = exact_name_matches
 
     if not matches:
         sample_files = ", ".join(file_path.name for file_path in all_files[:20])
@@ -558,6 +665,32 @@ class SOAAutomation:
                 soa_state.get("esa_document_exists")
             )
 
+            treatment_dates = []
+            if not soa_already_uploaded:
+                try:
+                    procedures = beacon_api.get_surgical_procedures(claim_id) or []
+                    raw_dates = [
+                        session.get("sessionDate")
+                        for procedure in procedures if isinstance(procedure, dict)
+                        for session in (procedure.get("sessions") or [])
+                        if isinstance(session, dict) and session.get("sessionDate")
+                    ]
+                    if not raw_dates:
+                        cf2_record = cf2_api.get_cf2(claim_id) or {}
+                        raw_dates = [
+                            cf2_record.get("admissionDateTime") or cf2_record.get("admissionDate"),
+                            cf2_record.get("dischargeDateTime") or cf2_record.get("dischargeDate"),
+                        ]
+                    treatment_dates = [
+                        parsed for raw_date in raw_dates
+                        if (parsed := _calendar_date(raw_date)) is not None
+                    ]
+                except Exception as exc:
+                    logger.warning(
+                        "Could not load CF2 treatment dates for SOA filename matching; "
+                        f"continuing with name matching only ({exc})."
+                    )
+
             logger.info(
                 "SOA state: "
                 f"charges_imported={soa_already_uploaded} "
@@ -573,6 +706,7 @@ class SOAAutomation:
                 soa_path = _find_soa_file(
                     self.patient_name,
                     self.soa_folder,
+                    treatment_dates=treatment_dates,
                 )
                 self.soa_file = str(soa_path)
                 logger.info(f"SOA file found: {self.soa_file}")
