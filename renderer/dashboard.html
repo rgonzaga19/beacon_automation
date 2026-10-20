@@ -12,9 +12,15 @@
   .site-header { height:72px; flex:0 0 72px; display:flex; align-items:center; gap:34px; padding:0 clamp(20px,4vw,56px); background:var(--bg-panel); border-bottom:1px solid var(--border); }
   .site-brand { display:flex; align-items:center; gap:10px; color:var(--text-pri); font-weight:800; letter-spacing:.7px; text-decoration:none; }
   .site-brand img { width:30px; height:30px; object-fit:contain; }
-  .workspace-heartbeat { width:clamp(110px,16vw,220px); height:24px; flex:0 1 clamp(110px,16vw,220px); min-width:72px; overflow:visible; color:var(--accent); opacity:.8; }
+  .workspace-heartbeat { width:clamp(110px,16vw,220px); height:24px; flex:0 1 clamp(110px,16vw,220px); min-width:72px; overflow:visible; color:var(--accent); opacity:.8; transition:color 300ms ease,opacity 300ms ease; }
   .workspace-heartbeat path { fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:150; stroke-dashoffset:150; animation:heartbeat-trace 2.8s ease-in-out infinite; }
   @keyframes heartbeat-trace { 0%,12% { stroke-dashoffset:150; opacity:.35; } 52%,78% { stroke-dashoffset:0; opacity:1; } 100% { stroke-dashoffset:-150; opacity:.35; } }
+
+  .workspace-heartbeat.heartbeat-active path { animation:heartbeat-trace 1.2s ease-in-out infinite; }
+  .workspace-heartbeat.heartbeat-slow path,
+  .workspace-heartbeat.heartbeat-disconnected path { animation:none; stroke-dasharray:none; stroke-dashoffset:0; opacity:.4; }
+  .workspace-heartbeat.heartbeat-slow { color:var(--accent); opacity:.8; }
+  .workspace-heartbeat.heartbeat-disconnected { color:var(--text-sec); opacity:.5; }
   .site-nav { display:flex; align-items:center; gap:8px; height:100%; margin-left:auto; }
   .site-nav button { height:100%; padding:0 13px; color:var(--text-sec); background:none; border:0; border-bottom:2px solid transparent; font:600 13px var(--font-ui); cursor:pointer; }
   .site-nav button:hover,.site-nav button.active { color:var(--text-pri); border-bottom-color:var(--accent); }
@@ -184,7 +190,7 @@
   <div class="app-window no-glow" id="dashboardShell">
     <header class="site-header">
       <a class="site-brand" href="/dashboard.html" id="siteBrand"><img src="assets/bot.ico" alt=""><span class="header-brand-copy"><span>BEABOTS</span><span class="brand-tagline">Beacon Automation</span></span></a>
-      <svg class="workspace-heartbeat" viewBox="0 0 100 24" aria-hidden="true"><path d="M2 13h23l7-1 5-7 8 15 8-12 5 5h10l4-1h26" /></svg>
+      <svg class="workspace-heartbeat heartbeat-disconnected" viewBox="0 0 100 24" aria-hidden="true"><path d="M2 13h23l7-1 5-7 8 15 8-12 5 5h10l4-1h26" /></svg>
       <button class="mobile-menu-trigger" id="mobileMenuButton" type="button" aria-controls="dashboardSidebar" aria-expanded="false" aria-label="Open workspace menu"><span aria-hidden="true">&#9776;</span></button>
       <nav class="site-nav" aria-label="Main navigation">
         <button id="siteHome" type="button">Home</button><button id="siteClaims" type="button">Claims</button><button id="siteAbout" type="button">About</button><button id="siteContact" type="button">Contact Us</button><button id="siteUsers" type="button" hidden>User Management</button>

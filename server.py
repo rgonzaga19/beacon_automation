@@ -2481,6 +2481,7 @@ def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop
     soa_automation = None
     stopped = False
     room_token = _emit_room.set(user_room(user_id))
+    emit_to_current_room("soa_progress", {"status": "running"})
     try:
         auth_key = browser_session.auth_context_key(
             beacon_settings,
@@ -2503,6 +2504,7 @@ def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop
 
 def _run_document_automation(user_id, beacon_settings, files_root, relative_paths, transmittals, stop_event):
     room_token = _emit_room.set(user_room(user_id))
+    socketio.emit("documents_progress", {"status": "running"}, room=user_room(user_id))
     results = []
     try:
         auth_key = browser_session.auth_context_key(beacon_settings, user_key=f"user:{user_id}")
@@ -2807,6 +2809,7 @@ def _run_beacon_automation(user_id, beacon_settings, transmittals, auto_encode_c
     stopped = False
     results = []
     room_token = _emit_room.set(user_room(user_id))
+    emit_to_current_room("beacon_progress", {"status": "running"})
     try:
         auth_key = browser_session.auth_context_key(
             beacon_settings,

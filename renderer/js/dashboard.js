@@ -374,6 +374,183 @@ document.getElementById("siteUsers").addEventListener("click", () => {
 document.getElementById("btnSettings").addEventListener("click", () => {
   openWorkspace("settings");
 });
+
+// ---------------------------------------------------------------------------
+// Heartbeat Controller - monitors Beacon connection and automation activity
+// ---------------------------------------------------------------------------
+class HeartbeatController {
+  constructor() {
+    this.heartbeatEl = document.querySelector(".workspace-heartbeat");
+    this.pollInterval = null;
+    this.pollIntervalMs = 15000; // 15 seconds
+    this.slowThresholdMs = 5000; // 5 seconds = slow
+    this.activeAutomations = new Set();
+    this.socket = null;
+    this.isPolling = false;
+    this.lastConnectionState = null; // { connected: boolean, slow: boolean }
+    this.init();
+  }
+
+  init() {
+    if (!this.heartbeatEl) return;
+    this.connectSocket();
+    this.updateHeartbeat();
+    this.startPolling();
+    this.handleVisibilityChange();
+  }
+
+  connectSocket() {
+    if (typeof io === "undefined") return;
+    this.socket = io(window.location.origin, {
+      transports: ["websocket", "polling"],
+      autoConnect: true,
+    });
+    // Server automatically joins user room on connect via Flask session
+    this.socket.on("connect", () => {
+      // Connection established, room joined automatically by server
+    });
+    this.socket.on("disconnect", () => {
+      // Socket disconnected, will reconnect automatically
+    });
+
+    // Automation progress events that indicate active runs
+    const progressEvents = [
+      "cf2_progress",
+      "soa_progress",
+      "beacon_progress",
+      "documents_progress",
+      "run_all_progress",
+    ];
+    const doneEvents = [
+      "cf2_done",
+      "soa_done",
+      "beacon_done",
+      "documents_done",
+      "run_all_done",
+    ];
+
+    progressEvents.forEach((event) => {
+      const key = event.replace(/_progress$/, "");
+      this.socket.on(event, () => this.setAutomationActive(key, true));
+    });
+    doneEvents.forEach((event) => {
+      const key = event.replace(/_done$/, "");
+      this.socket.on(event, () => this.setAutomationActive(key, false));
+    });
+  }
+
+  setAutomationActive(key, active) {
+    if (active) this.activeAutomations.add(key);
+    else this.activeAutomations.delete(key);
+    this.updateHeartbeat();
+  }
+
+  async pollConnectionStatus() {
+    if (this.isPolling) return;
+    this.isPolling = true;
+    const start = performance.now();
+    const slowTimer = setTimeout(() => {
+      if (this.lastConnectionState?.connected) {
+        this.lastConnectionState = { ...this.lastConnectionState, slow: true };
+        this.updateHeartbeat();
+      }
+    }, this.slowThresholdMs);
+    try {
+      const settings = await fetchJSON("/api/settings");
+      const responseTime = performance.now() - start;
+      const connected = settings.beacon_connected === true;
+      const slow = responseTime > this.slowThresholdMs;
+      this.lastConnectionState = { connected, slow, responseTime };
+      this.updateHeartbeat();
+    } catch (error) {
+      this.lastConnectionState = { connected: false, slow: false, responseTime: null };
+      this.updateHeartbeat();
+    } finally {
+      clearTimeout(slowTimer);
+      this.isPolling = false;
+    }
+  }
+
+  startPolling() {
+    if (this.pollInterval) return;
+    // Initial poll
+    this.pollConnectionStatus();
+    // Recurring polls
+    this.pollInterval = setInterval(() => this.pollConnectionStatus(), this.pollIntervalMs);
+  }
+
+  stopPolling() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+  }
+
+  handleVisibilityChange() {
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        this.stopPolling();
+      } else {
+        this.startPolling();
+      }
+    });
+  }
+
+  updateHeartbeat() {
+    if (!this.heartbeatEl) return;
+
+    const { connected = false, slow = false } = this.lastConnectionState || {};
+    const automationActive = this.activeAutomations.size > 0;
+
+    // Remove all state classes
+    this.heartbeatEl.classList.remove(
+      "heartbeat-connected",
+      "heartbeat-active",
+      "heartbeat-slow",
+      "heartbeat-disconnected"
+    );
+
+    const path = this.heartbeatEl.querySelector("path");
+    if (path) {
+      path.setAttribute(
+        "d",
+        connected
+          ? "M2 13h23l7-1 5-7 8 15 8-12 5 5h10l4-1h26"
+          : "M2 13h96"
+      );
+    }
+
+    if (!connected) {
+      this.heartbeatEl.classList.add("heartbeat-disconnected");
+    } else if (automationActive) {
+      this.heartbeatEl.classList.add("heartbeat-active");
+    } else if (slow) {
+      this.heartbeatEl.classList.add("heartbeat-slow");
+    } else {
+      this.heartbeatEl.classList.add("heartbeat-connected");
+    }
+  }
+
+  destroy() {
+    this.stopPolling();
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+  }
+}
+
+// Initialize heartbeat controller after DOM is ready
+let heartbeatController = null;
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    heartbeatController = new HeartbeatController();
+  });
+} else {
+  heartbeatController = new HeartbeatController();
+}
+
+// ---------------------------------------------------------------------------
 // Initial state
 // ---------------------------------------------------------------------------
 const initialWorkspace = window.location.hash.replace("#", "");
