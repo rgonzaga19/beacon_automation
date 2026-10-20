@@ -2970,7 +2970,7 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
                     )
                     cf4_result = next(iter(cf4_results), None)
                     if cf4_result and cf4_result.get("status") == "SUCCESS":
-                        publish("cf4", "success", "CF4 generated.")
+                        publish("cf4", "success", "CF4 encoded.")
                     else:
                         message = (cf4_result or {}).get("remarks", "CF4 generation did not complete.")
                         publish("cf4", "failed", message)
@@ -3055,7 +3055,7 @@ def _run_all_retry_automation(user_id, retry_state, item, start_at, stop_event):
                 cf4_results = beacon_run([transmittal], auto_encode_cf4=True, cf4_data=cf4_settings, should_stop=stop_event.is_set)
                 cf4_result = next(iter(cf4_results), None)
                 if cf4_result and cf4_result.get("status") == "SUCCESS":
-                    publish("cf4", "success", "CF4 generated.")
+                    publish("cf4", "success", "CF4 encoded.")
                 else:
                     publish("cf4", "failed", (cf4_result or {}).get("remarks", "CF4 generation did not complete."))
     except Exception as ex:
