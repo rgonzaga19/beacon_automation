@@ -7,6 +7,7 @@ const claimEditor = document.getElementById("claimEditor");
 const editorSubtitle = document.getElementById("editorSubtitle");
 const transmitAllButton = document.getElementById("transmitAllButton");
 const transmitAllStatus = document.getElementById("transmitAllStatus");
+const finalizeAllButton = document.getElementById("finalizeAllButton");
 let activeEditClaim = null;
 let courseInWardRowIndex = 0;
 let editorDirty = false;
@@ -1140,6 +1141,94 @@ async function runTransmitAll() {
     transmitAllButton.textContent = "AUTO TRANSMIT ALL";
   }
 }
+
+async function runFinalizeAll() {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available to finalize.", true);
+    return;
+  }
+  let finalized = 0;
+  let skipped = 0;
+  let failed = 0;
+  const controls = [
+    finalizeAllButton,
+    transmitAllButton,
+    document.getElementById("generateSoaAllButton"),
+    document.getElementById("generateCf4AllButton"),
+    document.getElementById("removeSoaAllButton"),
+    document.getElementById("changeArAllButton"),
+  ];
+  controls.forEach((control) => { control.disabled = true; });
+  finalizeAllButton.textContent = "FINALIZING ALL...";
+  setToolbarLoading(finalizeAllButton, true);
+  try {
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const editButton = row.querySelector('[data-action="edit-claim"]');
+      const { transmittalId, claimId } = editButton.dataset;
+      setTransmitAllStatus(`Finalizing ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
+      try {
+        const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/finalize`, {
+          method: "POST",
+          body: JSON.stringify({}),
+        });
+        if (result.skipped) {
+          setBeaconMessage(row, "Already finalized; no changes made.");
+          skipped += 1;
+        } else {
+          setBeaconMessage(row, `Final PBEF generated and saved (${result.tracking_number}).`);
+          finalized += 1;
+        }
+      } catch (error) {
+        setBeaconMessage(row, `Finalization failed: ${error.message}`, true);
+        failed += 1;
+      }
+    }
+    const parts = [`Finalized ${finalized}`, `${skipped} already finalized`, `${failed} failed`];
+    setTransmitAllStatus(`${parts.join("; ")}.${failed ? " Check Beacon Message for details." : ""}`, failed > 0);
+  } finally {
+    setToolbarLoading(finalizeAllButton, false);
+    controls.forEach((control) => { control.disabled = false; });
+    finalizeAllButton.textContent = "AUTO FINALIZE ALL";
+  }
+}
+
+function showFinalizeAllConfirm(claimCount, onConfirm) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Auto Finalize</h3>
+        <p>Generate a final PBEF and save eligibility data for ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time? Claims already finalized will be skipped.</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="finalizeAllCancelBtn" type="button">CANCEL</button>
+          <button class="cyber-btn danger" id="finalizeAllConfirmBtn" type="button">YES, FINALIZE ALL</button>
+        </div>
+      </div>
+    </div>`;
+  function close() { closeTransmitAllConfirm(onKey); }
+  function onKey(event) { if (event.key === "Escape") close(); }
+  document.getElementById("finalizeAllCancelBtn").addEventListener("click", close);
+  document.getElementById("finalizeAllConfirmBtn").addEventListener("click", () => {
+    close();
+    onConfirm();
+  });
+  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.getElementById("finalizeAllCancelBtn").focus();
+}
+
+finalizeAllButton.addEventListener("click", () => {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available to finalize. Run a lookup first.", true);
+    return;
+  }
+  showFinalizeAllConfirm(rows.length, runFinalizeAll);
+});
 
 document.getElementById("copyTransmittalsButton").addEventListener("click", async () => {
   const numbers = [];

@@ -1500,6 +1500,27 @@ def transmit_finalize_claims_transmittal(transmittal_id):
         return jsonify({"error": str(exc) or "Beacon transmit failed."}), 502
 
 
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/finalize", methods=["POST"])
+@login_required
+def finalize_finalize_claim(transmittal_id, claim_id):
+    user = current_user()
+    beacon_settings, auth_key = _beacon_edit_settings(user)
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _transmittal, claim = _require_draft_claim(transmittal_id, claim_id)
+            cf2 = cf2_api.get_cf2(claim_id) or claim.get("phiccF2") or {}
+            admission = cf2.get("admissionDateTime") or claim.get("admissionDateTime")
+            discharge = cf2.get("dischargeDateTime") or claim.get("dischargeDateTime")
+            if not admission or not discharge:
+                raise ValueError("Claim admission and discharge dates are required to finalize eligibility.")
+            result = cf2_api.finalize_claim_eligibility(claim_id, transmittal_id, admission, discharge)
+            return jsonify(result)
+    except Exception as exc:
+        logger.error(f"Finalize Claims eligibility finalize failed for claim {claim_id}: {exc}")
+        return jsonify({"error": str(exc) or "Claim finalization failed."}), 502
+
+
 def _beacon_local_datetime(value):
     if not value:
         return None

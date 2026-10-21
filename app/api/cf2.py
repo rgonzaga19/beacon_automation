@@ -348,6 +348,75 @@ def validate_claim_eligibility(claim_id, transmittal_id, admission_date, dischar
     }
 
 
+def finalize_claim_eligibility(claim_id, transmittal_id, admission_date, discharge_date):
+    """Generate a final PBEF and save its tracking number to the claim.
+
+    Mirrors the captured Edit Claims finalize flow: IsClaimEligible with
+    ``isFinal: 1`` followed by EditPHICClaimEligibilityTrackingNumber.
+    """
+    cf1 = get_cf1_summary(claim_id)
+    if not isinstance(cf1, dict) or not cf1:
+        raise Cf2ApiError(f"GetPHICCF1Summary returned no usable data for claimId={claim_id}.")
+    if str(cf1.get("eligibilityTrackingNumber") or "").strip():
+        return {"skipped": True, "reason": "already_finalized"}
+
+    identity = get_hospital_identity(transmittal_id)
+    admission = _date_from_value(admission_date)
+    discharge = _date_from_value(discharge_date)
+    eligibility_request = {
+        "hospitalCode": identity["hospitalCode"],
+        "isForOPDHemodialysisClaim": "0",
+        "memberPIN": cf1.get("memberPin"),
+        "patientPIN": cf1.get("patientPin"),
+        "memberBasicInformation": {
+            "lastname": cf1.get("memberLastname") or "",
+            "firstname": cf1.get("memberFirstname") or "",
+            "middlename": cf1.get("memberMiddlename") or "",
+            "maidenname": "",
+            "sex": cf1.get("memberGender") or "",
+            "dateOfBirth": _mm_dd_yyyy(cf1.get("memberBirthday")),
+            "suffix": cf1.get("memberSuffix"),
+        },
+        "patientIs": cf1.get("patientIsCode"),
+        "admissiondate": admission.strftime("%m-%d-%Y"),
+        "patientBasicInformation": {
+            "lastname": cf1.get("patientLastname") or "",
+            "firstname": cf1.get("patientFirstname") or "",
+            "middlename": cf1.get("patientMiddlename") or "",
+            "dateofBirth": _mm_dd_yyyy(cf1.get("patientBirthday")),
+            "maidenname": "",
+            "sex": cf1.get("patientGender") or "",
+            "suffix": cf1.get("patientSuffix"),
+        },
+        "membershipType": cf1.get("memberTypeCode"),
+        "pen": cf1.get("memberPEN"),
+        "isFinal": 1,
+        "phicIdentity": identity,
+    }
+    result = _post("/IsClaimEligible", json_body=eligibility_request, base=_eclaims_api_base())
+    if not isinstance(result, dict) or not result.get("trackingNumber"):
+        raise Cf2ApiError(
+            "Final PBEF was not generated: "
+            f"{(result or {}).get('message') if isinstance(result, dict) else 'unexpected response'}"
+        )
+
+    payload = {
+        "Id": str(claim_id),
+        "eligibilityIsOk": "YES",
+        "eligibilityTrackingNumber": str(result["trackingNumber"]).replace("-", ""),
+        "eligibilityRemainingDays": 45,
+        "eligibleAsOf": "07-01-2025",
+        "eligibilityDocuments": [],
+        "eligibilityIsNHTS": "NO",
+        "eligibilityWith3Over6": "NO",
+        "eligibilityWith9Over12": "NO",
+        "admissionDate": to_utc_midnight_iso(admission),
+        "dischargeDate": to_utc_midnight_iso(discharge),
+    }
+    saved = _put("/api/PHICClaim/EditPHICClaimEligibilityTrackingNumber", json_body=payload)
+    return {"skipped": False, "tracking_number": payload["eligibilityTrackingNumber"], "saved": saved}
+
+
 def get_esoa_signatories(phic_claim_id):
     """Get the existing Statement of Account signatory record.
 
