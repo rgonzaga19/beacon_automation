@@ -648,6 +648,32 @@ def auth_me():
     return jsonify({"authenticated": True, "user": user_payload(user)})
 
 
+@app.route("/api/chat/latest", methods=["GET"])
+@login_required
+def chat_latest_ids():
+    """Return message cursors only, for lightweight browser-local unread tracking."""
+    user = current_user()
+    latest_team_id = db.session.query(func.max(TeamChatMessage.id)).filter(
+        or_(TeamChatMessage.sender_id.is_(None), TeamChatMessage.sender_id != user.id),
+    ).scalar() or 0
+    if user.is_admin:
+        support_rows = db.session.query(
+            TeamSupportMessage.support_user_id,
+            func.max(TeamSupportMessage.id),
+        ).filter(
+            TeamSupportMessage.support_user_id.isnot(None),
+            or_(TeamSupportMessage.sender_id.is_(None), TeamSupportMessage.sender_id != user.id),
+        ).group_by(TeamSupportMessage.support_user_id).all()
+        support = {str(thread_user_id): message_id for thread_user_id, message_id in support_rows}
+    else:
+        latest_support_id = db.session.query(func.max(TeamSupportMessage.id)).filter(
+            TeamSupportMessage.support_user_id == user.id,
+            or_(TeamSupportMessage.sender_id.is_(None), TeamSupportMessage.sender_id != user.id),
+        ).scalar() or 0
+        support = {"self": latest_support_id}
+    return jsonify({"team": latest_team_id, "support": support})
+
+
 @app.route("/api/support/threads", methods=["GET"])
 @admin_required
 def support_list_threads():

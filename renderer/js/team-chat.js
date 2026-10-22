@@ -156,6 +156,7 @@ async function loadMessages(initial = false) {
       throw new Error(result.error);
     }
     for (const message of result.messages || []) appendMessage(message, result.current_user_id);
+    markChatReadIfVisible();
     if (initial) {
       hasLoadedHistory = true;
       if (teamMode) chatStatus.textContent = "Shared conversation with your team.";
@@ -169,6 +170,22 @@ async function loadMessages(initial = false) {
     polling = false;
   }
 }
+
+function markChatReadIfVisible() {
+  const frame = window.frameElement;
+  if (window.parent === window || !frame?.classList.contains("active") || document.visibilityState !== "visible") return;
+  window.parent.postMessage({
+    type: "chat-read",
+    channel: teamMode ? "team" : "support",
+    threadId: activeThreadId,
+    messageId: newestMessageId,
+  }, location.origin);
+}
+
+window.addEventListener("message", (event) => {
+  if (event.origin === location.origin && event.data?.type === "chat-active") markChatReadIfVisible();
+});
+document.addEventListener("visibilitychange", markChatReadIfVisible);
 
 attachButton.addEventListener("click", () => imageInput.click());
 imageInput.addEventListener("change", () => {

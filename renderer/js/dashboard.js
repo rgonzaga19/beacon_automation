@@ -19,6 +19,70 @@ const mobileMenuButton = document.getElementById("mobileMenuButton");
 const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 let activeWorkspaceKey = null;
 let signedInIsAdmin = false;
+let chatReadStateKey = null;
+let latestChatState = null;
+
+function readChatCursors() {
+  if (!chatReadStateKey) return null;
+  try { return JSON.parse(localStorage.getItem(chatReadStateKey) || "null"); }
+  catch { return null; }
+}
+
+function writeChatCursors(cursors) {
+  if (!chatReadStateKey) return;
+  try { localStorage.setItem(chatReadStateKey, JSON.stringify(cursors)); }
+  catch { /* Unread indicators are optional when browser storage is unavailable. */ }
+}
+
+function updateChatUnreadIndicator() {
+  if (!latestChatState || !chatReadStateKey) return;
+  const cursors = readChatCursors() || { team: latestChatState.team, support: {} };
+  const teamUnread = Number(latestChatState.team || 0) > Number(cursors.team || 0);
+  const latestSupport = latestChatState.support || {};
+  const readSupport = cursors.support || {};
+  const supportUnread = Object.entries(latestSupport).some(([threadId, messageId]) =>
+    Number(messageId || 0) > Number(readSupport[threadId] || 0));
+  document.getElementById("supportChatUnread").hidden = !supportUnread;
+  document.getElementById("teamChatUnread").hidden = !teamUnread;
+  const unreadCount = Number(teamUnread) + Number(supportUnread);
+  const indicator = document.getElementById("chatUnreadIndicator");
+  indicator.hidden = unreadCount === 0;
+  indicator.textContent = String(unreadCount);
+  indicator.setAttribute("aria-label", `${unreadCount} chat${unreadCount === 1 ? "" : "s"} with unread messages`);
+  document.getElementById("accountTrigger").setAttribute(
+    "aria-label",
+    `${document.getElementById("accountName").textContent || "Account"}${unreadCount ? `, ${unreadCount} chat${unreadCount === 1 ? "" : "s"} with unread messages` : ""}`
+  );
+}
+
+async function refreshChatUnread() {
+  try {
+    const result = await fetchJSON("/api/chat/latest");
+    if (result.error || !chatReadStateKey) return;
+    latestChatState = result;
+    let cursors = readChatCursors();
+    if (!cursors) {
+      // Start from the current head so existing history does not appear unread on first use.
+      cursors = { team: result.team || 0, support: { ...(result.support || {}) } };
+      writeChatCursors(cursors);
+    }
+    updateChatUnreadIndicator();
+  } catch { /* Keep the last known indicator while the network is unavailable. */ }
+}
+
+window.addEventListener("message", (event) => {
+  if (event.origin !== location.origin || !event.data || event.data.type !== "chat-read") return;
+  const cursors = readChatCursors() || { team: 0, support: {} };
+  const messageId = Number(event.data.messageId || 0);
+  if (event.data.channel === "team") cursors.team = Math.max(Number(cursors.team || 0), messageId);
+  if (event.data.channel === "support") {
+    cursors.support = cursors.support || {};
+    const threadId = signedInIsAdmin ? String(event.data.threadId || "") : "self";
+    if (threadId) cursors.support[threadId] = Math.max(Number(cursors.support[threadId] || 0), messageId);
+  }
+  writeChatCursors(cursors);
+  updateChatUnreadIndicator();
+});
 
 function closeMobileSidebar() {
   sidebar.classList.remove("mobile-open");
@@ -154,6 +218,9 @@ function openWorkspace(activeKey) {
   if (!frame.getAttribute("src")) {
     frame.src = route;
   }
+  if (activeKey === "teamChat" || activeKey === "teamCollab") {
+    frame.contentWindow?.postMessage({ type: "chat-active" }, location.origin);
+  }
   setWorkspaceActive(activeKey);
   history.replaceState(null, "", `dashboard.html#${activeKey}`);
 }
@@ -235,6 +302,16 @@ document.getElementById("editProfileButton").addEventListener("click", () => {
   });
 });
 document.getElementById("accountSettings").addEventListener("click", () => openWorkspace("settings"));
+document.getElementById("accountSupportChat").addEventListener("click", () => {
+  accountMenu.hidden = true;
+  accountTrigger.setAttribute("aria-expanded", "false");
+  openWorkspace("teamChat");
+});
+document.getElementById("accountTeamChat").addEventListener("click", () => {
+  accountMenu.hidden = true;
+  accountTrigger.setAttribute("aria-expanded", "false");
+  openWorkspace("teamCollab");
+});
 document.getElementById("accountLogout").addEventListener("click", () => window.beabots?.logout());
 
 async function loadSignedInProfile() {
@@ -246,6 +323,8 @@ async function loadSignedInProfile() {
     }
     const user = result.user || {};
     signedInIsAdmin = Boolean(user.is_admin);
+    chatReadStateKey = `beabots-chat-read:v1:${user.id}`;
+    await refreshChatUnread();
     document.getElementById("siteUsers").hidden = !signedInIsAdmin;
     if (signedInIsAdmin) {
       if (activeWorkspaceKey !== "users" && window.location.hash.replace("#", "") === "users") openWorkspace("users");
@@ -265,6 +344,7 @@ async function loadSignedInProfile() {
     const displayName = user.display_name || user.profile_name || user.email || "Account";
     document.getElementById("accountName").textContent = displayName;
     document.getElementById("accountAvatar").textContent = (displayName.trim()[0] || "B").toUpperCase();
+    updateChatUnreadIndicator();
     document.getElementById("homeGreeting").textContent = `Welcome${user.display_name ? `, ${user.display_name}` : " to Beabots"}`;
     document.getElementById("profileNameInput").value = user.profile_name || "";
     document.getElementById("displayNameInput").value = user.display_name || "";
@@ -305,6 +385,7 @@ document.getElementById("profileForm").addEventListener("submit", async (event) 
   }
 });
 loadSignedInProfile();
+window.setInterval(refreshChatUnread, 30000);
 
 const upgradeDialog = document.getElementById("upgradeDialog");
 const upgradeRequestForm = document.getElementById("upgradeRequestForm");
