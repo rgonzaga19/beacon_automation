@@ -18,6 +18,16 @@ function setToolbarLoading(button, loading) {
   else button.removeAttribute("aria-busy");
 }
 
+function lockClaimsToolbar(activeButton) {
+  const buttons = Array.from(document.querySelectorAll(".page-toolbar button"));
+  const previousStates = buttons.map((button) => button.disabled);
+  buttons.forEach((button) => { button.disabled = true; });
+  activeButton?.setAttribute("aria-busy", "true");
+  return () => {
+    buttons.forEach((button, index) => { button.disabled = previousStates[index]; });
+  };
+}
+
 const EDIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 const TRANSMIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
 const TRANSMITTED_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -522,10 +532,6 @@ document.getElementById("editorClose").addEventListener("click", () => {
   activeEditClaim = null;
   document.querySelector(".editor-content").removeAttribute("data-view");
 });
-claimEditor.addEventListener("click", (event) => {
-  if (event.target === claimEditor) document.getElementById("editorClose").click();
-});
-
 document.getElementById("editorTabs").addEventListener("click", (event) => {
   const tab = event.target.closest("[data-editor-view]");
   if (!tab || !activeEditClaim) return;
@@ -533,8 +539,8 @@ document.getElementById("editorTabs").addEventListener("click", (event) => {
   applyEditorView(activeEditClaim.view);
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape") return;
-  if (!claimEditor.hidden) document.getElementById("editorClose").click();
+  if (event.key !== "Escape" || claimEditor.hidden) return;
+  document.getElementById("editorClose").click();
 });
 
 document.querySelectorAll("[data-save-editor]").forEach((button) => {
@@ -805,6 +811,7 @@ async function runGenerateSoaAll() {
   }
 
   const button = document.getElementById("generateSoaAllButton");
+  const unlockToolbar = lockClaimsToolbar(button);
   const cf4Button = document.getElementById("generateCf4AllButton");
   const removeButton = document.getElementById("removeSoaAllButton");
   let generated = 0;
@@ -843,6 +850,7 @@ async function runGenerateSoaAll() {
     cf4Button.disabled = false;
     removeButton.disabled = false;
     transmitAllButton.disabled = false;
+    unlockToolbar();
   }
 }
 
@@ -885,6 +893,7 @@ async function runGenerateCf4All() {
   }
 
   const button = document.getElementById("generateCf4AllButton");
+  const unlockToolbar = lockClaimsToolbar(button);
   let generated = 0;
   let failed = 0;
   button.disabled = true;
@@ -921,6 +930,7 @@ async function runGenerateCf4All() {
     document.getElementById("generateSoaAllButton").disabled = false;
     document.getElementById("removeSoaAllButton").disabled = false;
     transmitAllButton.disabled = false;
+    unlockToolbar();
   }
 }
 
@@ -963,6 +973,7 @@ async function runRemoveSoaAll() {
   }
 
   const button = document.getElementById("removeSoaAllButton");
+  const unlockToolbar = lockClaimsToolbar(button);
   const cf4Button = document.getElementById("generateCf4AllButton");
   const generateButton = document.getElementById("generateSoaAllButton");
   let removed = 0;
@@ -1000,6 +1011,7 @@ async function runRemoveSoaAll() {
     cf4Button.disabled = false;
     generateButton.disabled = false;
     transmitAllButton.disabled = false;
+    unlockToolbar();
   }
 }
 
@@ -1010,13 +1022,28 @@ async function runChangeArAll() {
     return;
   }
 
-  const saved = await editorRequest("/api/cf2/account-receivable");
+  const button = document.getElementById("changeArAllButton");
+  const unlockToolbar = lockClaimsToolbar(button);
+  button.textContent = "LOADING AR INFO...";
+  setToolbarLoading(button, true);
+  let saved;
+  try {
+    saved = await editorRequest("/api/cf2/account-receivable");
+  } catch (error) {
+    setToolbarLoading(button, false);
+    button.textContent = "CHANGE AR INFO ALL";
+    unlockToolbar();
+    setTransmitAllStatus(error.message || "Could not load Account Receivable details.", true);
+    return;
+  }
   if (!saved.name && !saved.designation && !saved.number) {
+    setToolbarLoading(button, false);
+    button.textContent = "CHANGE AR INFO ALL";
+    unlockToolbar();
     setTransmitAllStatus("Save Account Receivable details in CF2 first.", true);
     return;
   }
 
-  const button = document.getElementById("changeArAllButton");
   const controls = [
     button,
     transmitAllButton,
@@ -1055,6 +1082,7 @@ async function runChangeArAll() {
     button.disabled = false;
     button.textContent = "CHANGE AR INFO ALL";
     controls.slice(1).forEach((control) => { control.disabled = false; });
+    unlockToolbar();
   }
 }
 
@@ -1097,6 +1125,7 @@ async function runTransmitAll() {
   }
 
   const entries = Array.from(groups.entries());
+  const unlockToolbar = lockClaimsToolbar(transmitAllButton);
   transmitAllButton.disabled = true;
   document.getElementById("generateSoaAllButton").disabled = true;
   document.getElementById("generateCf4AllButton").disabled = true;
@@ -1139,6 +1168,7 @@ async function runTransmitAll() {
     document.getElementById("generateCf4AllButton").disabled = false;
     document.getElementById("removeSoaAllButton").disabled = false;
     transmitAllButton.textContent = "AUTO TRANSMIT ALL";
+    unlockToolbar();
   }
 }
 
@@ -1151,6 +1181,7 @@ async function runFinalizeAll() {
   let finalized = 0;
   let skipped = 0;
   let failed = 0;
+  const unlockToolbar = lockClaimsToolbar(finalizeAllButton);
   const controls = [
     finalizeAllButton,
     transmitAllButton,
@@ -1191,6 +1222,7 @@ async function runFinalizeAll() {
     setToolbarLoading(finalizeAllButton, false);
     controls.forEach((control) => { control.disabled = false; });
     finalizeAllButton.textContent = "AUTO FINALIZE ALL";
+    unlockToolbar();
   }
 }
 
