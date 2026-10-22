@@ -1742,7 +1742,11 @@ def save_finalize_claim_doctor(transmittal_id, claim_id):
             previous = next((d for d in doctors if selected_id and str(d.get("id")) == selected_id), None)
             if selected_id and not previous:
                 return jsonify({"error": "The selected doctor is no longer on this claim. Reload the editor."}), 409
-            if previous and str(previous.get("accreditationNumber") or "").strip() == accreditation_number and str(previous.get("doctorSignDate") or "").startswith(sign_date_text):
+            same_doctor = (
+                previous
+                and str(previous.get("accreditationNumber") or "").strip() == accreditation_number
+            )
+            if same_doctor and str(previous.get("doctorSignDate") or "").startswith(sign_date_text):
                 return jsonify({"saved": True, "unchanged": True})
 
             cf2 = cf2_api.get_cf2(claim_id) or {}
@@ -1750,26 +1754,49 @@ def save_finalize_claim_doctor(transmittal_id, claim_id):
             discharge = _beacon_local_datetime(cf2.get("dischargeDateTime"))
             if not admission or not discharge:
                 raise RuntimeError("Save the CF2 admission and discharge dates before changing the doctor.")
-            created = cf2_api.add_doctor(
-                claim_id=claim_id,
-                client_id=cf2_api.get_client_id(),
-                accreditation_number=accreditation_number,
-                sign_date_str=sign_date.strftime("%m-%d-%Y"),
-                admission_date_str=admission.strftime("%m-%d-%Y"),
-                discharge_date_iso=cf2_api.to_utc_midnight_iso(discharge.date()),
-                hospital_identity=cf2_api.get_hospital_identity(transmittal_id),
-            )
-            if not isinstance(created, dict) or not created:
-                raise RuntimeError("Beacon did not confirm the replacement doctor record.")
-            returned_sign_date = str(created.get("doctorSignDate") or "").split("T", 1)[0]
-            if returned_sign_date != sign_date.isoformat():
+            admission_date_str = admission.strftime("%m-%d-%Y")
+            discharge_date_str = discharge.strftime("%m-%d-%Y")
+            sign_date_str = sign_date.strftime("%m-%d-%Y")
+            if same_doctor:
+                accreditation_check = cf2_api.is_doctor_accredited(
+                    accreditation_number,
+                    admission_date_str,
+                    discharge_date_str,
+                    cf2_api.get_hospital_identity(transmittal_id),
+                )
+                updated = cf2_api.edit_doctor(
+                    doctor=previous,
+                    claim_id=claim_id,
+                    sign_date_str=sign_date_str,
+                    admission_date_str=admission_date_str,
+                    discharge_date_str=discharge_date_str,
+                    is_accredited=accreditation_check.get("isaccredited") == "YES",
+                )
+                if not isinstance(updated, dict) or not updated:
+                    raise RuntimeError("Beacon did not confirm the doctor update.")
+                doctor = updated
+            else:
+                doctor = cf2_api.add_doctor(
+                    claim_id=claim_id,
+                    client_id=cf2_api.get_client_id(),
+                    accreditation_number=accreditation_number,
+                    sign_date_str=sign_date_str,
+                    admission_date_str=admission_date_str,
+                    discharge_date_iso=cf2_api.to_utc_midnight_iso(discharge.date()),
+                    hospital_identity=cf2_api.get_hospital_identity(transmittal_id),
+                )
+                if not isinstance(doctor, dict) or not doctor:
+                    raise RuntimeError("Beacon did not confirm the replacement doctor record.")
+
+            returned_sign_date = str(doctor.get("doctorSignDate") or "").split("T", 1)[0]
+            if returned_sign_date not in (sign_date.isoformat(), sign_date_str):
                 raise RuntimeError("Beacon did not save the requested CF2 doctor sign date.")
-            if previous:
+            if previous and not same_doctor:
                 cf2_api.delete_doctor(previous.get("id"))
             doctor_name = beacon_automation._cf4_signature_doctor_name(
-                created.get("fullname")
+                doctor.get("fullname")
                 or " ".join(
-                    str(created.get(key) or "")
+                    str(doctor.get(key) or "")
                     for key in ("firstname", "middlename", "lastname", "suffix")
                 )
             )
@@ -1778,7 +1805,7 @@ def save_finalize_claim_doctor(transmittal_id, claim_id):
                 raise RuntimeError("Beacon saved the CF2 doctor but returned no usable signature name.")
             if not beacon_api.new_pdf_cf4(claim_id, doctor_name, cf4_date_signed):
                 raise RuntimeError("Beacon saved the CF2 doctor but did not confirm the CF4 signature update.")
-        return jsonify({"saved": True, "doctor": created or {}})
+        return jsonify({"saved": True, "doctor": doctor or {}})
     except (ValueError, LookupError) as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:

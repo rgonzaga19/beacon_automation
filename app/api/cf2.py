@@ -1192,6 +1192,45 @@ def new_doctor(
     return _post("/api/PHICDoctor/NewPHICDoctor", json_body=payload)
 
 
+def edit_doctor(
+    doctor,
+    claim_id,
+    sign_date_str,
+    admission_date_str,
+    discharge_date_str,
+    is_accredited,
+):
+    """Update an existing claim doctor using Beacon's EditPHICDoctorInfo API."""
+    payload = {
+        "accreditationNumber": doctor.get("accreditationNumber", ""),
+        "firstname": doctor.get("firstname", ""),
+        "lastname": doctor.get("lastname", ""),
+        "middlename": doctor.get("middlename"),
+        "suffix": doctor.get("suffix"),
+        "withCoPay": doctor.get("withCoPay", "N"),
+        "coPayAmount": doctor.get("coPayAmount", 0),
+        "accredited": False,
+        "fullname": doctor.get("fullname", ""),
+        "doctorSignDate": sign_date_str,
+        "phicnoNotApplicable": doctor.get("phicnoNotApplicable", False),
+        "oecbPFCharges": doctor.get("oecbPFCharges"),
+        "id": doctor["id"],
+        "version": doctor.get("version", 0),
+        "createdById": doctor.get("createdById"),
+        "createdBy": doctor.get("createdBy"),
+        "dateCreated": doctor.get("dateCreated"),
+        "updatedById": doctor.get("updatedById", 0),
+        "updatedBy": doctor.get("updatedBy"),
+        "dateUpdated": doctor.get("dateUpdated"),
+        "admissionDate": admission_date_str,
+        "dischargeDate": discharge_date_str,
+        "phiccf2id": claim_id,
+        "Accredited": "YES" if is_accredited else "NO",
+        "webServiceOff": False,
+    }
+    return _put("/api/PHICDoctor/EditPHICDoctorInfo", json_body=payload)
+
+
 def delete_doctor(doctor_id):
     """Remove one claim doctor; endpoint and doctorId query confirmed by HAR."""
     return _delete(
