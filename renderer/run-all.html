@@ -25,13 +25,22 @@
   .steps li { display:flex; align-items:center; gap:9px; min-width:0; padding:12px; color:var(--text-sec); background:var(--bg-card); font-size:11px; }
   .steps li+li { border-left:1px solid var(--border); }
   .steps b { display:grid; place-items:center; width:22px; height:22px; flex:none; border-radius:50%; color:var(--accent); background:var(--accent-soft); font-size:10px; }
+  .flow-label { display:block; color:var(--text-pri); font-weight:750; }
+  .flow-detail { display:block; margin-top:3px; color:var(--text-sec); font-size:10px; line-height:1.4; }
   .instructions { margin:0 0 20px; padding:14px 16px; border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:var(--radius-md); background:var(--bg-card); }
   .instructions strong { display:block; margin-bottom:7px; font-size:12px; }
   .instructions ol { display:grid; gap:5px; margin:0; padding-left:18px; color:var(--text-sec); font-size:11px; line-height:1.55; }
+  .instructions li { padding-left:2px; }
+  .result-help { margin:5px 0 14px; color:var(--text-sec); font-size:11px; line-height:1.5; }
   .upload-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
   .upload-card { min-width:0; display:flex; flex-direction:column; gap:10px; padding:16px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--bg-card); }
   .upload-title,.field label { color:var(--text-pri); font-size:12px; font-weight:750; }
   .upload-card small,.field small { color:var(--text-sec); font-size:10.5px; line-height:1.5; }
+  .optional-step { display:flex; align-items:flex-start; gap:11px; margin-top:14px; padding:13px 15px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); cursor:pointer; transition:border-color .15s ease,background .15s ease; }
+  .optional-step:hover,.optional-step:focus-within { border-color:var(--accent); background:var(--accent-soft); }
+  .optional-step input { width:17px; height:17px; flex:none; margin:1px 0 0; accent-color:var(--accent); }
+  .optional-step strong { display:block; color:var(--text-pri); font-size:11px; }
+  .optional-step small { display:block; margin-top:3px; color:var(--text-sec); font-size:10px; line-height:1.45; }
   .picker-row { display:flex; align-items:center; gap:11px; min-width:0; }
   .file-input { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; clip-path:inset(50%); border:0; }
   .picker-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; flex:none; padding:0 13px; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-md); font:700 11px var(--font-ui); cursor:pointer; transition:border-color .15s ease,background .15s ease; }
@@ -100,17 +109,18 @@
 <body>
 <main class="page">
   <header class="page-header">
-    <div><span class="eyebrow">Claims operations · sequential automation</span><h1>Run All</h1><p>Prepare CF2, attach the matching SOA, and generate CF4 for each patient in one guided run.</p></div>
-    <span class="saved-settings">CF4 settings · saved values or app defaults</span>
+    <div><span class="eyebrow">Claims operations · sequential automation</span><h1>Run All</h1><p>For each completed workbook row, Run All creates a CF2 draft, uploads its matched SOA, optionally generates the eSOA in Beacon, then encodes CF4 details. Patients are processed one at a time.</p></div>
+    <span class="saved-settings">CF4 configuration · saved values or app defaults</span>
   </header>
   <form id="runForm" class="panel">
-    <div class="panel-heading"><span class="step-number">01</span><div><h2>Prepare your run</h2><p>Upload the workbook and the complete set of patient SOA files.</p></div></div>
-    <ol class="steps" aria-label="Automation sequence"><li><b>1</b><span>Create CF2 draft</span></li><li><b>2</b><span>Upload matching SOA</span></li><li><b>3</b><span>Generate CF4</span></li></ol>
-    <aside class="instructions" aria-label="Important file instructions"><strong>Before you start</strong><ol><li>Use the <b>New Draft CF2 Excel template</b> and include one completed patient row for every claim.</li><li>Select exactly <b>one SOA Excel file per completed patient row</b>. The totals must match; blank workbook rows do not count.</li><li>Name SOA files surname first, followed by the first name, for example <b>ABAO ALLEN</b>. A surname-only name such as <b>ABAO</b> works only when it identifies one patient. Comma-formatted workbook names are normalized during preflight.</li><li>For repeated surnames, use an initial when initials differ (<b>ABAO A</b> or <b>ABAO B</b>); if initials are the same, use each full first name. A treatment date or day can also help distinguish files, for example <b>ABAO AUG 13-15</b> or <b>ABAO 15</b>. Each filename must match only one patient.</li><li>Set the claim month and year used to interpret treatment dates. Confirm your saved CF4 settings are correct before starting.</li><li>Run All creates drafts and encodes claim data. It does not transmit claims to PhilHealth.</li></ol></aside>
+    <div class="panel-heading"><span class="step-number">01</span><div><h2>Set up your run</h2><p>Choose the source files, confirm the claim period, and review the matching rules before you start.</p></div></div>
+    <ol class="steps" aria-label="Run All user flow"><li><b>1</b><span><span class="flow-label">Select files</span><span class="flow-detail">One New Draft workbook and one SOA per patient</span></span></li><li><b>2</b><span><span class="flow-label">Set claim details</span><span class="flow-detail">Choose month and year; billing details are optional</span></span></li><li><b>3</b><span><span class="flow-label">Run and review</span><span class="flow-detail">Preflight, draft, SOA upload, optional eSOA, then CF4</span></span></li></ol>
+    <aside class="instructions" aria-label="Run preparation and matching guide"><strong>File matching checklist</strong><ol><li>Use the <b>New Draft CF2 Excel template</b> and include one completed patient row for each claim. Blank rows are ignored.</li><li>Select exactly <b>one SOA spreadsheet per completed patient row</b>. The file count must match the row count.</li><li>Name each SOA so it clearly identifies the patient, preferably surname followed by first name, such as <b>ABAO ALLEN</b>. A surname alone, such as <b>ABAO</b>, works only when it identifies one patient. Comma-formatted workbook names are normalized during the check.</li><li>For patients with the same surname, add an initial or full first name. If needed, include a treatment date or day, such as <b>ABAO AUG 13-15</b> or <b>ABAO 15</b>. Every selected file must match one patient only.</li><li>Before any draft is created, Run All checks that the counts match and every patient has one unique SOA match. A missing, ambiguous, or duplicate match stops the run before processing begins.</li><li>Choose the claim month and year used to interpret treatment dates. Billing contact fields are optional. CF4 uses your saved settings, or app defaults if none are saved.</li><li>Run All creates claim drafts and encodes claim data in Beacon; it does not submit claims to PhilHealth.</li></ol></aside>
     <div class="upload-grid">
       <section class="upload-card"><div class="upload-title">CF2 workbook <span aria-hidden="true">· required</span></div><small>New Draft template · .xlsx, .xlsm, or .xls</small><div class="picker-row"><label class="picker-button" for="workbook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 14v5h14v-5"/></svg>Choose workbook</label><input class="file-input" id="workbook" name="workbook" type="file" accept=".xlsx,.xlsm,.xls" required><div class="file-meta" id="workbookMeta"><strong>No workbook selected</strong>Choose the New Draft CF2 workbook.</div></div></section>
       <section class="upload-card"><div class="upload-title">Patient SOA files <span aria-hidden="true">· required</span></div><small>Select one spreadsheet for each completed patient row · .xlsx or .xls</small><div class="picker-row"><label class="picker-button" for="soaFiles"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>Choose SOA files</label><input class="file-input" id="soaFiles" name="soa_files" type="file" accept=".xlsx,.xls" multiple required><div class="file-meta" id="soaMeta"><strong>No SOA files selected</strong>Names will be checked against the workbook.</div></div></section>
     </div>
+    <label class="optional-step" for="generateSoa"><input id="generateSoa" name="generate_soa" type="checkbox" value="true"><span><strong>Also generate and upload SOA in Beacon</strong><small>Runs the same SOA validation and generation step available in Edit Claims, after the matched SOA spreadsheet is uploaded. Leave unchecked to skip this optional step.</small></span></label>
     <section class="billing-section"><h3>Claim period and CF2 billing contact</h3><p>Billing contact fields are optional, as in the standalone CF2 workflow.</p><div class="billing-grid">
       <div class="field"><label for="claimMonth">Claim month</label><select id="claimMonth" name="claim_month"></select><small>Applied to treatment dates.</small></div>
       <div class="field"><label for="claimYear">Claim year</label><select id="claimYear" name="claim_year"></select></div>
@@ -123,7 +133,8 @@
   </form>
   <section class="panel">
     <h2>Run results</h2>
-    <div id="resultsWrap"><table><thead><tr><th>Patient</th><th>Transmittal</th><th>CF2</th><th>SOA</th><th>CF4</th><th>Details</th></tr></thead><tbody id="resultsBody"><tr><td colspan="6" class="help">No run started.</td></tr></tbody></table></div>
+    <p class="result-help">Track each patient across the workflow stages. If CF2 succeeds but an SOA upload, SOA generation, or CF4 step fails, use <b>Retry remaining stages</b> on that patient to continue without creating another draft. Stop requests take effect at a safe step boundary.</p>
+    <div id="resultsWrap"><table><thead><tr><th>Patient</th><th>Transmittal</th><th>CF2</th><th>SOA upload</th><th>SOA generation</th><th>CF4</th><th>Details</th></tr></thead><tbody id="resultsBody"><tr><td colspan="7" class="help">No run started.</td></tr></tbody></table></div>
   </section>
   <section class="panel"><h2>Activity</h2><div id="log" aria-live="polite"></div></section>
 </main>

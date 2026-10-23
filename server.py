@@ -2965,7 +2965,28 @@ def _expire_run_all_retry_state(user_id, run_id):
         shutil.rmtree(state["soa_folder"], ignore_errors=True)
 
 
-def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_settings, cf4_settings, stop_event, run_id):
+def _run_all_generate_esoa(transmittal_number):
+    facility_id = beacon_api.get_client_id()
+    transmittal = beacon_api.get_transmittal(transmittal_number, client_id=facility_id)
+    if not transmittal:
+        raise ValueError("Beacon could not find the new draft transmittal for eSOA generation.")
+    claims = beacon_api.get_claims(int(transmittal["id"])) or []
+    if isinstance(claims, dict):
+        claims = claims.get("phicClaims") or claims.get("claims") or claims.get("claimList") or []
+    if not claims:
+        raise ValueError("Beacon returned no claim for eSOA generation.")
+    claim_id = int(claims[0]["id"])
+    _require_draft_claim(int(transmittal["id"]), claim_id)
+    esoa = soa_api.get_esoa_xml(claim_id, facility_id)
+    validation = soa_api.validate_esoa(esoa)
+    if str(validation).strip() != "XML is Valid!":
+        raise ValueError(f"eSOA validation failed: {validation}")
+    generated = soa_api.generate_and_upload_esoa(claim_id, facility_id)
+    if str(generated).strip().casefold() != "true":
+        raise RuntimeError(f"Beacon returned an unsuccessful eSOA generation response: {generated}")
+
+
+def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_settings, cf4_settings, generate_soa, stop_event, run_id):
     room_token = _emit_room.set(user_room(user_id))
     results = []
     stopped = False
@@ -2991,6 +3012,7 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
                         "transmittal": "",
                         "cf2": "waiting",
                         "soa": "waiting",
+                        "esoa": "waiting" if generate_soa else "skipped",
                         "cf4": "waiting",
                         "message": "",
                     }
@@ -3013,12 +3035,16 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
                     if cf2_result.get("status") != "success" or not item["transmittal"]:
                         publish("cf2", cf2_result.get("status", "failed"), cf2_result.get("message", "CF2 did not return a transmittal."))
                         item["soa"] = item["cf4"] = "blocked"
+                        if generate_soa:
+                            item["esoa"] = "blocked"
                         continue
                     publish("cf2", "success", cf2_result.get("message", "CF2 draft completed."))
 
                     if stop_event.is_set():
                         stopped = True
                         item["soa"] = item["cf4"] = "blocked"
+                        if generate_soa:
+                            item["esoa"] = "blocked"
                         break
                     publish("soa", "running", "Uploading matched SOA")
                     soa = SOAAutomation(soa_folder=str(soa_folder))
@@ -3030,9 +3056,27 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
                     if not soa_result or soa_result.get("status") != "success":
                         message = (soa_result or {}).get("message", "SOA upload did not complete.")
                         publish("soa", (soa_result or {}).get("status", "failed"), message)
+                        if generate_soa:
+                            item["esoa"] = "blocked"
                         item["cf4"] = "blocked"
                         continue
                     publish("soa", "success", soa_result.get("message", "SOA uploaded."))
+
+                    if stop_event.is_set():
+                        stopped = True
+                        if generate_soa:
+                            item["esoa"] = "blocked"
+                        item["cf4"] = "blocked"
+                        break
+                    if generate_soa:
+                        publish("esoa", "running", "Validating, generating, and uploading eSOA in Beacon")
+                        try:
+                            _run_all_generate_esoa(item["transmittal"])
+                        except Exception as ex:
+                            publish("esoa", "failed", str(ex))
+                            item["cf4"] = "blocked"
+                            continue
+                        publish("esoa", "success", "eSOA generated and uploaded to Beacon.")
 
                     if stop_event.is_set():
                         stopped = True
@@ -3047,7 +3091,10 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
                     )
                     cf4_result = next(iter(cf4_results), None)
                     if cf4_result and cf4_result.get("status") == "SUCCESS":
-                        publish("cf4", "success", "CF4 encoded.")
+                        summary = "CF2 draft created and encoded, matched SOA uploaded, and CF4 data encoded in Beacon."
+                        if generate_soa:
+                            summary = "CF2 draft created and encoded, matched SOA uploaded, eSOA validated and uploaded in Beacon, and CF4 data encoded."
+                        publish("cf4", "success", summary)
                     else:
                         message = (cf4_result or {}).get("remarks", "CF4 generation did not complete.")
                         publish("cf4", "failed", message)
@@ -3061,7 +3108,7 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
         logger.exception(f"Run All automation failed: {ex}")
         if results:
             last = results[-1]
-            for stage in ("cf2", "soa", "cf4"):
+            for stage in ("cf2", "soa", "esoa", "cf4"):
                 if last.get(stage) == "running":
                     last[stage] = "failed"
                     last["message"] = str(ex)
@@ -3069,7 +3116,7 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
     finally:
         retryable = any(
             item.get("cf2") == "success"
-            and (item.get("soa") in ("failed", "blocked") or item.get("cf4") in ("failed", "blocked"))
+            and (item.get("soa") in ("failed", "blocked") or item.get("esoa") in ("failed", "blocked") or item.get("cf4") in ("failed", "blocked"))
             for item in results
         )
         retry_run_id = None
@@ -3079,6 +3126,7 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
                 "run_id": run_id,
                 "beacon_settings": beacon_settings,
                 "cf4_settings": cf4_settings,
+                "generate_soa": generate_soa,
                 "soa_folder": soa_folder,
                 "results": results,
             }
@@ -3127,22 +3175,37 @@ def _run_all_retry_automation(user_id, retry_state, item, start_at, stop_event):
                 else:
                     publish("soa", "success", soa_result.get("message", "SOA uploaded."))
 
-            if item.get("soa") == "success" and not stop_event.is_set():
+            if start_at == "soa" and item.get("soa") == "success" and retry_state.get("generate_soa"):
+                start_at = "esoa"
+
+            if start_at == "esoa" and not stop_event.is_set():
+                publish("esoa", "running", "Retrying eSOA validation and upload in Beacon")
+                try:
+                    _run_all_generate_esoa(transmittal)
+                    publish("esoa", "success", "eSOA generated and uploaded to Beacon.")
+                except Exception as ex:
+                    publish("esoa", "failed", str(ex))
+
+            if item.get("soa") == "success" and item.get("esoa") in ("success", "skipped") and not stop_event.is_set():
                 publish("cf4", "running", "Generating CF4 for the existing draft")
                 cf4_results = beacon_run([transmittal], auto_encode_cf4=True, cf4_data=cf4_settings, should_stop=stop_event.is_set)
                 cf4_result = next(iter(cf4_results), None)
                 if cf4_result and cf4_result.get("status") == "SUCCESS":
-                    publish("cf4", "success", "CF4 encoded.")
+                    summary = "CF2 draft created and encoded, matched SOA uploaded, and CF4 data encoded in Beacon."
+                    if retry_state.get("generate_soa"):
+                        summary = "CF2 draft created and encoded, matched SOA uploaded, eSOA validated and uploaded in Beacon, and CF4 data encoded."
+                    publish("cf4", "success", summary)
                 else:
                     publish("cf4", "failed", (cf4_result or {}).get("remarks", "CF4 generation did not complete."))
     except Exception as ex:
         logger.exception(f"Run All retry failed for {transmittal}: {ex}")
-        stage = "soa" if start_at == "soa" and item.get("soa") == "running" else "cf4"
+        stage = "soa" if start_at == "soa" and item.get("soa") == "running" else "esoa" if start_at == "esoa" and item.get("esoa") == "running" else "cf4"
         publish(stage, "failed", str(ex))
     finally:
         all_done = all(
             result.get("cf2") == "success"
             and result.get("soa") == "success"
+            and result.get("esoa") in ("success", "skipped")
             and result.get("cf4") == "success"
             for result in retry_state["results"]
         )
@@ -3261,6 +3324,7 @@ def run_all_start():
     }
     user_settings = get_or_create_user_settings(user)
     cf4_settings = {**DEFAULT_CF4_SETTINGS, **(user_settings.cf4_settings or {})}
+    generate_soa = request.form.get("generate_soa") == "true"
     stop_event = threading.Event()
     old_retry_state = _run_all_retry_states.get(user.id)
     if old_retry_state:
@@ -3269,7 +3333,7 @@ def run_all_start():
     _run_all_runs[user.id] = {"stop_event": stop_event}
     threading.Thread(
         target=_run_all_automation,
-        args=(user.id, beacon_settings, records, soa_folder_path, ar_values, cf4_settings, stop_event, run_id),
+        args=(user.id, beacon_settings, records, soa_folder_path, ar_values, cf4_settings, generate_soa, stop_event, run_id),
         daemon=True,
     ).start()
     return jsonify({"started": True, "patient_count": len(records)})
@@ -3293,6 +3357,8 @@ def run_all_retry():
         return jsonify({"error": "This claim has no completed CF2 draft to continue."}), 400
     if item.get("soa") != "success":
         start_at = "soa"
+    elif retry_state.get("generate_soa") and item.get("esoa") != "success":
+        start_at = "esoa"
     elif item.get("cf4") != "success":
         start_at = "cf4"
     else:

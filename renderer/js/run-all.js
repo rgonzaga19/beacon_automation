@@ -84,15 +84,16 @@ function escapeHtml(value) {
 function renderResults() {
   if (!results.size) return;
   resultsBody.innerHTML = [...results.values()].map((item) => {
-    const isRunning = [item.cf2, item.soa, item.cf4].includes("running");
+    const isRunning = [item.cf2, item.soa, item.esoa, item.cf4].includes("running");
     return `
     <tr class="${isRunning ? "row-running" : ""}" aria-busy="${isRunning}">
       <td>${escapeHtml(item.patient_name)}</td>
       <td>${escapeHtml(item.transmittal || "—")}</td>
       <td><span class="stage ${escapeHtml(item.cf2)}">${escapeHtml(item.cf2)}</span></td>
       <td><span class="stage ${escapeHtml(item.soa)}">${escapeHtml(item.soa)}</span></td>
+      <td><span class="stage ${escapeHtml(item.esoa || "skipped")}">${escapeHtml(item.esoa || "skipped")}</span></td>
       <td><span class="stage ${escapeHtml(item.cf4)}">${escapeHtml(item.cf4)}</span></td>
-      <td>${escapeHtml(item.message || "—")}${retryRunId && item.cf2 === "success" && (item.soa !== "success" || item.cf4 !== "success") ? `<div style="margin-top:7px"><button class="cyber-btn retry-stage" type="button" data-member-pin="${escapeHtml(item.member_pin)}" ${active ? "disabled" : ""}>Retry remaining stages</button></div>` : ""}</td>
+      <td>${escapeHtml(item.message || "—")}${retryRunId && item.cf2 === "success" && (item.soa !== "success" || !["success", "skipped"].includes(item.esoa) || item.cf4 !== "success") ? `<div style="margin-top:7px"><button class="cyber-btn retry-stage" type="button" data-member-pin="${escapeHtml(item.member_pin)}" ${active ? "disabled" : ""}>Retry remaining stages</button></div>` : ""}</td>
     </tr>`;
   }).join("");
 }
@@ -121,7 +122,7 @@ socket.on("run_all_progress", (event) => {
   if (!item) return;
   results.set(item.member_pin, item);
   renderResults();
-  statusNode.textContent = `Patient ${event.index} of ${event.total}: ${item.patient_name} — ${event.stage.toUpperCase()}`;
+  statusNode.textContent = `Patient ${event.index} of ${event.total}: ${item.patient_name} — ${event.stage === "esoa" ? "SOA generation" : event.stage.toUpperCase()}`;
 });
 socket.on("run_all_done", (event) => {
   setActive(false);
@@ -130,7 +131,7 @@ socket.on("run_all_done", (event) => {
     event.results.forEach((item) => results.set(item.member_pin, item));
     renderResults();
   }
-  const complete = [...results.values()].filter((item) => item.cf2 === "success" && item.soa === "success" && item.cf4 === "success").length;
+  const complete = [...results.values()].filter((item) => item.cf2 === "success" && item.soa === "success" && ["success", "skipped"].includes(item.esoa) && item.cf4 === "success").length;
   statusNode.textContent = event?.stopped
     ? `Stopped safely. ${complete} patient${complete === 1 ? "" : "s"} completed all stages.`
     : `Run complete. ${complete} of ${results.size} patient${results.size === 1 ? "" : "s"} completed all stages.`;
@@ -148,7 +149,7 @@ form.addEventListener("submit", async (event) => {
   errorNode.textContent = "";
   results.clear();
   retryRunId = null;
-  resultsBody.innerHTML = "<tr><td colspan=\"6\" class=\"help\">Checking files…</td></tr>";
+  resultsBody.innerHTML = "<tr><td colspan=\"7\" class=\"help\">Checking files…</td></tr>";
   logNode.replaceChildren();
   const payload = new FormData(form);
   try {
@@ -161,7 +162,7 @@ form.addEventListener("submit", async (event) => {
     appendLog(`Preflight passed for ${result.patient_count} patient(s).`);
   } catch (error) {
     setActive(false);
-    resultsBody.innerHTML = "<tr><td colspan=\"6\" class=\"help\">No run started.</td></tr>";
+    resultsBody.innerHTML = "<tr><td colspan=\"7\" class=\"help\">No run started.</td></tr>";
     errorNode.textContent = error.message || String(error);
     errorNode.style.display = "block";
     statusNode.textContent = "Could not start the run.";
