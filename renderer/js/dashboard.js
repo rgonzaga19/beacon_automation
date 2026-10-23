@@ -127,11 +127,27 @@ sidebarToggle.addEventListener("click", () => {
   sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
   sidebarToggle.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
   sidebarToggleIcon.textContent = collapsed ? "\u203a" : "\u2039";
+  if (collapsed) {
+    document.querySelectorAll("[data-sidebar-group]").forEach((toggle) => {
+      toggle.setAttribute("aria-expanded", "false");
+      document.getElementById(toggle.getAttribute("aria-controls")).hidden = true;
+    });
+  }
   window.beabots?.setWorkspaceSidebarWidth(collapsed ? 68 : 232);
 });
 
 document.querySelectorAll("[data-sidebar-group]").forEach((toggle) => {
   toggle.addEventListener("click", () => {
+    if (sidebar.classList.contains("collapsed")) {
+      sidebar.classList.remove("collapsed");
+      sidebarToggle.setAttribute("aria-expanded", "true");
+      sidebarToggle.setAttribute("aria-label", "Collapse sidebar");
+      sidebarToggleIcon.textContent = "\u2039";
+      window.beabots?.setWorkspaceSidebarWidth(232);
+      toggle.setAttribute("aria-expanded", "true");
+      document.getElementById(toggle.getAttribute("aria-controls")).hidden = false;
+      return;
+    }
     const expanded = toggle.getAttribute("aria-expanded") !== "true";
     toggle.setAttribute("aria-expanded", String(expanded));
     document.getElementById(toggle.getAttribute("aria-controls")).hidden = !expanded;
