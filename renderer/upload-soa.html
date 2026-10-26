@@ -68,6 +68,17 @@
     border:1px solid var(--border);
     border-radius:var(--radius-lg);
   }
+  .folder-section .section-label {
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .folder-section .section-label p {
+    margin: 0;
+    color: var(--text-sec);
+    font-size: 10px;
+    line-height: 1.35;
+    text-align: right;
+  }
   .section-row {
     margin: 4px 0 0 0;
     display: flex;
@@ -407,7 +418,10 @@
     </div>
 
     <div class="folder-section">
-      <div class="section-label"><span>▸ SOA FOLDER</span></div>
+      <div class="section-label">
+        <span>▸ SOA FOLDER</span>
+        <p id="soaSelectionHint" class="text-sec text-small">In the file picker: Ctrl+click to select multiple files, Shift+click for a range, or focus the file list and press Ctrl+A to select all.</p>
+      </div>
       <div class="section-row">
         <div class="folder-input-wrapper">
           <span class="icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
@@ -418,7 +432,6 @@
           BROWSE
         </button>
       </div>
-      <p id="soaSelectionHint" class="text-sec text-small">In the file picker: Ctrl+click to select multiple files, Shift+click for a range, or focus the file list and press Ctrl+A to select all.</p>
     </div>
 
     <div class="guide-modal" id="userGuideModal" hidden>
