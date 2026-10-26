@@ -29,6 +29,21 @@
     border-bottom: 1px solid var(--border);
     background:var(--bg-base);
   }
+  .page-header { justify-content: space-between; gap: 16px; }
+  .guide-button {
+    flex: none;
+    padding: 4px 0;
+    color: var(--accent);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    font: 600 12px/1.4 var(--font-ui);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  .guide-button:hover { color: var(--text-pri); background: transparent; }
+  .guide-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
   .page-header .title-block { line-height: 1.3; }
   .page-header .title {
     font-family: var(--font-ui);
@@ -81,51 +96,46 @@
   #soaFolderInput::placeholder { color: var(--text-sec); }
   #browseBtn { flex: none; min-height:36px; padding:7px 12px; display: inline-flex; align-items: center; gap: 8px; }
 
-  /* ---------- Compact file-naming guide ---------- */
+  /* ---------- File-naming guide modal ---------- */
   .soa-guide {
-    margin: var(--gap-2) var(--gap-3) 0;
-    padding: 13px 15px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--accent-soft);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    border-radius: var(--radius-md);
-  }
-  .soa-guide-title {
-    flex: none;
-    color: var(--accent);
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: .5px;
-    text-transform: uppercase;
-  }
-  .soa-guide-list {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 5px 14px;
     margin: 0;
     padding: 0;
-    list-style: none;
-    counter-reset: guide-step;
+    display: block;
+    max-height: min(65vh, 560px);
+    overflow-y: auto;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+  .guide-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(8, 12, 20, 0.62);
+  }
+  .guide-modal[hidden] { display: none; }
+  .guide-modal .modal-box { width: min(680px, 100%); max-height: 100%; display: flex; flex-direction: column; }
+  .guide-modal .modal-box h3 { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  .guide-modal-close { font:inherit; color:var(--text-sec); background:transparent; border:1px solid var(--border); border-radius:var(--radius-sm); padding:4px 9px; cursor:pointer; }
+  .soa-guide-list {
+    min-width: 0;
+    display: grid;
+    gap: 9px;
+    margin: 0;
+    padding: 0 0 0 22px;
   }
   .soa-guide-list li {
-    counter-increment: guide-step;
     color: var(--text-sec);
-    font-size: 10.5px;
-    white-space: nowrap;
+    font-size: 12px;
+    line-height: 1.5;
+    padding-left: 3px;
   }
-  .soa-guide-list li::before {
-    content: counter(guide-step) ".";
-    margin-right: 4px;
-    color: var(--accent);
-    font-weight: 800;
-  }
-  .soa-guide-list li:nth-child(9),
-  .soa-guide-list li:nth-child(9)::before {
+  .soa-guide-list li::marker { color: var(--accent); font-weight: 800; }
+  .soa-guide-list li:nth-child(9) {
     color: var(--error);
     font-weight: 800;
   }
@@ -371,13 +381,10 @@
   @media (max-width: 900px) {
     .body { flex-direction:column; overflow-y:auto; }
     .body .col:first-child, .body .col:last-child { flex:none; min-height:320px; }
-    .soa-guide { align-items:flex-start; }
   }
   @media (max-width: 620px) {
     .section-row { flex-direction:column; }
     #browseBtn { width:100%; }
-    .soa-guide { flex-direction:column; gap:7px; }
-    .soa-guide-list li { white-space:normal; }
   }
 </style>
 </head>
@@ -396,6 +403,7 @@
         <div class="title">Upload SOA</div>
         <div class="subtitle">Statement of account transmittal upload</div>
       </div>
+      <button class="cyber-btn guide-button" id="userGuideBtn" type="button" aria-haspopup="dialog" aria-controls="userGuideModal">USER GUIDE</button>
     </div>
 
     <div class="folder-section">
@@ -413,8 +421,10 @@
       <p id="soaSelectionHint" class="text-sec text-small">In the file picker: Ctrl+click to select multiple files, Shift+click for a range, or focus the file list and press Ctrl+A to select all.</p>
     </div>
 
-    <aside class="soa-guide" aria-label="SOA file naming guide">
-      <div class="soa-guide-title">User Guide</div>
+    <div class="guide-modal" id="userGuideModal" hidden>
+        <section class="modal-box" role="dialog" aria-modal="true" aria-labelledby="userGuideTitle">
+          <h3 id="userGuideTitle">SOA File Naming Guide <button class="guide-modal-close" id="closeUserGuide" type="button" aria-label="Close user guide">&times;</button></h3>
+          <div class="soa-guide" aria-label="SOA file naming guide">
       <ol class="soa-guide-list">
         <li>Create the patient SOA</li>
         <li>Name the file with the surname first, followed by the patient's first name: <strong>ABAO ALLEN</strong></li>
@@ -426,7 +436,9 @@
         <li>Do not include suffixes such as <strong>Jr.</strong>, <strong>Sr.</strong>, <strong>II</strong>, or <strong>III</strong></li>
         <li>Upload accuracy depends on the SOA Excel filename</li>
       </ol>
-    </aside>
+          </div>
+        </section>
+    </div>
 
     <div class="body">
       <div class="col">
@@ -463,5 +475,17 @@
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script src="js/common.js"></script>
   <script src="js/upload-soa.js"></script>
+  <script>
+    (() => {
+      const modal = document.getElementById("userGuideModal");
+      const openButton = document.getElementById("userGuideBtn");
+      const closeButton = document.getElementById("closeUserGuide");
+      const close = () => { modal.hidden = true; openButton.focus(); };
+      openButton.addEventListener("click", () => { modal.hidden = false; closeButton.focus(); });
+      closeButton.addEventListener("click", close);
+      modal.addEventListener("click", (event) => { if (event.target === modal) close(); });
+      document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !modal.hidden) close(); });
+    })();
+  </script>
 </body>
 </html>
