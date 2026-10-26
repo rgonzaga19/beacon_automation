@@ -3,6 +3,7 @@ const transmittalInput = document.getElementById("transmittalInput");
 const lookupButton = document.getElementById("lookupButton");
 const summary = document.getElementById("summary");
 const claimsBody = document.getElementById("claimsBody");
+const claimsSort = document.getElementById("claimsSort");
 const claimEditor = document.getElementById("claimEditor");
 const editorSubtitle = document.getElementById("editorSubtitle");
 const transmitAllButton = document.getElementById("transmitAllButton");
@@ -11,6 +12,31 @@ const finalizeAllButton = document.getElementById("finalizeAllButton");
 let activeEditClaim = null;
 let courseInWardRowIndex = 0;
 let editorDirty = false;
+
+function patientSurname(name) {
+  const normalized = String(name || "").trim().replace(/\s+/g, " ");
+  if (!normalized) return "";
+  if (normalized.includes(",")) return normalized.split(",", 1)[0].trim();
+  const parts = normalized.split(" ");
+  if (parts.length < 2) return parts[0];
+  if (["JR", "JR.", "SR", "SR.", "II", "III", "IV"].includes(parts.at(-1).toUpperCase())) parts.pop();
+  return parts.at(-1);
+}
+
+function sortClaimRows() {
+  const direction = claimsSort.value;
+  const rows = Array.from(claimsBody.querySelectorAll("tr[data-claim-row]"));
+  if (!direction) {
+    rows.sort((a, b) => Number(a.dataset.originalOrder) - Number(b.dataset.originalOrder));
+  } else {
+    const multiplier = direction === "surname-desc" ? -1 : 1;
+    rows.sort((a, b) => multiplier * a.dataset.patientSurname.localeCompare(b.dataset.patientSurname, undefined, { sensitivity: "base" })
+      || Number(a.dataset.originalOrder) - Number(b.dataset.originalOrder));
+  }
+  rows.forEach((row) => claimsBody.append(row));
+}
+
+claimsSort.addEventListener("change", sortClaimRows);
 
 function setToolbarLoading(button, loading) {
   button.classList.toggle("is-loading", loading);
@@ -33,15 +59,6 @@ const TRANSMIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentC
 const TRANSMITTED_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
 const COPY_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 const CHECK_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
-
-async function copyTextToClipboard(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
 
 function renderCourseInWardRows(entries = []) {
   const container = document.getElementById("courseInWardRows");
@@ -156,6 +173,8 @@ lookupForm.addEventListener("submit", async (event) => {
   let progressPoll = null;
 
   lookupButton.disabled = true;
+  claimsSort.disabled = true;
+  claimsSort.value = "";
   lookupButton.textContent = "SEARCHING...";
   summary.hidden = true;
   showMessage(dateMode
@@ -210,6 +229,8 @@ lookupForm.addEventListener("submit", async (event) => {
     result.claims.forEach((claim) => {
       const row = document.createElement("tr");
       row.dataset.claimRow = "";
+      row.dataset.originalOrder = String(claimsBody.children.length);
+      row.dataset.patientSurname = patientSurname(claim.patient_name);
       row.tabIndex = 0;
       row.setAttribute("aria-selected", "false");
       const actionCell = document.createElement("td");
@@ -257,7 +278,13 @@ lookupForm.addEventListener("submit", async (event) => {
         copyButton.setAttribute("aria-label", `Copy transmittal ${claim.transmittal_number}`);
         copyButton.addEventListener("click", async (event) => {
           event.stopPropagation();
-          const copied = await copyTextToClipboard(claim.transmittal_number);
+          let copied = false;
+          try {
+            await copyTextToClipboard(claim.transmittal_number);
+            copied = true;
+          } catch (error) {
+            copied = false;
+          }
           copyButton.innerHTML = copied ? CHECK_ICON_SVG : COPY_ICON_SVG;
           copyButton.title = copied ? "Copied" : "Copy failed";
           setTimeout(() => {
@@ -280,6 +307,7 @@ lookupForm.addEventListener("submit", async (event) => {
       row.append(beaconMessageCell);
       claimsBody.append(row);
     });
+    claimsSort.disabled = false;
   } catch (error) {
     showMessage(error.message || "Beacon lookup failed. Try again.", true);
   } finally {

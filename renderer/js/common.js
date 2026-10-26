@@ -95,7 +95,7 @@ function showError(title, message, opts) {
 async function copyTextToClipboard(text) {
   if (navigator.clipboard?.writeText && window.isSecureContext) {
     await navigator.clipboard.writeText(text);
-    return;
+    return true;
   }
 
   const textarea = document.createElement("textarea");
@@ -120,6 +120,7 @@ async function copyTextToClipboard(text) {
     if (!copied) {
       throw new Error("Copy command was rejected.");
     }
+    return true;
   } finally {
     document.body.removeChild(textarea);
     if (selectedRange && selection) {
