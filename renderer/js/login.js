@@ -2,10 +2,11 @@
 
 
 const loginForm = document.getElementById("loginForm");
+const loginNavButton = document.getElementById("loginNavButton");
+const usernameInput = document.getElementById("username");
 const loginBtn = document.getElementById("loginBtn");
 const submitLabel = document.getElementById("submitLabel");
 const loginStatus = document.getElementById("loginStatus");
-const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirmPassword");
 const confirmField = document.getElementById("confirmField");
@@ -19,6 +20,12 @@ const formEyebrow = document.getElementById("formEyebrow");
 const sessionNote = document.getElementById("sessionNote");
 
 let authMode = "login";
+
+loginNavButton?.addEventListener("click", (event) => {
+  event.preventDefault();
+  usernameInput?.scrollIntoView({ behavior: "smooth", block: "center" });
+  usernameInput?.focus({ preventScroll: true });
+});
 let requestInProgress = false;
 
 function clearStatus() {

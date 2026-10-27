@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Team Support | Beabots</title>
+  <title>Team Chat | Beabots</title>
   <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/theme.css">
   <style>
@@ -15,18 +15,7 @@
     h1 { margin:6px 0; font-size:clamp(23px,4vw,30px); letter-spacing:-.7px; }
     .chat-heading p { margin:0; color:var(--text-sec); font-size:12px; }
     .chat-panel { display:flex; flex:1; min-height:0; flex-direction:column; overflow:hidden; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); }
-    .support-layout { display:flex; flex:1; min-height:0; gap:12px; }
-    .thread-list { display:none; flex:0 0 220px; min-height:0; overflow:auto; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); }
-    .thread-list.visible { display:block; }
-    .thread-button { display:block; width:100%; padding:12px; color:var(--text-pri); background:transparent; border:0; border-bottom:1px solid var(--border); text-align:left; cursor:pointer; }
-    .thread-button.active { background:var(--accent-soft); }
-    .thread-button strong,.thread-button span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .thread-button strong { font-size:11px; }
-    .thread-button span { margin-top:4px; color:var(--text-sec); font-size:10px; }
-    .support-layout .chat-panel { flex:1; min-width:0; }
-    .viber-contact { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin-top:10px; color:var(--text-sec); font-size:11px; }
-    .viber-contact strong { color:var(--accent); }
-    .copy-viber { padding:5px 8px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:700 10px var(--font-ui); cursor:pointer; }
+    .chat-panel { flex:1; min-width:0; }
     .chat-status { flex:none; padding:10px 15px; color:var(--text-sec); border-bottom:1px solid var(--border); font-size:10px; }
     .chat-messages { display:flex; flex:1; min-height:0; flex-direction:column; gap:12px; overflow-y:auto; padding:17px; overscroll-behavior:contain; }
     .empty-state { margin:auto; color:var(--text-sec); font-size:12px; text-align:center; }
@@ -50,29 +39,26 @@
     .composer button { min-height:42px; padding:0 16px; color:#06121b; background:var(--accent); border:1px solid var(--accent); border-radius:var(--radius-md); font:750 11px var(--font-ui); cursor:pointer; }
     .composer button:disabled { opacity:.5; cursor:not-allowed; }
     #chatError { min-height:17px; padding:0 13px 8px; color:var(--error); font-size:10px; }
-    @media(max-width:520px) { .chat-page { padding:14px; } .chat-heading { padding-bottom:12px; } .chat-messages { padding:12px; } .message { max-width:90%; } .composer { gap:7px; padding:9px; } .composer button { padding:0 12px; } .support-layout { flex-direction:column; } .thread-list { flex:0 0 auto; max-height:130px; } }
+    @media(max-width:520px) { .chat-page { padding:14px; } .chat-heading { padding-bottom:12px; } .chat-messages { padding:12px; } .message { max-width:90%; } .composer { gap:7px; padding:9px; } .composer button { padding:0 12px; } }
   </style>
 </head>
 <body>
   <main class="chat-page">
-    <header class="chat-heading"><span class="eyebrow">Beabots support</span><h1>Team Support</h1><p>Send a private message to the admin team. Only you and admins can see this conversation.</p><div class="viber-contact">Contact admin on Viber: <strong>+63 955 684 5324</strong><button class="copy-viber" id="copyViber" type="button">Copy number</button><span id="viberStatus" role="status">Paste it into Viber search.</span></div></header>
-    <div class="support-layout">
-    <nav class="thread-list" id="threadList" aria-label="Support conversations"></nav>
-    <section class="chat-panel" aria-label="Support messages">
+    <header class="chat-heading"><span class="eyebrow">Team collaboration</span><h1>Team Chat</h1><p>Share updates and coordinate with everyone on your team. All team members can see this conversation.</p></header>
+    <section class="chat-panel" aria-label="Team chat messages">
       <div class="chat-status" id="chatStatus" aria-live="polite">Loading conversation…</div>
       <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-relevant="additions">
-        <p class="empty-state" id="emptyState">No messages yet. Send a message to get help.</p>
+        <p class="empty-state" id="emptyState">No team messages yet. Start the conversation.</p>
       </div>
       <div id="chatError" role="alert"></div>
       <div class="attachment-preview" id="attachmentPreview" hidden><img id="attachmentThumbnail" alt="Selected image preview"><span id="attachmentName"></span><button id="removeAttachment" type="button">Remove image</button></div>
       <form class="composer" id="messageForm">
         <input id="imageInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
         <button class="attach-button" id="attachButton" type="button" aria-label="Attach an image">＋ Image</button>
-        <textarea id="messageInput" maxlength="2000" rows="1" placeholder="Write a message…" aria-label="Message"></textarea>
+        <textarea id="messageInput" maxlength="2000" rows="1" placeholder="Write to your team…" aria-label="Message"></textarea>
         <button id="sendButton" type="submit">Send</button>
       </form>
     </section>
-    </div>
   </main>
   <script src="js/common.js"></script>
   <script src="js/team-chat.js"></script>

@@ -36,22 +36,17 @@ function writeChatCursors(cursors) {
 
 function updateChatUnreadIndicator() {
   if (!latestChatState || !chatReadStateKey) return;
-  const cursors = readChatCursors() || { team: latestChatState.team, support: {} };
+  const cursors = readChatCursors() || { team: latestChatState.team };
   const teamUnread = Number(latestChatState.team || 0) > Number(cursors.team || 0);
-  const latestSupport = latestChatState.support || {};
-  const readSupport = cursors.support || {};
-  const supportUnread = Object.entries(latestSupport).some(([threadId, messageId]) =>
-    Number(messageId || 0) > Number(readSupport[threadId] || 0));
-  document.getElementById("supportChatUnread").hidden = !supportUnread;
   document.getElementById("teamChatUnread").hidden = !teamUnread;
-  const unreadCount = Number(teamUnread) + Number(supportUnread);
+  const unreadCount = Number(teamUnread);
   const indicator = document.getElementById("chatUnreadIndicator");
   indicator.hidden = unreadCount === 0;
   indicator.textContent = String(unreadCount);
   indicator.setAttribute("aria-label", `${unreadCount} chat${unreadCount === 1 ? "" : "s"} with unread messages`);
   document.getElementById("accountTrigger").setAttribute(
     "aria-label",
-    `${document.getElementById("accountName").textContent || "Account"}${unreadCount ? `, ${unreadCount} chat${unreadCount === 1 ? "" : "s"} with unread messages` : ""}`
+    `${document.getElementById("accountName").textContent || "Account"}${unreadCount ? ", unread team chat messages" : ""}`
   );
 }
 
@@ -63,7 +58,7 @@ async function refreshChatUnread() {
     let cursors = readChatCursors();
     if (!cursors) {
       // Start from the current head so existing history does not appear unread on first use.
-      cursors = { team: result.team || 0, support: { ...(result.support || {}) } };
+      cursors = { team: result.team || 0 };
       writeChatCursors(cursors);
     }
     updateChatUnreadIndicator();
@@ -72,14 +67,9 @@ async function refreshChatUnread() {
 
 window.addEventListener("message", (event) => {
   if (event.origin !== location.origin || !event.data || event.data.type !== "chat-read") return;
-  const cursors = readChatCursors() || { team: 0, support: {} };
+  const cursors = readChatCursors() || { team: 0 };
   const messageId = Number(event.data.messageId || 0);
   if (event.data.channel === "team") cursors.team = Math.max(Number(cursors.team || 0), messageId);
-  if (event.data.channel === "support") {
-    cursors.support = cursors.support || {};
-    const threadId = signedInIsAdmin ? String(event.data.threadId || "") : "self";
-    if (threadId) cursors.support[threadId] = Math.max(Number(cursors.support[threadId] || 0), messageId);
-  }
   writeChatCursors(cursors);
   updateChatUnreadIndicator();
 });
@@ -176,7 +166,6 @@ const workspaceButtons = {
   autoRename: document.getElementById("btnAutoRename"),
   settings: document.getElementById("btnSettings"),
   users: document.getElementById("siteUsers"),
-  teamChat: document.getElementById("btnTeamChat"),
   teamCollab: document.getElementById("btnCollaborationChat"),
 };
 
@@ -192,10 +181,8 @@ const workspaceRoutes = {
   autoRename: "auto-rename.html",
   settings: "settings.html",
   users: "users.html",
-  teamChat: "team-chat.html",
-  teamCollab: "team-chat.html?channel=team",
+  teamCollab: "team-chat.html",
   about: "about.html",
-  agreement: "agreement.html",
 };
 const workspaceFrames = Object.fromEntries(
   [...document.querySelectorAll("[data-workspace-frame]")]
@@ -226,7 +213,7 @@ function openWorkspace(activeKey) {
   if (!route || !frame) return;
   activeWorkspaceKey = activeKey;
   closeMobileSidebar();
-  dashboardLayout.classList.toggle("claims-mode", !["about", "agreement"].includes(activeKey));
+  dashboardLayout.classList.toggle("claims-mode", activeKey !== "about");
   workspaceColumn.classList.add("workspace-active");
   Object.entries(workspaceFrames).forEach(([key, item]) => {
     item.classList.toggle("active", key === activeKey);
@@ -234,7 +221,7 @@ function openWorkspace(activeKey) {
   if (!frame.getAttribute("src")) {
     frame.src = route;
   }
-  if (activeKey === "teamChat" || activeKey === "teamCollab") {
+  if (activeKey === "teamCollab") {
     frame.contentWindow?.postMessage({ type: "chat-active" }, location.origin);
   }
   setWorkspaceActive(activeKey);
@@ -282,12 +269,11 @@ document.getElementById("siteAbout").addEventListener("click", () => {
   openWorkspace("about");
   focusAboutSection("about");
 });
-document.getElementById("siteContact").addEventListener("click", () => {
-  setTopNavigation("siteContact");
+document.getElementById("sidebarHelpButton").addEventListener("click", () => {
+  setTopNavigation("siteAbout");
   openWorkspace("about");
   focusAboutSection("contact");
 });
-
 function focusAboutSection(section) {
   const frame = workspaceFrames.about;
   const focus = () => {
@@ -295,6 +281,14 @@ function focusAboutSection(section) {
   };
   if (frame.contentDocument?.readyState === "complete" && frame.contentWindow.location.pathname.endsWith("/about.html")) focus();
   else frame.addEventListener("load", focus, { once: true });
+}
+
+function openAboutAgreement({ required = false } = {}) {
+  openWorkspace("about");
+  const frame = workspaceFrames.about;
+  const show = () => frame.contentWindow?.postMessage({ type: "open-agreement", required }, location.origin);
+  if (frame.contentDocument?.readyState === "complete" && frame.contentWindow.location.pathname.endsWith("/about.html")) show();
+  else frame.addEventListener("load", show, { once: true });
 }
 document.querySelectorAll("[data-open-tool]").forEach((button) => button.addEventListener("click", () => {
   setTopNavigation("siteClaims");
@@ -318,11 +312,6 @@ document.getElementById("editProfileButton").addEventListener("click", () => {
   });
 });
 document.getElementById("accountSettings").addEventListener("click", () => openWorkspace("settings"));
-document.getElementById("accountSupportChat").addEventListener("click", () => {
-  accountMenu.hidden = true;
-  accountTrigger.setAttribute("aria-expanded", "false");
-  openWorkspace("teamChat");
-});
 document.getElementById("accountTeamChat").addEventListener("click", () => {
   accountMenu.hidden = true;
   accountTrigger.setAttribute("aria-expanded", "false");
@@ -353,7 +342,7 @@ async function loadSignedInProfile() {
     const pendingAgreementKey = pendingAgreementEmail && `beabots-agreement-ack:${encodeURIComponent(pendingAgreementEmail)}`;
     if (pendingAgreementEmail && localStorage.getItem(pendingAgreementKey) !== "v1") {
       setTopNavigation("siteAbout");
-      openWorkspace("agreement");
+      openAboutAgreement({ required: true });
     } else if (pendingAgreementEmail) {
       sessionStorage.removeItem("beabots-agreement-pending");
     }
@@ -458,14 +447,12 @@ document.getElementById("btnFinalizeClaims").addEventListener("click", () => {
 document.getElementById("btnAutoRename").addEventListener("click", () => {
   openWorkspace("autoRename");
 });
-document.getElementById("btnTeamChat").addEventListener("click", () => {
-  openWorkspace("teamChat");
-});
 document.getElementById("btnCollaborationChat").addEventListener("click", () => {
   openWorkspace("teamCollab");
 });
 document.getElementById("siteUsers").addEventListener("click", () => {
-  setTopNavigation("siteUsers");
+  accountMenu.hidden = true;
+  accountTrigger.setAttribute("aria-expanded", "false");
   openWorkspace("users");
 });
 document.getElementById("btnSettings").addEventListener("click", () => {
@@ -651,11 +638,12 @@ if (document.readyState === "loading") {
 // Initial state
 // ---------------------------------------------------------------------------
 const initialWorkspace = window.location.hash.replace("#", "");
-if (workspaceRoutes[initialWorkspace]) {
+if (workspaceRoutes[initialWorkspace] || initialWorkspace === "agreement") {
   if (["about", "agreement", "settings"].includes(initialWorkspace)) setTopNavigation(["about", "agreement"].includes(initialWorkspace) ? "siteAbout" : "siteHome");
   else if (initialWorkspace === "users") setTopNavigation("siteUsers");
   else setTopNavigation("siteClaims");
-  openWorkspace(initialWorkspace);
+  if (initialWorkspace === "agreement") openAboutAgreement();
+  else openWorkspace(initialWorkspace);
 } else {
   setTopNavigation("siteHome");
 }

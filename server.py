@@ -36,7 +36,7 @@ from openpyxl import load_workbook
 from app.core.config import AppConfig
 from app.core.database import db
 import app.models  # noqa: F401 - imported so SQLAlchemy registers the tables
-from app.models import TeamChatMessage, TeamSupportMessage, UpgradeRequest, User, UserSetting, utc_now
+from app.models import TeamChatMessage, UpgradeRequest, User, UserSetting, utc_now
 from app.core import browser_session
 from app.core.logger import logger
 from app.core.version import APP_VERSION
@@ -312,43 +312,30 @@ def init_database():
                 db.session.execute(text(f"ALTER TABLE team_messages ADD COLUMN image_data {binary_type}"))
             if "image_mime" not in legacy_columns:
                 db.session.execute(text("ALTER TABLE team_messages ADD COLUMN image_mime VARCHAR(30)"))
-            if "support_user_id" not in legacy_columns:
-                db.session.execute(text(
-                    "ALTER TABLE team_messages ADD COLUMN support_user_id INTEGER "
-                    "REFERENCES users(id) ON DELETE CASCADE"
-                ))
             if "channel" not in legacy_columns:
                 db.session.execute(text(
-                    "ALTER TABLE team_messages ADD COLUMN channel VARCHAR(20) NOT NULL DEFAULT 'support'"
+                    "ALTER TABLE team_messages ADD COLUMN channel VARCHAR(20) NOT NULL DEFAULT ''"
                 ))
             db.session.commit()
 
             legacy_rows = db.session.execute(text(
-                "SELECT id, sender_id, support_user_id, sender_name, body, image_data, image_mime, created_at, channel "
+                "SELECT id, sender_id, sender_name, body, image_data, image_mime, created_at, channel "
                 "FROM team_messages"
             ).columns(created_at=DateTime(timezone=True))).mappings().all()
             for row in legacy_rows:
-                if row["channel"] == "team":
-                    if not db.session.get(TeamChatMessage, row["id"]):
-                        db.session.add(TeamChatMessage(
-                            id=row["id"], sender_id=row["sender_id"], sender_name=row["sender_name"],
-                            body=row["body"], image_data=row["image_data"], image_mime=row["image_mime"],
-                            created_at=row["created_at"],
-                        ))
-                elif row["support_user_id"] is not None and not db.session.get(TeamSupportMessage, row["id"]):
-                    db.session.add(TeamSupportMessage(
-                        id=row["id"], sender_id=row["sender_id"], support_user_id=row["support_user_id"],
-                        sender_name=row["sender_name"], body=row["body"], image_data=row["image_data"],
-                        image_mime=row["image_mime"], created_at=row["created_at"],
+                if row["channel"] == "team" and not db.session.get(TeamChatMessage, row["id"]):
+                    db.session.add(TeamChatMessage(
+                        id=row["id"], sender_id=row["sender_id"], sender_name=row["sender_name"],
+                        body=row["body"], image_data=row["image_data"], image_mime=row["image_mime"],
+                        created_at=row["created_at"],
                     ))
             db.session.commit()
             if db.engine.dialect.name == "postgresql":
-                for table in ("team_support", "team_chat"):
-                    db.session.execute(text(
-                        "SELECT setval(pg_get_serial_sequence(:table_name, 'id'), "
-                        "COALESCE((SELECT MAX(id) FROM " + table + "), 1), "
-                        "EXISTS(SELECT 1 FROM " + table + "))"
-                    ), {"table_name": table})
+                db.session.execute(text(
+                    "SELECT setval(pg_get_serial_sequence('team_chat', 'id'), "
+                    "COALESCE((SELECT MAX(id) FROM team_chat), 1), "
+                    "EXISTS(SELECT 1 FROM team_chat))"
+                ))
                 db.session.commit()
             db.session.execute(text("DROP TABLE team_messages"))
             db.session.commit()
@@ -656,164 +643,7 @@ def chat_latest_ids():
     latest_team_id = db.session.query(func.max(TeamChatMessage.id)).filter(
         or_(TeamChatMessage.sender_id.is_(None), TeamChatMessage.sender_id != user.id),
     ).scalar() or 0
-    if user.is_admin:
-        support_rows = db.session.query(
-            TeamSupportMessage.support_user_id,
-            func.max(TeamSupportMessage.id),
-        ).filter(
-            TeamSupportMessage.support_user_id.isnot(None),
-            or_(TeamSupportMessage.sender_id.is_(None), TeamSupportMessage.sender_id != user.id),
-        ).group_by(TeamSupportMessage.support_user_id).all()
-        support = {str(thread_user_id): message_id for thread_user_id, message_id in support_rows}
-    else:
-        latest_support_id = db.session.query(func.max(TeamSupportMessage.id)).filter(
-            TeamSupportMessage.support_user_id == user.id,
-            or_(TeamSupportMessage.sender_id.is_(None), TeamSupportMessage.sender_id != user.id),
-        ).scalar() or 0
-        support = {"self": latest_support_id}
-    return jsonify({"team": latest_team_id, "support": support})
-
-
-@app.route("/api/support/threads", methods=["GET"])
-@admin_required
-def support_list_threads():
-    latest = db.session.query(
-        TeamSupportMessage.support_user_id.label("user_id"),
-        func.max(TeamSupportMessage.id).label("message_id"),
-    ).filter(TeamSupportMessage.support_user_id.isnot(None)).group_by(TeamSupportMessage.support_user_id).subquery()
-    rows = db.session.query(User, TeamSupportMessage).join(latest, latest.c.user_id == User.id).join(
-        TeamSupportMessage, TeamSupportMessage.id == latest.c.message_id
-    ).order_by(TeamSupportMessage.id.desc()).all()
-    return jsonify({"threads": [{
-        "user_id": user.id,
-        "user_name": user.display_name or user.profile_name or user.email,
-        "last_message": message.body or ("Image attachment" if message.image_mime else ""),
-        "updated_at": message.created_at.isoformat() if message.created_at else None,
-    } for user, message in rows]})
-
-
-@app.route("/api/support/messages", methods=["GET"])
-@login_required
-def support_list_messages():
-    user = current_user()
-    target_id = request.args.get("user_id", type=int) if user.is_admin else user.id
-    if not target_id:
-        return jsonify({"error": "Choose a support conversation."}), 400
-    if user.is_admin and not db.session.get(User, target_id):
-        return jsonify({"error": "Support conversation not found."}), 404
-    after_id = request.args.get("after_id", type=int)
-    if after_id is not None and after_id < 0:
-        return jsonify({"error": "Invalid message cursor."}), 400
-
-    query = TeamSupportMessage.query.options(load_only(
-        TeamSupportMessage.id,
-        TeamSupportMessage.sender_id,
-        TeamSupportMessage.support_user_id,
-        TeamSupportMessage.sender_name,
-        TeamSupportMessage.body,
-        TeamSupportMessage.image_mime,
-        TeamSupportMessage.created_at,
-    )).filter(TeamSupportMessage.support_user_id == target_id)
-    if after_id:
-        messages = query.filter(TeamSupportMessage.id > after_id).order_by(TeamSupportMessage.id.asc()).limit(100).all()
-    else:
-        messages = query.order_by(TeamSupportMessage.id.desc()).limit(100).all()
-        messages.reverse()
-
-    return jsonify({"current_user_id": user.id, "support_user_id": target_id, "messages": [{
-        "id": message.id,
-        "sender_id": message.sender_id,
-        "sender_name": message.sender_name,
-        "body": message.body,
-        "has_image": bool(message.image_mime),
-        "created_at": message.created_at.isoformat() if message.created_at else None,
-    } for message in messages]})
-
-
-@app.route("/api/support/messages", methods=["POST"])
-@login_required
-def support_send_message():
-    user = current_user()
-    target_id = request.form.get("user_id", type=int) if request.mimetype == "multipart/form-data" else None
-    if user.is_admin:
-        if target_id is None:
-            data = request.get_json(silent=True) or {}
-            target_id = data.get("user_id")
-        try:
-            target_id = int(target_id)
-        except (TypeError, ValueError):
-            return jsonify({"error": "Choose a support conversation."}), 400
-        if not db.session.get(User, target_id):
-            return jsonify({"error": "Support conversation not found."}), 404
-    else:
-        target_id = user.id
-    if request.mimetype == "multipart/form-data":
-        body = str(request.form.get("body") or "").strip()
-        uploaded_image = request.files.get("image")
-    else:
-        data = request.get_json(silent=True) or {}
-        body = str(data.get("body") or "").strip()
-        uploaded_image = None
-
-    image_data = None
-    image_mime = None
-    if uploaded_image and uploaded_image.filename:
-        image_data = uploaded_image.stream.read(5 * 1024 * 1024 + 1)
-        if len(image_data) > 5 * 1024 * 1024:
-            return jsonify({"error": "Images must be 5 MB or smaller."}), 413
-        if image_data.startswith(b"\x89PNG\r\n\x1a\n"):
-            image_mime = "image/png"
-        elif image_data.startswith(b"\xff\xd8\xff"):
-            image_mime = "image/jpeg"
-        elif image_data.startswith((b"GIF87a", b"GIF89a")):
-            image_mime = "image/gif"
-        elif len(image_data) >= 12 and image_data[:4] == b"RIFF" and image_data[8:12] == b"WEBP":
-            image_mime = "image/webp"
-        else:
-            return jsonify({"error": "Choose a valid PNG, JPEG, GIF, or WebP image."}), 400
-    if not body and not image_data:
-        return jsonify({"error": "Write a message or attach an image before sending."}), 400
-    if len(body) > 2000:
-        return jsonify({"error": "Messages must be 2,000 characters or fewer."}), 400
-
-    message = TeamSupportMessage(
-        sender_id=user.id,
-        support_user_id=target_id,
-        sender_name=user.display_name or user.profile_name or user.email,
-        body=body,
-        image_data=image_data,
-        image_mime=image_mime,
-    )
-    db.session.add(message)
-    db.session.commit()
-    return jsonify({
-        "id": message.id,
-        "sender_id": message.sender_id,
-        "sender_name": message.sender_name,
-        "body": message.body,
-        "has_image": bool(message.image_mime),
-        "created_at": message.created_at.isoformat() if message.created_at else None,
-    }), 201
-
-
-@app.route("/api/support/messages/<int:message_id>/image", methods=["GET"])
-@login_required
-def support_get_image(message_id):
-    message = db.session.get(TeamSupportMessage, message_id)
-    user = current_user()
-    if (not message or not message.support_user_id
-            or (not user.is_admin and message.support_user_id != user.id)
-            or not message.image_data or not message.image_mime):
-        return jsonify({"error": "Image not found."}), 404
-    response = send_file(
-        BytesIO(message.image_data),
-        mimetype=message.image_mime,
-        as_attachment=False,
-        download_name=f"team-chat-image-{message.id}",
-    )
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Cache-Control"] = "private, no-store"
-    return response
+    return jsonify({"team": latest_team_id})
 
 
 @app.route("/api/team/messages", methods=["GET"])
