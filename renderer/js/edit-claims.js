@@ -833,6 +833,37 @@ function showGenerateCf4AllConfirm(claimCount, onConfirm) {
   document.getElementById("generateCf4AllCancelBtn").focus();
 }
 
+function showGenerateSoaAllConfirm(claimCount, onConfirm) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Batch SOA Generation</h3>
+        <p>Generate and upload SOA for ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time?</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="generateSoaAllCancelBtn" type="button">CANCEL</button>
+          <button class="cyber-btn danger" id="generateSoaAllConfirmBtn" type="button">YES, GENERATE BATCH</button>
+        </div>
+      </div>
+    </div>`;
+  function close() {
+    closeTransmitAllConfirm(onKey);
+  }
+  function onKey(event) {
+    if (event.key === "Escape") close();
+  }
+  document.getElementById("generateSoaAllCancelBtn").addEventListener("click", close);
+  document.getElementById("generateSoaAllConfirmBtn").addEventListener("click", () => {
+    close();
+    onConfirm();
+  });
+  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.getElementById("generateSoaAllCancelBtn").focus();
+}
+
 async function runGenerateCf4All() {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
@@ -875,6 +906,55 @@ async function runGenerateCf4All() {
     setToolbarLoading(button, false);
     button.disabled = false;
     button.textContent = "GENERATE CF4";
+    document.getElementById("removeSoaAllButton").disabled = false;
+    document.getElementById("removeGeneratedSoaAllButton").disabled = false;
+    transmitAllButton.disabled = false;
+    unlockToolbar();
+  }
+}
+
+async function runGenerateSoaAll() {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for SOA generation.", true);
+    return;
+  }
+
+  const button = document.getElementById("generateSoaAllButton");
+  const unlockToolbar = lockClaimsToolbar(button);
+  let generated = 0;
+  let failed = 0;
+  button.disabled = true;
+  document.getElementById("removeSoaAllButton").disabled = true;
+  document.getElementById("removeGeneratedSoaAllButton").disabled = true;
+  transmitAllButton.disabled = true;
+  button.textContent = "GENERATING SOA...";
+  setToolbarLoading(button, true);
+  try {
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const claimAction = row.querySelector('[data-action="edit-claim"]');
+      const { transmittalId, claimId } = claimAction.dataset;
+      setTransmitAllStatus(`Generating SOA ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
+      try {
+        await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/soa/generate`, {
+          method: "POST",
+          body: JSON.stringify({}),
+        });
+        setBeaconMessage(row, "SOA generated in Beacon.");
+        generated += 1;
+      } catch (error) {
+        setBeaconMessage(row, `SOA generation failed: ${error.message}`, true);
+        failed += 1;
+      }
+    }
+    setTransmitAllStatus(failed
+      ? `SOA generated for ${generated} claim${generated === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
+      : `SOA generated for all ${generated} draft claim${generated === 1 ? "" : "s"}.`, failed > 0);
+  } finally {
+    setToolbarLoading(button, false);
+    button.disabled = false;
+    button.textContent = "GENERATE SOA";
     document.getElementById("removeSoaAllButton").disabled = false;
     document.getElementById("removeGeneratedSoaAllButton").disabled = false;
     transmitAllButton.disabled = false;
@@ -1324,6 +1404,15 @@ document.getElementById("generateCf4AllButton").addEventListener("click", () => 
     return;
   }
   showGenerateCf4AllConfirm(rows.length, runGenerateCf4All);
+});
+
+document.getElementById("generateSoaAllButton").addEventListener("click", () => {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for SOA generation.", true);
+    return;
+  }
+  showGenerateSoaAllConfirm(rows.length, runGenerateSoaAll);
 });
 
 document.getElementById("changeArAllButton").addEventListener("click", () => {
