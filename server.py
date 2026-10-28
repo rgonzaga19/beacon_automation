@@ -36,7 +36,7 @@ from openpyxl import load_workbook
 from app.core.config import AppConfig
 from app.core.database import db
 import app.models  # noqa: F401 - imported so SQLAlchemy registers the tables
-from app.models import TeamChatMessage, UpgradeRequest, User, UserSetting, utc_now
+from app.models import AutomationRun, TeamChatMessage, UpgradeRequest, User, UserSetting, utc_now
 from app.core import browser_session
 from app.core.logger import logger
 from app.core.version import APP_VERSION
@@ -93,6 +93,9 @@ _document_runs = {}
 _beacon_runs = {}
 _run_all_runs = {}
 _run_all_retry_states = {}
+_dashboard_socket_lock = threading.RLock()
+_dashboard_sockets = {}
+_server_started_at = utc_now()
 _job_start_lock = threading.RLock()
 def serialize_job_start(fn):
     @wraps(fn)
@@ -282,6 +285,68 @@ def socket_connected():
     user_id = session.get("user_id")
     if user_id:
         join_room(user_room(user_id))
+        with _dashboard_socket_lock:
+            _dashboard_sockets[request.sid] = user_id
+        socketio.emit("dashboard_presence_update", {"online_users": _online_user_count()})
+
+
+@socketio.on("disconnect")
+def socket_disconnected():
+    with _dashboard_socket_lock:
+        _dashboard_sockets.pop(request.sid, None)
+    socketio.emit("dashboard_presence_update", {"online_users": _online_user_count()})
+
+
+def _online_user_count():
+    with _dashboard_socket_lock:
+        return len(set(_dashboard_sockets.values()))
+
+
+def _record_automation_run(user_id, workflow, started_at, status, item_count):
+    """Persist a compact run summary; no claim identifiers or patient data."""
+    finished_at = utc_now()
+    duration = max(0, int((finished_at - started_at).total_seconds()))
+    try:
+        with app.app_context():
+            try:
+                db.session.add(AutomationRun(
+                    workflow=workflow,
+                    status=status,
+                    item_count=max(0, int(item_count or 0)),
+                    duration_seconds=duration,
+                    started_at=started_at,
+                    finished_at=finished_at,
+                ))
+                db.session.flush()
+                # Keep a bounded history so this remains a small, predictable table.
+                old_ids = db.session.query(AutomationRun.id).order_by(
+                    AutomationRun.finished_at.desc(), AutomationRun.id.desc()
+                ).offset(500).subquery()
+                db.session.query(AutomationRun).filter(AutomationRun.id.in_(old_ids)).delete(synchronize_session=False)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                raise
+    except Exception:
+        logger.exception("Could not save dashboard automation history for user %s", user_id)
+
+
+def _automation_outcome(results, stopped=False, failed=False):
+    if stopped:
+        return "stopped"
+    if failed:
+        return "partial" if results else "failed"
+    values = []
+    for item in results or []:
+        if not isinstance(item, dict):
+            continue
+        values.extend(str(value).lower() for key, value in item.items()
+                      if key == "status" or key in {"cf2", "soa", "esoa", "cf4"})
+    failures = sum(value in {"failed", "failure", "error"} for value in values)
+    successes = sum(value in {"success", "completed", "complete"} for value in values)
+    if failures:
+        return "partial" if successes else "failed"
+    return "completed"
 
 
 def init_database():
@@ -381,6 +446,50 @@ def login_required(handler):
         return handler(*args, **kwargs)
 
     return wrapper
+
+
+@app.route("/api/dashboard/metrics", methods=["GET"])
+@login_required
+def dashboard_metrics():
+    now = utc_now()
+    since_30_days = now - timedelta(days=30)
+    recent = AutomationRun.query.filter(AutomationRun.finished_at >= since_30_days).order_by(
+        AutomationRun.finished_at.desc(), AutomationRun.id.desc()
+    ).all()
+    daily = {}
+    workflows = {}
+    statuses = {"completed": 0, "partial": 0, "stopped": 0, "failed": 0}
+    for offset in range(7):
+        day = (now.date() - timedelta(days=6 - offset)).isoformat()
+        daily[day] = 0
+    for run in recent:
+        day = run.finished_at.date().isoformat()
+        if day in daily:
+            daily[day] += 1
+        workflows[run.workflow] = workflows.get(run.workflow, 0) + 1
+        statuses[run.status if run.status in statuses else "failed"] += 1
+    recent_runs = [
+        {
+            "workflow": run.workflow,
+            "status": run.status,
+            "item_count": run.item_count,
+            "duration_seconds": run.duration_seconds,
+            "finished_at": run.finished_at.isoformat(),
+        }
+        for run in AutomationRun.query.order_by(AutomationRun.finished_at.desc(), AutomationRun.id.desc()).limit(12)
+    ]
+    total = len(recent)
+    successful = statuses["completed"]
+    return jsonify({
+        "server_uptime_seconds": max(0, int((now - _server_started_at).total_seconds())),
+        "online_users": _online_user_count(),
+        "runs_30_days": total,
+        "success_rate": round((successful / total) * 100) if total else None,
+        "daily_runs": [{"date": day, "count": count} for day, count in daily.items()],
+        "workflow_runs": [{"workflow": key, "count": value} for key, value in sorted(workflows.items())],
+        "statuses": statuses,
+        "recent_runs": recent_runs,
+    })
 
 
 def admin_required(handler):
@@ -2246,8 +2355,10 @@ def cf2_download_template():
 # instead of log_box.after(...).
 # ---------------------------------------------------------------------------
 def _run_cf2_automation(user_id, beacon_settings, state, stop_event):
+    run_started_at = utc_now()
     automation = None
     stopped = False
+    failed = False
     room_token = _emit_room.set(user_room(user_id))
     try:
         records = state["patient_records"]
@@ -2334,6 +2445,7 @@ def _run_cf2_automation(user_id, beacon_settings, state, stop_event):
                     })
                     break
     except Exception as ex:
+        failed = True
         emit_to_current_room("log", {"message": f"ERROR: {ex}", "level": "ERROR"})
     finally:
         if automation is not None:
@@ -2346,6 +2458,7 @@ def _run_cf2_automation(user_id, beacon_settings, state, stop_event):
                 })
 
         results = automation.get_summary() if automation is not None else []
+        _record_automation_run(user_id, "CF2", run_started_at, _automation_outcome(results, stopped, failed), len(results))
         _cf2_runs.pop(user_id, None)
         emit_to_current_room("cf2_done", {"results": results, "stopped": stopped})
         _emit_room.reset(room_token)
@@ -2399,8 +2512,10 @@ def cf2_stop():
 # this runs.
 # ---------------------------------------------------------------------------
 def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop_event):
+    run_started_at = utc_now()
     soa_automation = None
     stopped = False
+    failed = False
     room_token = _emit_room.set(user_room(user_id))
     emit_to_current_room("soa_progress", {"status": "running"})
     try:
@@ -2414,9 +2529,11 @@ def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop
             soa_automation.run(transmittals, should_stop=stop_event.is_set)
             stopped = stop_event.is_set()
     except Exception as ex:
+        failed = True
         emit_to_current_room("log", {"message": f"FATAL ERROR: {ex}", "level": "ERROR"})
     finally:
         results = soa_automation.get_results() if soa_automation is not None else []
+        _record_automation_run(user_id, "SOA Upload", run_started_at, _automation_outcome(results, stopped, failed), len(results))
         shutil.rmtree(soa_folder, ignore_errors=True)
         _soa_runs.pop(user_id, None)
         emit_to_current_room("soa_done", {"results": results, "stopped": stopped})
@@ -2424,9 +2541,11 @@ def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop
 
 
 def _run_document_automation(user_id, beacon_settings, files_root, relative_paths, transmittals, stop_event):
+    run_started_at = utc_now()
     room_token = _emit_room.set(user_room(user_id))
     socketio.emit("documents_progress", {"status": "running"}, room=user_room(user_id))
     results = []
+    failed = False
     try:
         auth_key = browser_session.auth_context_key(beacon_settings, user_key=f"user:{user_id}")
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
@@ -2598,8 +2717,10 @@ def _run_document_automation(user_id, beacon_settings, files_root, relative_path
                     socketio.emit("documents_log", {"message": f"{number}: {exc}", "level": "ERROR"}, room=user_room(user_id))
                 results.append(result)
     except Exception as exc:
+        failed = True
         socketio.emit("documents_log", {"message": f"FATAL ERROR: {exc}", "level": "ERROR"}, room=user_room(user_id))
     finally:
+        _record_automation_run(user_id, "Document Upload", run_started_at, _automation_outcome(results, stop_event.is_set(), failed), len(results))
         shutil.rmtree(files_root, ignore_errors=True)
         _document_runs.pop(user_id, None)
         socketio.emit("documents_done", {"results": results, "stopped": stop_event.is_set()}, room=user_room(user_id))
@@ -2727,7 +2848,9 @@ def soa_stop():
 # run against a plain list of transmittals.
 # ---------------------------------------------------------------------------
 def _run_beacon_automation(user_id, beacon_settings, transmittals, auto_encode_cf4, cf4_settings, stop_event):
+    run_started_at = utc_now()
     stopped = False
+    failed = False
     results = []
     room_token = _emit_room.set(user_room(user_id))
     emit_to_current_room("beacon_progress", {"status": "running"})
@@ -2746,8 +2869,10 @@ def _run_beacon_automation(user_id, beacon_settings, transmittals, auto_encode_c
             )
             stopped = stop_event.is_set()
     except Exception as ex:
+        failed = True
         emit_to_current_room("log", {"message": f"ERROR: {ex}", "level": "ERROR"})
     finally:
+        _record_automation_run(user_id, "CF4", run_started_at, _automation_outcome(results, stopped, failed), len(results))
         _beacon_runs.pop(user_id, None)
         emit_to_current_room("beacon_done", {"results": results, "stopped": stopped})
         _emit_room.reset(room_token)
@@ -2828,9 +2953,11 @@ def _run_all_generate_esoa(transmittal_number):
 
 
 def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_settings, cf4_settings, generate_soa, stop_event, run_id):
+    run_started_at = utc_now()
     room_token = _emit_room.set(user_room(user_id))
     results = []
     stopped = False
+    failed = False
     auth_key = browser_session.auth_context_key(beacon_settings, user_key=f"user:{user_id}")
     try:
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
@@ -2946,6 +3073,7 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
             finally:
                 cf2.close()
     except Exception as ex:
+        failed = True
         logger.exception(f"Run All automation failed: {ex}")
         if results:
             last = results[-1]
@@ -2977,11 +3105,13 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
         else:
             shutil.rmtree(soa_folder, ignore_errors=True)
         _run_all_runs.pop(user_id, None)
+        _record_automation_run(user_id, "Full Workflow", run_started_at, _automation_outcome(results, stopped, failed), len(results))
         emit_to_current_room("run_all_done", {"results": results, "stopped": stopped, "retry_run_id": retry_run_id})
         _emit_room.reset(room_token)
 
 
 def _run_all_retry_automation(user_id, retry_state, item, start_at, stop_event):
+    run_started_at = utc_now()
     room_token = _emit_room.set(user_room(user_id))
     run_id = retry_state["run_id"]
     transmittal = item["transmittal"]
@@ -3053,6 +3183,7 @@ def _run_all_retry_automation(user_id, retry_state, item, start_at, stop_event):
         if all_done:
             _expire_run_all_retry_state(user_id, run_id)
         _run_all_runs.pop(user_id, None)
+        _record_automation_run(user_id, "Full Workflow Retry", run_started_at, _automation_outcome([item], stop_event.is_set()), 1)
         emit_to_current_room("run_all_done", {
             "results": retry_state["results"],
             "stopped": stop_event.is_set(),

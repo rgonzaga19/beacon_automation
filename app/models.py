@@ -90,3 +90,15 @@ class TeamChatMessage(db.Model):
     image_data = db.Column(db.LargeBinary, nullable=True)
     image_mime = db.Column(db.String(30), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now, index=True)
+
+
+class AutomationRun(db.Model):
+    __tablename__ = "automation_runs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    workflow = db.Column(db.String(40), nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, index=True)
+    item_count = db.Column(db.Integer, nullable=False, default=0)
+    duration_seconds = db.Column(db.Integer, nullable=False, default=0)
+    started_at = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
+    finished_at = db.Column(db.DateTime(timezone=True), nullable=False)

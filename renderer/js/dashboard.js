@@ -21,6 +21,137 @@ let activeWorkspaceKey = null;
 let signedInIsAdmin = false;
 let chatReadStateKey = null;
 let latestChatState = null;
+let dashboardUptimeSeconds = null;
+let dashboardUptimeClock = 0;
+
+function formatUptime(totalSeconds) {
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  return days ? `${days}d ${hours}h` : hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
+function formatDuration(totalSeconds) {
+  const seconds = Math.max(0, Number(totalSeconds) || 0);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${seconds % 60}s`;
+}
+
+function metricDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function escapeMetricText(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+}
+
+function renderDailyRunsChart(days = []) {
+  const root = document.getElementById("dailyRunsChart");
+  if (!days.some((day) => day.count)) {
+    root.innerHTML = '<div class="activity-empty">Run history will appear here after your next automation.</div>';
+    return;
+  }
+  const values = days.map((day) => Number(day.count) || 0);
+  const max = Math.max(1, ...values);
+  const width = 600, height = 150, left = 30, right = 14, top = 10, bottom = 30;
+  const chartHeight = height - top - bottom;
+  const points = values.map((value, index) => ({
+    x: left + index * ((width - left - right) / Math.max(1, values.length - 1)),
+    y: top + chartHeight - (value / max) * chartHeight,
+  }));
+  const line = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const area = `${left},${top + chartHeight} ${line} ${points.at(-1).x},${top + chartHeight}`;
+  const grid = [0, 1, 2].map((step) => {
+    const y = top + step * (chartHeight / 2);
+    const label = Math.ceil(max * (1 - step / 2));
+    return `<line class="gridline" x1="${left}" y1="${y}" x2="${width - right}" y2="${y}"/><text x="0" y="${y + 3}">${label}</text>`;
+  }).join("");
+  const dates = days.map((day, index) => {
+    const point = points[index];
+    const date = new Date(`${day.date}T12:00:00`);
+    const label = Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString([], { weekday: "short" });
+    return `<circle class="dot" cx="${point.x}" cy="${point.y}" r="4"><title>${day.count} run${day.count === 1 ? "" : "s"} · ${escapeMetricText(day.date)}</title></circle><text text-anchor="middle" x="${point.x}" y="${height - 5}">${label}</text>`;
+  }).join("");
+  root.innerHTML = `<svg class="runs-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">${grid}<polygon class="area" points="${area}"/><polyline class="line" points="${line}"/>${dates}</svg>`;
+}
+
+function renderWorkflowChart(workflows = []) {
+  const root = document.getElementById("workflowRunsChart");
+  if (!workflows.length) {
+    root.innerHTML = '<div class="activity-empty">No workflow runs in the last 30 days.</div>';
+    return;
+  }
+  const max = Math.max(1, ...workflows.map((item) => Number(item.count) || 0));
+  root.innerHTML = workflows.map((item) => {
+    const count = Number(item.count) || 0;
+    const width = Math.max(count ? 3 : 0, (count / max) * 100);
+    return `<div class="workflow-row"><span>${escapeMetricText(item.workflow)}</span><div class="workflow-track"><div class="workflow-fill" style="width:${width}%"></div></div><strong class="workflow-number">${count}</strong></div>`;
+  }).join("");
+}
+
+function renderRecentRuns(runs = []) {
+  const body = document.getElementById("recentRunsBody");
+  if (!runs.length) {
+    body.innerHTML = '<tr><td class="activity-empty" colspan="5">No recorded runs yet. Start an automation and activity will appear here.</td></tr>';
+    return;
+  }
+  body.innerHTML = runs.map((run) => {
+    const status = ["completed", "partial", "stopped", "failed"].includes(run.status) ? run.status : "failed";
+    return `<tr><td>${escapeMetricText(run.workflow)}</td><td><span class="run-status ${status}">${status}</span></td><td>${Number(run.item_count) || 0}</td><td>${formatDuration(run.duration_seconds)}</td><td>${metricDate(run.finished_at)}</td></tr>`;
+  }).join("");
+}
+
+async function refreshDashboardMetrics() {
+  try {
+    const metrics = await fetchJSON("/api/dashboard/metrics");
+    dashboardUptimeSeconds = Number(metrics.server_uptime_seconds) || 0;
+    dashboardUptimeClock = performance.now();
+    document.getElementById("metricOnline").textContent = String(Number(metrics.online_users) || 0);
+    document.getElementById("metricRuns").textContent = String(Number(metrics.runs_30_days) || 0);
+    document.getElementById("metricSuccess").textContent = metrics.success_rate == null ? "—" : `${metrics.success_rate}%`;
+    renderDailyRunsChart(metrics.daily_runs || []);
+    renderWorkflowChart(metrics.workflow_runs || []);
+    renderRecentRuns(metrics.recent_runs || []);
+    updateDashboardUptime();
+  } catch {
+    document.getElementById("recentRunsBody").innerHTML = '<tr><td class="activity-empty" colspan="5">Dashboard metrics could not be loaded. Refresh to try again.</td></tr>';
+    document.getElementById("metricUptime").textContent = "Unavailable";
+  }
+}
+
+function updateDashboardUptime() {
+  if (dashboardUptimeSeconds == null) return;
+  const elapsed = Math.floor((performance.now() - dashboardUptimeClock) / 1000);
+  document.getElementById("metricUptime").textContent = formatUptime(dashboardUptimeSeconds + elapsed);
+}
+
+document.getElementById("refreshMetrics").addEventListener("click", refreshDashboardMetrics);
+refreshDashboardMetrics();
+setInterval(updateDashboardUptime, 30000);
+
+const dashboardColumns = document.getElementById("dashboardColumns");
+const dashboardLayoutButtons = [...document.querySelectorAll("[data-dashboard-layout]")];
+function setDashboardLayout(layout, persist = false) {
+  if (!["split", "workflow", "operations"].includes(layout)) layout = "split";
+  dashboardColumns.dataset.layout = layout;
+  dashboardLayoutButtons.forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.dashboardLayout === layout));
+  });
+  if (persist) {
+    try { localStorage.setItem("beabots-dashboard-layout", layout); }
+    catch { /* The dashboard works without a saved layout preference. */ }
+  }
+}
+dashboardLayoutButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const selectedLayout = button.dataset.dashboardLayout;
+    setDashboardLayout(dashboardColumns.dataset.layout === selectedLayout ? "split" : selectedLayout, true);
+  });
+});
+try { setDashboardLayout(localStorage.getItem("beabots-dashboard-layout") || "split"); }
+catch { setDashboardLayout("split"); }
 
 function readChatCursors() {
   if (!chatReadStateKey) return null;
@@ -278,6 +409,11 @@ document.getElementById("siteAbout").addEventListener("click", () => {
   openWorkspace("about");
   focusAboutSection("about");
 });
+document.getElementById("siteContact").addEventListener("click", () => {
+  setTopNavigation("siteContact");
+  openWorkspace("about");
+  focusAboutSection("contact");
+});
 document.getElementById("sidebarHelpButton").addEventListener("click", () => {
   setTopNavigation("siteAbout");
   openWorkspace("about");
@@ -497,6 +633,10 @@ class HeartbeatController {
     // Server automatically joins user room on connect via Flask session
     this.socket.on("connect", () => {
       // Connection established, room joined automatically by server
+      refreshDashboardMetrics();
+    });
+    this.socket.on("dashboard_presence_update", (payload) => {
+      document.getElementById("metricOnline").textContent = String(Number(payload?.online_users) || 0);
     });
     this.socket.on("disconnect", () => {
       // Socket disconnected, will reconnect automatically

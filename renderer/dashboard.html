@@ -92,13 +92,14 @@
   .side-link:hover { color:var(--text-pri); background:var(--accent-soft); border-color:var(--border); }
   .side-link.active { color:var(--text-pri); background:var(--accent-soft-strong); border-color:var(--accent); }
   .side-link .side-icon { width:20px; min-width:20px; height:20px; display:grid; place-items:center; color:var(--accent); font-size:17px; }
+  .side-link .side-icon svg { width:20px; height:20px; overflow:visible; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
   .side-link .side-label { opacity:1; transition:opacity 100ms ease; }
   .sidebar-column.collapsed .side-label { opacity:0; pointer-events:none; }
   .external-link-indicator { margin-left:auto; color:var(--text-sec); font-size:12px; line-height:1; }
   .sidebar-column.collapsed .external-link-indicator { display:none; }
 
   .body { flex:1; display:flex; align-items:flex-start; justify-content:center; padding:clamp(28px,5vw,64px) 24px; min-width:0; min-height:0; overflow:auto; text-align:left; }
-  .home-content { width:min(100%,1040px); margin:0 auto; }
+  .home-content { width:min(100%,1440px); margin:0 auto; }
   .home-hero { position:relative; display:flex; align-items:center; justify-content:space-between; gap:28px; min-height:220px; padding:30px 32px; overflow:hidden; background:linear-gradient(115deg,var(--bg-panel),color-mix(in srgb,var(--accent) 10%,var(--bg-panel))); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); }
   .home-hero::after { content:""; position:absolute; width:280px; height:280px; right:18%; top:-190px; border:1px solid color-mix(in srgb,var(--accent) 20%,transparent); border-radius:50%; box-shadow:0 0 0 28px color-mix(in srgb,var(--accent) 4%,transparent),0 0 0 58px color-mix(in srgb,var(--accent) 3%,transparent); pointer-events:none; }
   .home-hero-copy { position:relative; z-index:1; min-width:0; }
@@ -120,6 +121,70 @@
   .nephro-scope strong { display:block; color:var(--text-pri); font-size:14px; line-height:1.35; }
   .nephro-scope p { margin:6px 0 0; color:var(--text-sec); font-size:11px; line-height:1.5; }
   .home-columns { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(260px,.75fr); align-items:start; gap:18px; margin-top:20px; }
+  .dashboard-metrics { display:grid; gap:14px; margin-top:18px; }
+  .metrics-heading { display:flex; align-items:end; justify-content:space-between; gap:12px; }
+  .metrics-heading h2 { margin:0; color:var(--text-pri); font-size:18px; }
+  .metrics-heading p { margin:4px 0 0; color:var(--text-sec); font-size:11px; }
+  .metrics-refresh { min-height:34px; padding:7px 11px; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-md); font:700 10px var(--font-ui); cursor:pointer; }
+  .metrics-refresh:hover { border-color:var(--accent); }
+  .metric-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:11px; }
+  .metric-card,.chart-card,.activity-card { min-width:0; padding:16px; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); }
+  .metric-label { color:var(--text-sec); font-size:10px; font-weight:700; letter-spacing:.45px; text-transform:uppercase; }
+  .metric-value { display:block; margin-top:10px; color:var(--text-pri); font-size:clamp(21px,3vw,29px); font-weight:800; letter-spacing:-.6px; }
+  .metric-footnote { display:block; margin-top:5px; color:var(--text-sec); font-size:10px; }
+  .metrics-charts { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(250px,.8fr); gap:11px; }
+  .chart-card h3,.activity-heading h3 { margin:0; color:var(--text-pri); font-size:13px; }
+  .chart-card .chart-subtitle { margin:4px 0 12px; color:var(--text-sec); font-size:10px; }
+  .runs-chart { display:block; width:100%; height:150px; overflow:visible; }
+  .runs-chart text { fill:var(--text-sec); font:9px var(--font-ui); }
+  .runs-chart .gridline { stroke:var(--border); stroke-width:1; }
+  .runs-chart .area { fill:color-mix(in srgb,var(--accent) 16%,transparent); }
+  .runs-chart .line { fill:none; stroke:var(--accent); stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+  .runs-chart .dot { fill:var(--accent); stroke:var(--bg-panel); stroke-width:2; }
+  .workflow-chart { display:grid; gap:13px; padding:7px 0; }
+  .workflow-row { display:grid; grid-template-columns:minmax(74px,.8fr) minmax(50px,1fr) 24px; align-items:center; gap:9px; color:var(--text-sec); font-size:10px; }
+  .workflow-track { height:7px; overflow:hidden; background:var(--bg-card); border-radius:999px; }
+  .workflow-fill { height:100%; min-width:2px; background:var(--accent); border-radius:inherit; }
+  .workflow-number { color:var(--text-pri); text-align:right; font-weight:800; }
+  .activity-card { padding:0; overflow:hidden; }
+  .activity-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:16px; }
+  .activity-heading span { color:var(--text-sec); font-size:10px; }
+  .activity-scroll { width:100%; overflow-x:auto; }
+  .activity-table { width:100%; border-collapse:collapse; text-align:left; font-size:10px; }
+  .activity-table th { padding:9px 16px; color:var(--text-sec); background:var(--bg-card); font-size:9px; letter-spacing:.45px; text-transform:uppercase; white-space:nowrap; }
+  .activity-table td { padding:11px 16px; color:var(--text-pri); border-top:1px solid var(--border); white-space:nowrap; }
+  .activity-table tbody tr:hover { background:color-mix(in srgb,var(--accent) 4%,var(--bg-panel)); }
+  .activity-empty { padding:22px 16px; color:var(--text-sec); text-align:center; }
+  .run-status { display:inline-flex; align-items:center; gap:5px; font-weight:700; text-transform:capitalize; }
+  .run-status::before { width:6px; height:6px; content:""; background:var(--text-sec); border-radius:50%; }
+  .run-status.completed::before { background:var(--success); }
+  .run-status.partial::before,.run-status.stopped::before { background:var(--warning); }
+  .run-status.failed::before { background:var(--error); }
+  .dashboard-view-switch { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:18px 0 12px; padding:12px 14px; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); }
+  .view-switch-copy { display:grid; gap:4px; }
+  .view-switch-copy strong { color:var(--text-pri); font-size:11px; }
+  .view-switch-copy span { color:var(--text-sec); font-size:10px; }
+  .view-switch-controls { display:inline-flex; gap:3px; padding:3px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; }
+  .view-switch-controls button { min-height:34px; display:inline-flex; align-items:center; gap:7px; padding:6px 11px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:7px; font:700 10px var(--font-ui); white-space:nowrap; cursor:pointer; transition:background 140ms ease,color 140ms ease,border-color 140ms ease,box-shadow 140ms ease; }
+  .view-switch-controls button:hover { color:var(--text-pri); }
+  .view-switch-controls button[aria-pressed="true"] { color:var(--text-pri); background:var(--bg-panel); border-color:var(--border); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .view-switch-controls button:focus-visible,.metrics-refresh:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .view-switch-controls button span { color:var(--accent); font-size:13px; }
+  .dashboard-columns { display:grid; grid-template-columns:minmax(0,1.08fr) minmax(0,1fr); align-items:start; gap:16px; }
+  .dashboard-column { min-width:0; padding:16px; background:color-mix(in srgb,var(--bg-panel) 68%,transparent); border:1px solid var(--border); border-radius:var(--radius-lg); }
+  .workflow-column .home-columns { grid-template-columns:minmax(0,1fr); margin-top:0; }
+  .workflow-column .home-primary-stack,.workflow-column .home-aside-stack { gap:12px; }
+  .operations-column .dashboard-metrics { margin-top:0; }
+  .operations-column .metrics-heading { align-items:center; }
+  .operations-column .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .operations-column .metrics-charts { grid-template-columns:minmax(0,1fr); }
+  .dashboard-columns[data-layout="workflow"] { grid-template-columns:minmax(0,1fr); }
+  .dashboard-columns[data-layout="workflow"] .operations-column { display:none; }
+  .dashboard-columns[data-layout="operations"] { grid-template-columns:minmax(0,1fr); }
+  .dashboard-columns[data-layout="operations"] .workflow-column { display:none; }
+  .dashboard-columns[data-layout="workflow"] .workflow-column .home-columns { grid-template-columns:minmax(0,1.45fr) minmax(260px,.75fr); }
+  .dashboard-columns[data-layout="operations"] .operations-column .metric-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .dashboard-columns[data-layout="operations"] .operations-column .metrics-charts { grid-template-columns:minmax(0,1.45fr) minmax(250px,.8fr); }
   .home-primary-stack,.home-aside-stack { display:grid; align-content:start; gap:16px; min-width:0; }
   .home-card { padding:20px; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); }
   .home-card h2 { margin:0 0 5px; color:var(--text-pri); font-size:16px; }
@@ -175,7 +240,8 @@
   #cancelUpgradeRequest { color:var(--text-pri); background:var(--bg-card); }
   #submitUpgradeRequest:disabled { opacity:.55; cursor:not-allowed; }
   #profileStatus { min-height:18px; color:var(--success); font-size:12px; }
-  @media(max-width:760px) { .home-hero { align-items:stretch; flex-direction:column; gap:18px; } .nephro-scope { width:auto; } .home-columns { grid-template-columns:1fr; } }
+  @media(max-width:1100px) { .dashboard-columns { grid-template-columns:minmax(0,1fr); } .dashboard-columns[data-layout="workflow"] .workflow-column .home-columns { grid-template-columns:minmax(0,1fr); } .dashboard-columns[data-layout="operations"] .operations-column .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .dashboard-columns[data-layout="operations"] .operations-column .metrics-charts { grid-template-columns:minmax(0,1fr); } }
+  @media(max-width:760px) { .home-hero { align-items:stretch; flex-direction:column; gap:18px; } .nephro-scope { width:auto; } .home-columns,.metrics-charts { grid-template-columns:1fr; } .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .dashboard-view-switch { align-items:stretch; flex-direction:column; } .view-switch-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); } .view-switch-controls button { justify-content:center; padding:6px 5px; font-size:9px; } .dashboard-column { padding:11px; } }
   @media(max-width:420px) { .nephro-scope { align-items:flex-start; gap:12px; } .nephro-scope-logo { width:64px; height:64px; } }
   @media(max-width:500px) { .site-header { height:auto; min-height:64px; flex-wrap:wrap; gap:0; padding:8px 12px; } .site-nav { order:3; width:100%; height:40px; justify-content:space-between; } .site-nav button { padding:0 5px; font-size:11px; } .site-account { margin-left:auto; } .tool-list { grid-template-columns:1fr; } }
   .sidebar-backdrop { display:none; }
@@ -240,7 +306,7 @@
       <svg class="workspace-heartbeat heartbeat-disconnected" viewBox="0 0 100 24" aria-hidden="true"><path d="M2 13h23l7-1 5-7 8 15 8-12 5 5h10l4-1h26" /></svg>
       <button class="mobile-menu-trigger" id="mobileMenuButton" type="button" aria-controls="dashboardSidebar" aria-expanded="false" aria-label="Open workspace menu"><span aria-hidden="true">&#9776;</span></button>
       <nav class="site-nav" aria-label="Main navigation">
-        <button id="siteHome" type="button">Home</button><button id="siteClaims" type="button">Claims</button><button id="siteAbout" type="button">About</button>
+        <button id="siteHome" type="button">Home</button><button id="siteClaims" type="button">Claims</button><button id="siteAbout" type="button">About</button><button id="siteContact" type="button">Contact</button>
       </nav>
       <div class="site-account">
         <button class="account-trigger" id="accountTrigger" type="button" aria-expanded="false"><span class="account-avatar-wrap"><span class="account-avatar" id="accountAvatar">B</span><span class="chat-unread-indicator" id="chatUnreadIndicator" hidden></span></span><span id="accountName">Account</span><span aria-hidden="true">⌄</span></button>
@@ -290,7 +356,7 @@
             <button class="side-link" id="btnFinalizeClaims" type="button" title="Edit Claims"><span class="side-icon" aria-hidden="true">&#10003;</span><span class="side-label">Edit Claims</span></button>
             <button class="side-link" id="btnRunAll" type="button" title="Run the full CF2, SOA, and CF4 workflow"><span class="side-icon" aria-hidden="true">&#9654;</span><span class="side-label">Run Full Workflow</span></button>
             <section class="sidebar-group">
-              <button class="side-link sidebar-group-toggle" type="button" data-sidebar-group="tools" aria-expanded="false" aria-controls="toolsSubnav" title="Other Tools"><span class="side-icon" aria-hidden="true">◇</span><span class="side-label">Other Tools</span><span class="group-chevron" aria-hidden="true">›</span></button>
+              <button class="side-link sidebar-group-toggle" type="button" data-sidebar-group="tools" aria-expanded="false" aria-controls="toolsSubnav" title="Other Tools"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M12.8 3.1a4.1 4.1 0 0 0-5.2 5.2L3 12.9a2.2 2.2 0 0 0 3.1 3.1l4.6-4.6a4.1 4.1 0 0 0 5.2-5.2l-2.5 2.5-2.6-2.6z"/><path d="m4.9 14.1.9.9"/></svg></span><span class="side-label">Other Tools</span><span class="group-chevron" aria-hidden="true">›</span></button>
               <div class="sidebar-subnav" id="toolsSubnav" hidden>
                 <button class="side-link" id="btnAutoRename" type="button" title="PDF Auto Rename"><span class="side-icon" aria-hidden="true">&#9998;</span><span class="side-label">PDF Auto Rename</span></button>
                 <a class="side-link external-link" href="https://rgonzaga19.github.io/pdfsplitter/" target="_blank" rel="noopener noreferrer" title="PDF Splitter"><span class="side-icon" aria-hidden="true">&#9986;</span><span class="side-label">PDF Splitter</span><span class="external-link-indicator" aria-hidden="true">&#8599;</span></a>
@@ -299,7 +365,7 @@
                 <a class="side-link external-link" href="https://rgonzaga19.github.io/nephro_dtrgenerator/" target="_blank" rel="noopener noreferrer" title="DTR Generator"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3.75h7l4 4v12.5H7z"></path><path d="M14 3.75v4h4M9.5 12h6M9.5 15.5h6"></path></svg></span><span class="side-label">DTR Generator</span><span class="external-link-indicator" aria-hidden="true">&#8599;</span></a>
               </div>
             </section>
-            <button class="side-link" id="btnCollaborationChat" type="button" title="Team Chat"><span class="side-icon" aria-hidden="true">&#9678;</span><span class="side-label">Team Chat</span></button>
+            <button class="side-link" id="btnCollaborationChat" type="button" title="Team Chat"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 4.5h14v9H9l-4.5 3v-3H3z"/><path d="M6.5 8.5h.01M10 8.5h.01M13.5 8.5h.01"/></svg></span><span class="side-label">Team Chat</span></button>
           </nav>
           <footer class="sidebar-footer" aria-label="Help and contact">
             <button class="sidebar-help-card" id="sidebarHelpButton" type="button" title="Open About contact section">
@@ -314,6 +380,15 @@
         <main class="body" id="workspaceHome">
           <div class="home-content">
             <section class="home-hero"><div class="home-hero-copy"><span class="home-eyebrow">Claims operations workspace</span><h1 id="homeGreeting">Welcome to Beabots</h1><p>Prepare, review, and process Nephro Group claims from one organized workspace.</p><div class="home-hero-actions"><button class="home-action-primary" type="button" data-open-tool="runAll"><span aria-hidden="true">&#9654;</span> Run full workflow</button><button class="home-action-secondary" type="button" data-open-tool="finalizeClaims"><span aria-hidden="true">&#10003;</span> Review claims</button></div></div><aside class="nephro-scope" aria-label="Supported claims process"><img class="nephro-scope-logo" src="assets/nephro.png" alt="Nephro Group Dialysis Centers logo"><div class="nephro-scope-copy"><span class="nephro-scope-label">Workspace scope</span><strong>Nephro Group Dialysis Centers</strong><p>Configured for Nephro Group claims.</p></div></aside></section>
+            <div class="dashboard-view-switch" role="group" aria-label="Dashboard layout">
+              <div class="view-switch-copy"><strong>Workspace view</strong><span>Choose how to arrange your dashboard.</span></div>
+              <div class="view-switch-controls">
+                <button type="button" data-dashboard-layout="workflow" aria-pressed="false"><span aria-hidden="true">01</span> Workflow</button>
+                <button type="button" data-dashboard-layout="operations" aria-pressed="false"><span aria-hidden="true">02</span> Operations</button>
+              </div>
+            </div>
+            <div class="dashboard-columns" id="dashboardColumns" data-layout="split">
+              <section class="dashboard-column workflow-column" id="workflowColumn" aria-label="Claims workflow">
             <div class="home-columns">
               <div class="home-primary-stack">
                 <section class="home-card"><div class="home-card-heading"><div><h2>Claims workflow</h2><p>Choose a step to prepare or process a claim.</p></div><span class="home-count">6 work tools</span></div><div class="tool-list">
@@ -337,6 +412,24 @@
                 <section class="home-card profile-card" id="profileCard"><div class="home-card-heading"><div><h2>Your profile</h2><p>Personalize your workspace identity.</p></div><span class="home-count">Account</span></div><form class="profile-fields" id="profileForm"><div class="profile-field"><label for="profileNameInput">Profile name</label><input id="profileNameInput" maxlength="120" autocomplete="name" placeholder="Your name"><small>Your name on your account profile.</small></div><div class="profile-field"><label for="displayNameInput">Display name</label><input id="displayNameInput" maxlength="120" placeholder="Name shown in the header"><small>Used for your greeting and account menu.</small></div><div class="profile-actions"><button class="solid-btn profile-save" type="submit">Save profile</button><button class="upgrade-button" id="upgradeAccountButton" type="button">Upgrade account</button></div><div id="profileStatus" role="status" aria-live="polite"></div></form></section>
                 <aside class="home-note"><span class="home-note-icon" aria-hidden="true">&#9432;</span><span>This workspace is configured for Nephro Group Dialysis Center claims. Use the workflow shortcuts to open each preparation, upload, or review tool.</span></aside>
               </div>
+            </div>
+              </section>
+              <section class="dashboard-column operations-column" id="operationsColumn" aria-label="Operations overview">
+            <section class="dashboard-metrics" aria-labelledby="metricsTitle">
+              <div class="metrics-heading"><div><h2 id="metricsTitle">Operations overview</h2><p>Live service health and the last 30 days of automation activity.</p></div><button class="metrics-refresh" id="refreshMetrics" type="button">Refresh</button></div>
+              <div class="metric-grid" aria-live="polite">
+                <article class="metric-card"><span class="metric-label">App server uptime</span><strong class="metric-value" id="metricUptime">—</strong><span class="metric-footnote">Since the latest server restart</span></article>
+                <article class="metric-card"><span class="metric-label">Online users</span><strong class="metric-value" id="metricOnline">—</strong><span class="metric-footnote">Unique signed-in live connections</span></article>
+                <article class="metric-card"><span class="metric-label">Automation runs</span><strong class="metric-value" id="metricRuns">—</strong><span class="metric-footnote">Last 30 days</span></article>
+                <article class="metric-card"><span class="metric-label">Completed runs</span><strong class="metric-value" id="metricSuccess">—</strong><span class="metric-footnote">Share completed without errors</span></article>
+              </div>
+              <div class="metrics-charts">
+                <article class="chart-card"><h3>Run activity</h3><p class="chart-subtitle">Automation runs by day · last 7 days</p><div id="dailyRunsChart" role="img" aria-label="Daily automation runs for the last seven days"></div></article>
+                <article class="chart-card"><h3>Workflows</h3><p class="chart-subtitle">Runs by workflow · last 30 days</p><div class="workflow-chart" id="workflowRunsChart"></div></article>
+              </div>
+              <article class="activity-card"><div class="activity-heading"><h3>Recent automation runs</h3><span>Latest 12 · no patient details stored</span></div><div class="activity-scroll"><table class="activity-table"><thead><tr><th>Workflow</th><th>Status</th><th>Items</th><th>Duration</th><th>Finished</th></tr></thead><tbody id="recentRunsBody"><tr><td class="activity-empty" colspan="5">Loading activity…</td></tr></tbody></table></div></article>
+            </section>
+              </section>
             </div>
           </div>
         </main>
