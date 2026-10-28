@@ -170,7 +170,7 @@
   .view-switch-controls button[aria-pressed="true"] { color:var(--text-pri); background:var(--bg-panel); border-color:var(--border); box-shadow:0 1px 3px rgba(0,0,0,.12); }
   .view-switch-controls button:focus-visible,.metrics-refresh:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .view-switch-controls button span { color:var(--accent); font-size:13px; }
-  .dashboard-columns { display:grid; grid-template-columns:minmax(0,1.08fr) minmax(0,1fr); align-items:start; gap:16px; }
+  .dashboard-columns { display:grid; grid-template-columns:minmax(0,1fr); align-items:start; gap:16px; }
   .dashboard-column { min-width:0; padding:16px; background:color-mix(in srgb,var(--bg-panel) 68%,transparent); border:1px solid var(--border); border-radius:var(--radius-lg); }
   .workflow-column .home-columns { grid-template-columns:minmax(0,1fr); margin-top:0; }
   .workflow-column .home-primary-stack,.workflow-column .home-aside-stack { gap:12px; }
@@ -387,7 +387,7 @@
                 <button type="button" data-dashboard-layout="operations" aria-pressed="false"><span aria-hidden="true">02</span> Operations</button>
               </div>
             </div>
-            <div class="dashboard-columns" id="dashboardColumns" data-layout="split">
+            <div class="dashboard-columns" id="dashboardColumns" data-layout="workflow">
               <section class="dashboard-column workflow-column" id="workflowColumn" aria-label="Claims workflow">
             <div class="home-columns">
               <div class="home-primary-stack">

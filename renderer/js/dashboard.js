@@ -134,7 +134,7 @@ setInterval(updateDashboardUptime, 30000);
 const dashboardColumns = document.getElementById("dashboardColumns");
 const dashboardLayoutButtons = [...document.querySelectorAll("[data-dashboard-layout]")];
 function setDashboardLayout(layout, persist = false) {
-  if (!["split", "workflow", "operations"].includes(layout)) layout = "split";
+  if (!["workflow", "operations"].includes(layout)) layout = "workflow";
   dashboardColumns.dataset.layout = layout;
   dashboardLayoutButtons.forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.dashboardLayout === layout));
@@ -147,11 +147,15 @@ function setDashboardLayout(layout, persist = false) {
 dashboardLayoutButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const selectedLayout = button.dataset.dashboardLayout;
-    setDashboardLayout(dashboardColumns.dataset.layout === selectedLayout ? "split" : selectedLayout, true);
+    setDashboardLayout(selectedLayout, true);
   });
 });
-try { setDashboardLayout(localStorage.getItem("beabots-dashboard-layout") || "split"); }
-catch { setDashboardLayout("split"); }
+try {
+  const savedLayout = localStorage.getItem("beabots-dashboard-layout");
+  const layout = savedLayout === "operations" ? "operations" : "workflow";
+  setDashboardLayout(layout, savedLayout === "split" || !savedLayout);
+}
+catch { setDashboardLayout("workflow"); }
 
 function readChatCursors() {
   if (!chatReadStateKey) return null;
