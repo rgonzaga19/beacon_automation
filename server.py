@@ -287,19 +287,41 @@ def socket_connected():
         join_room(user_room(user_id))
         with _dashboard_socket_lock:
             _dashboard_sockets[request.sid] = user_id
-        socketio.emit("dashboard_presence_update", {"online_users": _online_user_count()})
+        _broadcast_dashboard_presence()
 
 
 @socketio.on("disconnect")
 def socket_disconnected():
     with _dashboard_socket_lock:
         _dashboard_sockets.pop(request.sid, None)
-    socketio.emit("dashboard_presence_update", {"online_users": _online_user_count()})
+    _broadcast_dashboard_presence()
 
 
 def _online_user_count():
     with _dashboard_socket_lock:
         return len(set(_dashboard_sockets.values()))
+
+
+def _online_user_list():
+    with _dashboard_socket_lock:
+        user_ids = set(_dashboard_sockets.values())
+    if not user_ids:
+        return []
+    users = User.query.filter(User.id.in_(user_ids), User.is_active.is_(True)).all()
+    return sorted(
+        [{"id": user.id, "name": user.display_name or user.profile_name or user.email}
+         for user in users],
+        key=lambda user: user["name"].casefold(),
+    )
+
+
+def _broadcast_dashboard_presence():
+    socketio.emit("dashboard_presence_update", {"online_users": _online_user_count()})
+    payload = {"users": _online_user_list()}
+    with _dashboard_socket_lock:
+        user_ids = set(_dashboard_sockets.values())
+    for user_id in user_ids:
+        socketio.emit("dashboard_online_users", payload, room=user_room(user_id))
 
 
 def _record_automation_run(user_id, workflow, started_at, status, item_count):
@@ -314,6 +336,10 @@ def _record_automation_run(user_id, workflow, started_at, status, item_count):
                     status=status,
                     item_count=max(0, int(item_count or 0)),
                     duration_seconds=duration,
+                    runner_name=(
+                        (runner.display_name or runner.profile_name or runner.email)
+                        if (runner := db.session.get(User, user_id)) else None
+                    ),
                     started_at=started_at,
                     finished_at=finished_at,
                 ))
@@ -352,6 +378,10 @@ def _automation_outcome(results, stopped=False, failed=False):
 def init_database():
     with app.app_context():
         db.create_all()
+        run_columns = {column["name"] for column in inspect(db.engine).get_columns("automation_runs")}
+        if "runner_name" not in run_columns:
+            db.session.execute(text("ALTER TABLE automation_runs ADD COLUMN runner_name VARCHAR(120)"))
+            db.session.commit()
         # Add profile fields to databases created by earlier releases.
         columns = {column["name"] for column in inspect(db.engine).get_columns("users")}
         if "profile_name" not in columns:
@@ -474,6 +504,7 @@ def dashboard_metrics():
             "status": run.status,
             "item_count": run.item_count,
             "duration_seconds": run.duration_seconds,
+            "runner_name": run.runner_name,
             "finished_at": run.finished_at.isoformat(),
         }
         for run in AutomationRun.query.order_by(AutomationRun.finished_at.desc(), AutomationRun.id.desc()).limit(12)
@@ -483,6 +514,7 @@ def dashboard_metrics():
     return jsonify({
         "server_uptime_seconds": max(0, int((now - _server_started_at).total_seconds())),
         "online_users": _online_user_count(),
+        "online_user_list": _online_user_list(),
         "runs_30_days": total,
         "success_rate": round((successful / total) * 100) if total else None,
         "daily_runs": [{"date": day, "count": count} for day, count in daily.items()],

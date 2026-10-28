@@ -94,13 +94,22 @@ function renderWorkflowChart(workflows = []) {
 function renderRecentRuns(runs = []) {
   const body = document.getElementById("recentRunsBody");
   if (!runs.length) {
-    body.innerHTML = '<tr><td class="activity-empty" colspan="5">No recorded runs yet. Start an automation and activity will appear here.</td></tr>';
+    body.innerHTML = '<tr><td class="activity-empty" colspan="6">No recorded runs yet. Start an automation and activity will appear here.</td></tr>';
     return;
   }
   body.innerHTML = runs.map((run) => {
     const status = ["completed", "partial", "stopped", "failed"].includes(run.status) ? run.status : "failed";
-    return `<tr><td>${escapeMetricText(run.workflow)}</td><td><span class="run-status ${status}">${status}</span></td><td>${Number(run.item_count) || 0}</td><td>${formatDuration(run.duration_seconds)}</td><td>${metricDate(run.finished_at)}</td></tr>`;
+    return `<tr><td>${escapeMetricText(run.workflow)}</td><td>${escapeMetricText(run.runner_name || "Unknown")}</td><td><span class="run-status ${status}">${status}</span></td><td>${Number(run.item_count) || 0}</td><td>${formatDuration(run.duration_seconds)}</td><td>${metricDate(run.finished_at)}</td></tr>`;
   }).join("");
+}
+
+function renderOnlineUsers(users = []) {
+  const root = document.getElementById("onlineUsersList");
+  if (!users.length) {
+    root.innerHTML = '<span class="online-empty">No users are currently online.</span>';
+    return;
+  }
+  root.innerHTML = users.map((user) => `<span class="online-user">${escapeMetricText(user.name)}</span>`).join("");
 }
 
 async function refreshDashboardMetrics() {
@@ -109,6 +118,7 @@ async function refreshDashboardMetrics() {
     dashboardUptimeSeconds = Number(metrics.server_uptime_seconds) || 0;
     dashboardUptimeClock = performance.now();
     document.getElementById("metricOnline").textContent = String(Number(metrics.online_users) || 0);
+    renderOnlineUsers(metrics.online_user_list || []);
     document.getElementById("metricRuns").textContent = String(Number(metrics.runs_30_days) || 0);
     document.getElementById("metricSuccess").textContent = metrics.success_rate == null ? "—" : `${metrics.success_rate}%`;
     renderDailyRunsChart(metrics.daily_runs || []);
@@ -116,7 +126,7 @@ async function refreshDashboardMetrics() {
     renderRecentRuns(metrics.recent_runs || []);
     updateDashboardUptime();
   } catch {
-    document.getElementById("recentRunsBody").innerHTML = '<tr><td class="activity-empty" colspan="5">Dashboard metrics could not be loaded. Refresh to try again.</td></tr>';
+    document.getElementById("recentRunsBody").innerHTML = '<tr><td class="activity-empty" colspan="6">Dashboard metrics could not be loaded. Refresh to try again.</td></tr>';
     document.getElementById("metricUptime").textContent = "Unavailable";
   }
 }
@@ -642,6 +652,7 @@ class HeartbeatController {
     this.socket.on("dashboard_presence_update", (payload) => {
       document.getElementById("metricOnline").textContent = String(Number(payload?.online_users) || 0);
     });
+    this.socket.on("dashboard_online_users", (payload) => renderOnlineUsers(payload?.users || []));
     this.socket.on("disconnect", () => {
       // Socket disconnected, will reconnect automatically
     });

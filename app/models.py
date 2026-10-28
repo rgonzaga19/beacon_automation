@@ -100,5 +100,6 @@ class AutomationRun(db.Model):
     status = db.Column(db.String(20), nullable=False, index=True)
     item_count = db.Column(db.Integer, nullable=False, default=0)
     duration_seconds = db.Column(db.Integer, nullable=False, default=0)
+    runner_name = db.Column(db.String(120), nullable=True)
     started_at = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
     finished_at = db.Column(db.DateTime(timezone=True), nullable=False)
