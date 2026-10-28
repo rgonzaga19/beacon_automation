@@ -15,6 +15,17 @@ function syncAboutNavigation() {
 window.addEventListener("hashchange", syncAboutNavigation);
 syncAboutNavigation();
 
+fetch("/api/auth/me")
+  .then((response) => response.json())
+  .then((data) => {
+    if (!data.authenticated) return;
+    const accountLink = document.getElementById("accountLink");
+    if (!accountLink) return;
+    accountLink.textContent = "Open workspace";
+    accountLink.href = "/dashboard.html";
+  })
+  .catch(() => {});
+
 const agreementDialog = document.getElementById("agreementDialog");
 const agreementClose = document.getElementById("agreementClose");
 const agreementAcknowledge = document.getElementById("agreementAcknowledge");
