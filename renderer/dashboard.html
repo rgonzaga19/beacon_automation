@@ -10,6 +10,7 @@
   .dashboard-layout { position:relative; flex:1; display:flex; min-width:0; min-height:0; }
   .mobile-menu-trigger { display:none; width:40px; min-width:40px; height:40px; min-height:40px; align-items:center; justify-content:center; padding:0; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font-size:18px; line-height:1; cursor:pointer; }
   .site-header { height:72px; flex:0 0 72px; display:flex; align-items:center; gap:34px; padding:0 clamp(20px,4vw,56px); background:var(--bg-panel); border-bottom:1px solid var(--border); }
+  .site-header.agreement-blocked { opacity:.55; }
   .site-brand { display:flex; align-items:center; gap:10px; color:var(--text-pri); font-weight:800; letter-spacing:.7px; text-decoration:none; }
   .site-brand img { width:30px; height:30px; object-fit:contain; }
   .workspace-heartbeat { width:clamp(110px,16vw,220px); height:24px; flex:0 1 clamp(110px,16vw,220px); min-width:72px; overflow:visible; color:var(--accent); opacity:.8; transition:color 300ms ease,opacity 300ms ease; }
@@ -287,8 +288,7 @@
               </div>
             </section>
             <button class="side-link" id="btnFinalizeClaims" type="button" title="Edit Claims"><span class="side-icon" aria-hidden="true">&#10003;</span><span class="side-label">Edit Claims</span></button>
-            <button class="side-link" id="btnRunAll" type="button" title="Run CF2, SOA, and CF4"><span class="side-icon" aria-hidden="true">&#9654;</span><span class="side-label">Run All</span></button>
-            <button class="side-link" id="btnSettings" type="button" title="Settings"><span class="side-icon" aria-hidden="true">&#9881;</span><span class="side-label">Settings</span></button>
+            <button class="side-link" id="btnRunAll" type="button" title="Run the full CF2, SOA, and CF4 workflow"><span class="side-icon" aria-hidden="true">&#9654;</span><span class="side-label">Run Full Workflow</span></button>
             <section class="sidebar-group">
               <button class="side-link sidebar-group-toggle" type="button" data-sidebar-group="tools" aria-expanded="false" aria-controls="toolsSubnav" title="Other Tools"><span class="side-icon" aria-hidden="true">◇</span><span class="side-label">Other Tools</span><span class="group-chevron" aria-hidden="true">›</span></button>
               <div class="sidebar-subnav" id="toolsSubnav" hidden>
@@ -326,6 +326,7 @@
                 </div></section>
                 <section class="home-card"><div class="tool-section-label">Documents &amp; team</div><div class="tool-list">
                   <button class="tool-card" data-open-tool="autoRename"><span class="tool-card-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m4 14.5-.75 3.25L6.5 17 16 7.5 12.5 4zM11 5.5l3.5 3.5"/></svg></span><span><strong>PDF Auto Rename</strong><span class="tool-description">Organize claim documents</span></span><span class="tool-card-arrow" aria-hidden="true">&#8250;</span></button>
+                  <a class="tool-card external-link" href="https://rgonzaga19.github.io/nephro_dtrgenerator/" target="_blank" rel="noopener noreferrer"><span class="tool-card-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M5 2.5h7l4 4v11H5zM12 2.5v4h4M7.5 10h6M7.5 13h6"/></svg></span><span><strong>DTR Generator</strong><span class="tool-description">Generate daily time records</span></span><span class="tool-card-arrow" aria-hidden="true">&#8599;</span></a>
                   <a class="tool-card external-link" href="https://rgonzaga19.github.io/pdfsplitter/" target="_blank" rel="noopener noreferrer"><span class="tool-card-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M4 3h12v14H4zM7 6l6 8M13 6l-6 8"/></svg></span><span><strong>PDF Splitter</strong><span class="tool-description">Split files into smaller documents</span></span><span class="tool-card-arrow" aria-hidden="true">&#8599;</span></a>
                   <a class="tool-card external-link" href="https://rgonzaga19.github.io/pdfeditor/" target="_blank" rel="noopener noreferrer"><span class="tool-card-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M4 3h12v14H4zM7 7h6M7 10h6M7 13h3"/></svg></span><span><strong>PDF Editor</strong><span class="tool-description">Edit text, images, and shapes</span></span><span class="tool-card-arrow" aria-hidden="true">&#8599;</span></a>
                   <a class="tool-card external-link" href="https://www.ilovepdf.com/compress_pdf" target="_blank" rel="noopener noreferrer"><span class="tool-card-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M7 3H3v4M13 3h4v4M3 13v4h4M17 13v4h-4M7 10h6"/></svg></span><span><strong>Compress PDF</strong><span class="tool-description">Reduce PDF file size</span></span><span class="tool-card-arrow" aria-hidden="true">&#8599;</span></a>

@@ -830,12 +830,20 @@ class SOAAutomation:
 
             soa_api.update_summary(summary)
 
+            # Match Finalize Claims' Generate SOA All safeguards and final
+            # Beacon calls after the uploaded charges and discounts are saved.
+            latest_transmittal = beacon_api.get_transmittal_by_id(transmittal_id) or {}
+            if str(latest_transmittal.get("transmittalStatusDescription") or "").strip().casefold() != "draft":
+                raise ValueError("Only claims in a DRAFT transmittal can have an SOA generated.")
+            logger.info("Validating and generating eSOA in Beacon...")
+            soa_api.validate_and_generate_esoa(claim_id, facility_id)
+
             result["status"] = "success"
             result["message"] = (
-                "SOA charges and summary saved. Generate the SOA from Finalize Claims when ready."
+                "SOA uploaded, discounts saved, and eSOA validated, generated, and uploaded to Beacon."
             )
             logger.info(
-                "SOA charges and summary saved. Generate the SOA from Finalize Claims when ready."
+                "SOA charges and discounts saved; eSOA validated, generated, and uploaded to Beacon."
             )
 
         except Exception as exc:

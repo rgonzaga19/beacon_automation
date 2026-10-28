@@ -25,8 +25,21 @@
     .field input:focus { border-color:var(--accent); }
     button { min-height:38px; padding:0 16px; }
     .lookup-control-row > button { flex:none; }
-    .page-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
-    .page-toolbar .solid-btn { min-height:30px; padding:5px 10px; font-size:10px; }
+    .lookup-icon-button { position:relative; display:grid; width:40px; height:38px; place-items:center; padding:0; }
+    .lookup-icon-button svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .lookup-icon-button.is-loading svg { opacity:0; }
+    .lookup-icon-button.is-loading::after { position:absolute; width:17px; height:17px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; content:""; animation:lookup-spin .7s linear infinite; }
+    @keyframes lookup-spin { to { transform:rotate(360deg); } }
+    @media(prefers-reduced-motion:reduce) { .lookup-icon-button.is-loading::after { animation:none; border-top-color:currentColor; } }
+    .page-toolbar { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); align-items:stretch; gap:10px; margin:12px 0 16px; }
+    .toolbar-batch-indicator { grid-column:1/-1; display:flex; align-items:center; gap:8px; color:var(--text-sec); font-size:9px; font-weight:800; letter-spacing:.75px; text-transform:uppercase; }
+    .toolbar-batch-indicator::before { width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent); content:""; }
+    .toolbar-group { min-width:0; padding:10px; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-md); }
+    .toolbar-group-label { display:block; margin:0 0 8px; color:var(--text-sec); font-size:9px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; }
+    .toolbar-group-actions { display:grid; grid-template-columns:repeat(auto-fit,minmax(118px,1fr)); gap:6px; }
+    .page-toolbar .solid-btn { width:100%; min-height:36px; padding:6px 8px; font-size:9px; line-height:1.2; white-space:normal; }
+    .page-toolbar .solid-btn.danger-action { color:#fff; background:var(--error); }
+    .page-toolbar .solid-btn.danger-action:hover { filter:brightness(1.12); }
     .page-toolbar .solid-btn.is-loading { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
     .page-toolbar .solid-btn.is-loading::before { display:block; width:24px; height:22px; flex:none; background-image:url("assets/naruto-sprite.png"); background-repeat:no-repeat; background-size:422px 2319px; content:""; animation:naruto-loading-run .8s steps(1) infinite; }
     @keyframes naruto-loading-run {
@@ -38,8 +51,10 @@
       100% { background-position:-281px -187px; }
     }
     @media(prefers-reduced-motion:reduce) { .page-toolbar .solid-btn.is-loading::before { animation:none; background-position:-154px -188px; } }
-    .toolbar-status { color:var(--text-sec); font-size:11px; }
+    .toolbar-status { grid-column:1/-1; min-height:16px; padding:2px 1px; color:var(--text-sec); font-size:11px; }
     .toolbar-status.error { color:var(--error); }
+    @media(max-width:1120px) { .page-toolbar { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media(max-width:620px) { .page-toolbar { grid-template-columns:minmax(0,1fr); } .page-toolbar .solid-btn { min-height:42px; font-size:10px; } }
     .summary { display:flex; flex-wrap:wrap; gap:8px 20px; margin:18px 0 12px; color:var(--text-sec); font-size:11px; }
     .summary strong { color:var(--text-pri); }
     .claims-sort { display:flex; align-items:center; gap:8px; margin:0 0 10px; color:var(--text-sec); font-size:11px; }
@@ -136,7 +151,7 @@
       .header { padding:17px 16px; }
       .lookup-card { padding:12px; }
       .lookup-control-row { align-items:stretch; flex-direction:column; }
-      .lookup-control-row > button { width:100%; }
+      .lookup-control-row > button.lookup-icon-button { width:40px; align-self:flex-end; }
       .status-legend { gap:8px 12px; padding:10px; }
       .legend-title { flex-basis:100%; }
       .summary { gap:8px 14px; }
@@ -153,7 +168,7 @@
           <div class="lookup-control-row" style="margin-top:12px">
             <div class="field"><label for="admissionFrom">Admission From</label><input id="admissionFrom" type="date"></div>
             <div class="field"><label for="admissionTo">Admission To</label><input id="admissionTo" type="date"></div>
-            <button class="cyber-btn" id="lookupButton" type="submit" style="align-self:flex-end">LOOK UP</button>
+            <button class="cyber-btn lookup-icon-button" id="lookupButton" type="submit" title="Search claims" aria-label="Search claims" style="align-self:flex-end"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg></button>
           </div>
           <span class="field-hint">Or leave the text field empty and filter by admission date range (used only when the text field is empty).</span>
           <div style="margin-top:10px;padding:9px 12px;border:1px solid color-mix(in srgb,#f0ad4e 45%,transparent);border-radius:var(--radius-md);background:color-mix(in srgb,#f0ad4e 10%,transparent);color:#f0ad4e;font-size:11px;line-height:1.5"><strong>NOTE:</strong> Using date filtering may take 5&ndash;10 minutes or more, depending on the number and age of the claims. When possible, use a transmittal number instead.</div>
@@ -168,14 +183,23 @@
           <span class="legend-item status-on-queue"><i class="status-dot"></i>ON QUEUE</span>
         </div>
         <div class="summary" id="summary" hidden></div>
-        <div class="page-toolbar" aria-label="Claim actions toolbar" style="margin-top:12px;margin-bottom:10px">
-          <button class="solid-btn" id="finalizeAllButton" type="button" title="Generate final PBEF eligibility data for all draft claims" aria-label="Auto Finalize All">AUTO FINALIZE ALL</button>
-          <button class="solid-btn" id="transmitAllButton" type="button" title="Auto Transmit All" aria-label="Auto Transmit All">AUTO TRANSMIT ALL</button>
-          <button class="solid-btn" id="generateSoaAllButton" type="button" title="Generate SOA for All Draft Claims" aria-label="Generate SOA for All Draft Claims">GENERATE SOA ALL</button>
-          <button class="solid-btn" id="generateCf4AllButton" type="button" title="Generate CF4 for All Draft Claims" aria-label="Generate CF4 for All Draft Claims">GENERATE CF4 ALL</button>
-          <button class="solid-btn" id="removeSoaAllButton" type="button" title="Remove SOA Data from All Draft Claims" aria-label="Remove SOA Data from All Draft Claims">REMOVE SOA ALL</button>
-          <button class="solid-btn" id="copyTransmittalsButton" type="button" title="Copy Transmittal" aria-label="Copy Transmittal">COPY TRANSMITTAL</button>
-          <button class="solid-btn" id="changeArAllButton" type="button" title="Apply saved CF2 Account Receivable details to all draft claims" aria-label="Change Account Receivable for All">CHANGE AR INFO ALL</button>
+        <div class="page-toolbar" aria-label="Claim actions toolbar">
+          <div class="toolbar-batch-indicator">Batch processing</div>
+          <section class="toolbar-group" aria-labelledby="toolbarWorkflowLabel"><h2 class="toolbar-group-label" id="toolbarWorkflowLabel">Finalize &amp; transmit</h2><div class="toolbar-group-actions">
+            <button class="solid-btn" id="finalizeAllButton" type="button" title="Generate final PBEF eligibility data for a batch of draft claims" aria-label="Auto Finalize">AUTO FINALIZE</button>
+            <button class="solid-btn" id="transmitAllButton" type="button" title="Auto Transmit a batch of draft claims" aria-label="Auto Transmit">AUTO TRANSMIT</button>
+          </div></section>
+          <section class="toolbar-group" aria-labelledby="toolbarGenerateLabel"><h2 class="toolbar-group-label" id="toolbarGenerateLabel">Generate</h2><div class="toolbar-group-actions">
+            <button class="solid-btn" id="generateCf4AllButton" type="button" title="Generate CF4 for a batch of draft claims" aria-label="Generate CF4">GENERATE CF4</button>
+          </div></section>
+          <section class="toolbar-group" aria-labelledby="toolbarRemoveLabel"><h2 class="toolbar-group-label" id="toolbarRemoveLabel">Remove data</h2><div class="toolbar-group-actions">
+            <button class="solid-btn danger-action" id="removeGeneratedSoaAllButton" type="button" title="Remove generated eSOA documents from a batch of draft claims" aria-label="Remove Generated SOA">REMOVE GENERATED SOA</button>
+            <button class="solid-btn danger-action" id="removeSoaAllButton" type="button" title="Remove SOA charge data from a batch of draft claims" aria-label="Remove SOA Charges">REMOVE SOA CHARGES</button>
+          </div></section>
+          <section class="toolbar-group" aria-labelledby="toolbarOtherLabel"><h2 class="toolbar-group-label" id="toolbarOtherLabel">Other actions</h2><div class="toolbar-group-actions">
+            <button class="solid-btn" id="copyTransmittalsButton" type="button" title="Copy Transmittal" aria-label="Copy Transmittal">COPY TRANSMITTAL</button>
+            <button class="solid-btn" id="changeArAllButton" type="button" title="Apply saved CF2 Account Receivable details to a batch of draft claims" aria-label="Update AR Staff Info">UPDATE AR STAFF INFO</button>
+          </div></section>
           <span class="toolbar-status" id="transmitAllStatus" aria-live="polite"></span>
         </div>
         <label class="claims-sort" for="claimsSort">Sort patients <select id="claimsSort" disabled><option value="">Default order</option><option value="surname-asc">Surname A–Z</option><option value="surname-desc">Surname Z–A</option></select></label>
@@ -196,7 +220,7 @@
         <button class="editor-tab" type="button" role="tab" data-editor-view="doctor" aria-selected="false">Change doctor</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="cf2" aria-selected="false">Change time</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="receivable" aria-selected="false">Account receivable</button>
-        <button class="editor-tab" type="button" role="tab" data-editor-view="soa" aria-selected="false">Generate/Remove SOA Data</button>
+        <button class="editor-tab" type="button" role="tab" data-editor-view="soa" aria-selected="false">Generate/Remove SOA Charges</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="history" aria-selected="false">HPI &amp; Pertinent Past Medical History</button>
         <button class="editor-tab" type="button" role="tab" data-editor-view="course" aria-selected="false">Update Course in the Ward</button>
       </nav>
@@ -270,7 +294,7 @@
         <section class="editor-section" data-editor-section="soa">
           <h3>SOA Charges and Payments</h3>
           <p class="editor-note" id="editorSoaSummary">Loading SOA rows...</p>
-          <div class="editor-actions"><button class="cyber-btn danger" id="removeSoaButton" type="button">REMOVE SOA DATA</button><button class="cyber-btn" id="generateSoaButton" type="button">GENERATE SOA</button></div>
+          <div class="editor-actions"><button class="cyber-btn danger" id="removeSoaButton" type="button">REMOVE SOA CHARGES</button><button class="cyber-btn" id="generateSoaButton" type="button">GENERATE SOA</button></div>
           <div class="editor-message" id="soaEditorMessage" aria-live="polite"></div>
         </section>
       </div>

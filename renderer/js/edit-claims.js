@@ -173,9 +173,10 @@ lookupForm.addEventListener("submit", async (event) => {
   let progressPoll = null;
 
   lookupButton.disabled = true;
+  lookupButton.classList.add("is-loading");
+  lookupButton.setAttribute("aria-busy", "true");
   claimsSort.disabled = true;
   claimsSort.value = "";
-  lookupButton.textContent = "SEARCHING...";
   summary.hidden = true;
   showMessage(dateMode
     ? "Searching Beacon claims by admission date range..."
@@ -313,7 +314,8 @@ lookupForm.addEventListener("submit", async (event) => {
   } finally {
     if (progressPoll) window.clearInterval(progressPoll);
     lookupButton.disabled = false;
-    lookupButton.textContent = "LOOK UP";
+    lookupButton.classList.remove("is-loading");
+    lookupButton.removeAttribute("aria-busy");
   }
 });
 
@@ -768,11 +770,11 @@ function showTransmitAllConfirm(transmittalCount, rowCount, onConfirm) {
   root.innerHTML = `
     <div class="modal-overlay">
       <div class="modal-box">
-        <h3>Confirm Transmit All</h3>
+        <h3>Confirm Batch Transmit</h3>
         <p>Transmit ${transmittalCount} draft transmittal${transmittalCount === 1 ? "" : "s"} (${rowCount} claim row${rowCount === 1 ? "" : "s"}) to PhilHealth now?\n\nThis action submits the claims for processing and cannot be undone. Rows that are not in DRAFT status are skipped.</p>
         <div class="modal-actions">
           <button class="cyber-btn" id="transmitAllCancelBtn" type="button">CANCEL</button>
-          <button class="cyber-btn danger" id="transmitAllConfirmBtn" type="button">YES, TRANSMIT ALL</button>
+          <button class="cyber-btn danger" id="transmitAllConfirmBtn" type="button">YES, TRANSMIT BATCH</button>
         </div>
       </div>
     </div>`;
@@ -794,92 +796,10 @@ function showTransmitAllConfirm(transmittalCount, rowCount, onConfirm) {
   document.getElementById("transmitAllCancelBtn").focus();
 }
 
-function showGenerateSoaAllConfirm(claimCount, onConfirm) {
-  const root = document.getElementById("modalRoot");
-  root.innerHTML = `
-    <div class="modal-overlay">
-      <div class="modal-box">
-        <h3>Confirm Generate SOA</h3>
-        <p>Validate, generate, and upload SOA data for ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time?</p>
-        <div class="modal-actions">
-          <button class="cyber-btn" id="generateSoaAllCancelBtn" type="button">CANCEL</button>
-          <button class="cyber-btn danger" id="generateSoaAllConfirmBtn" type="button">YES, GENERATE ALL</button>
-        </div>
-      </div>
-    </div>`;
-  function close() {
-    closeTransmitAllConfirm(onKey);
-  }
-  function onKey(event) {
-    if (event.key === "Escape") close();
-  }
-  document.getElementById("generateSoaAllCancelBtn").addEventListener("click", close);
-  document.getElementById("generateSoaAllConfirmBtn").addEventListener("click", () => {
-    close();
-    onConfirm();
-  });
-  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
-    if (event.target === event.currentTarget) close();
-  });
-  document.addEventListener("keydown", onKey);
-  document.getElementById("generateSoaAllCancelBtn").focus();
-}
-
 function getDraftClaimsForSoa() {
   return Array.from(claimsBody.querySelectorAll("tr[data-claim-row]"))
     .filter((row) => row.querySelector('[data-action="edit-claim"]')
       && String(row.dataset.transmittalStatus || "").trim().toUpperCase() === "DRAFT");
-}
-
-async function runGenerateSoaAll() {
-  const rows = getDraftClaimsForSoa();
-  if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for SOA generation.", true);
-    return;
-  }
-
-  const button = document.getElementById("generateSoaAllButton");
-  const unlockToolbar = lockClaimsToolbar(button);
-  const cf4Button = document.getElementById("generateCf4AllButton");
-  const removeButton = document.getElementById("removeSoaAllButton");
-  let generated = 0;
-  let failed = 0;
-  button.disabled = true;
-  cf4Button.disabled = true;
-  removeButton.disabled = true;
-  transmitAllButton.disabled = true;
-  button.textContent = "GENERATING SOA...";
-  setToolbarLoading(button, true);
-  try {
-    for (let index = 0; index < rows.length; index += 1) {
-      const row = rows[index];
-      const claimAction = row.querySelector('[data-action="edit-claim"]');
-      const { transmittalId, claimId } = claimAction.dataset;
-      setTransmitAllStatus(`Generating SOA ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
-      try {
-        await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/soa/generate`, {
-          method: "POST",
-          body: JSON.stringify({}),
-        });
-        setBeaconMessage(row, "SOA validated, generated, and uploaded to Beacon.");
-        generated += 1;
-      } catch (error) {
-        setBeaconMessage(row, `SOA generation failed: ${error.message}`, true);
-        failed += 1;
-      }
-    }
-    setTransmitAllStatus(failed
-      ? `SOA generated for ${generated} claim${generated === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
-      : `SOA generated for all ${generated} draft claim${generated === 1 ? "" : "s"}.`, failed > 0);
-  } finally {
-    setToolbarLoading(button, false);
-    button.disabled = false;
-    button.textContent = "GENERATE SOA ALL";
-    cf4Button.disabled = false;
-    removeButton.disabled = false;
-    transmitAllButton.disabled = false;
-    unlockToolbar();
-  }
 }
 
 function showGenerateCf4AllConfirm(claimCount, onConfirm) {
@@ -887,11 +807,11 @@ function showGenerateCf4AllConfirm(claimCount, onConfirm) {
   root.innerHTML = `
     <div class="modal-overlay">
       <div class="modal-box">
-        <h3>Confirm Generate CF4</h3>
+        <h3>Confirm Batch CF4 Generation</h3>
         <p>Generate and upload CF4 for ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time?</p>
         <div class="modal-actions">
           <button class="cyber-btn" id="generateCf4AllCancelBtn" type="button">CANCEL</button>
-          <button class="cyber-btn danger" id="generateCf4AllConfirmBtn" type="button">YES, GENERATE ALL</button>
+          <button class="cyber-btn danger" id="generateCf4AllConfirmBtn" type="button">YES, GENERATE BATCH</button>
         </div>
       </div>
     </div>`;
@@ -925,8 +845,8 @@ async function runGenerateCf4All() {
   let generated = 0;
   let failed = 0;
   button.disabled = true;
-  document.getElementById("generateSoaAllButton").disabled = true;
   document.getElementById("removeSoaAllButton").disabled = true;
+  document.getElementById("removeGeneratedSoaAllButton").disabled = true;
   transmitAllButton.disabled = true;
   button.textContent = "GENERATING CF4...";
   setToolbarLoading(button, true);
@@ -954,9 +874,9 @@ async function runGenerateCf4All() {
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
-    button.textContent = "GENERATE CF4 ALL";
-    document.getElementById("generateSoaAllButton").disabled = false;
+    button.textContent = "GENERATE CF4";
     document.getElementById("removeSoaAllButton").disabled = false;
+    document.getElementById("removeGeneratedSoaAllButton").disabled = false;
     transmitAllButton.disabled = false;
     unlockToolbar();
   }
@@ -967,11 +887,11 @@ function showRemoveSoaAllConfirm(claimCount, onConfirm) {
   root.innerHTML = `
     <div class="modal-overlay">
       <div class="modal-box">
-        <h3>Confirm Remove SOA Data</h3>
+        <h3>Confirm Batch SOA Charge Removal</h3>
         <p>Remove SOA charge data from ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time? Claims with payment receipts will not be changed.</p>
         <div class="modal-actions">
           <button class="cyber-btn" id="removeSoaAllCancelBtn" type="button">CANCEL</button>
-          <button class="cyber-btn danger" id="removeSoaAllConfirmBtn" type="button">YES, REMOVE ALL</button>
+          <button class="cyber-btn danger" id="removeSoaAllConfirmBtn" type="button">YES, REMOVE BATCH</button>
         </div>
       </div>
     </div>`;
@@ -993,6 +913,86 @@ function showRemoveSoaAllConfirm(claimCount, onConfirm) {
   document.getElementById("removeSoaAllCancelBtn").focus();
 }
 
+function showRemoveGeneratedSoaAllConfirm(claimCount, onConfirm) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Batch Generated SOA Removal</h3>
+        <p>Delete generated eSOA documents from ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time? SOA charge data will remain.</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="removeGeneratedSoaAllCancelBtn" type="button">CANCEL</button>
+          <button class="cyber-btn danger" id="removeGeneratedSoaAllConfirmBtn" type="button">YES, REMOVE BATCH</button>
+        </div>
+      </div>
+    </div>`;
+  function close() {
+    closeTransmitAllConfirm(onKey);
+  }
+  function onKey(event) {
+    if (event.key === "Escape") close();
+  }
+  document.getElementById("removeGeneratedSoaAllCancelBtn").addEventListener("click", close);
+  document.getElementById("removeGeneratedSoaAllConfirmBtn").addEventListener("click", () => {
+    close();
+    onConfirm();
+  });
+  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.getElementById("removeGeneratedSoaAllCancelBtn").focus();
+}
+
+async function runRemoveGeneratedSoaAll() {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for generated SOA removal.", true);
+    return;
+  }
+
+  const button = document.getElementById("removeGeneratedSoaAllButton");
+  const unlockToolbar = lockClaimsToolbar(button);
+  const otherControls = [
+    transmitAllButton,
+    document.getElementById("generateCf4AllButton"),
+    document.getElementById("removeSoaAllButton"),
+  ];
+  let removed = 0;
+  let failed = 0;
+  button.disabled = true;
+  otherControls.forEach((control) => { control.disabled = true; });
+  button.textContent = "REMOVING GENERATED SOA...";
+  setToolbarLoading(button, true);
+  try {
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const claimAction = row.querySelector('[data-action="edit-claim"]');
+      const { transmittalId, claimId } = claimAction.dataset;
+      setTransmitAllStatus(`Removing generated SOA ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
+      try {
+        const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/soa/generated`, {
+          method: "DELETE",
+        });
+        setBeaconMessage(row, `Generated eSOA document${result.document_count === 1 ? "" : "s"} removed (${result.document_count || 0}).`);
+        removed += 1;
+      } catch (error) {
+        setBeaconMessage(row, `Generated eSOA removal failed: ${error.message}`, true);
+        failed += 1;
+      }
+    }
+    setTransmitAllStatus(failed
+      ? `Generated eSOA documents removed from ${removed} claim${removed === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
+      : `Generated eSOA documents removed from all ${removed} draft claim${removed === 1 ? "" : "s"}.`, failed > 0);
+  } finally {
+    setToolbarLoading(button, false);
+    button.disabled = false;
+    button.textContent = "REMOVE GENERATED SOA";
+    otherControls.forEach((control) => { control.disabled = false; });
+    unlockToolbar();
+  }
+}
+
 async function runRemoveSoaAll() {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
@@ -1003,12 +1003,11 @@ async function runRemoveSoaAll() {
   const button = document.getElementById("removeSoaAllButton");
   const unlockToolbar = lockClaimsToolbar(button);
   const cf4Button = document.getElementById("generateCf4AllButton");
-  const generateButton = document.getElementById("generateSoaAllButton");
   let removed = 0;
   let failed = 0;
   button.disabled = true;
   cf4Button.disabled = true;
-  generateButton.disabled = true;
+  document.getElementById("removeGeneratedSoaAllButton").disabled = true;
   transmitAllButton.disabled = true;
   button.textContent = "REMOVING SOA...";
   setToolbarLoading(button, true);
@@ -1035,9 +1034,9 @@ async function runRemoveSoaAll() {
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
-    button.textContent = "REMOVE SOA ALL";
+    button.textContent = "REMOVE SOA CHARGES";
     cf4Button.disabled = false;
-    generateButton.disabled = false;
+    document.getElementById("removeGeneratedSoaAllButton").disabled = false;
     transmitAllButton.disabled = false;
     unlockToolbar();
   }
@@ -1059,14 +1058,14 @@ async function runChangeArAll() {
     saved = await editorRequest("/api/cf2/account-receivable");
   } catch (error) {
     setToolbarLoading(button, false);
-    button.textContent = "CHANGE AR INFO ALL";
+    button.textContent = "UPDATE AR STAFF INFO";
     unlockToolbar();
     setTransmitAllStatus(error.message || "Could not load Account Receivable details.", true);
     return;
   }
   if (!saved.name && !saved.designation && !saved.number) {
     setToolbarLoading(button, false);
-    button.textContent = "CHANGE AR INFO ALL";
+    button.textContent = "UPDATE AR STAFF INFO";
     unlockToolbar();
     setTransmitAllStatus("Save Account Receivable details in CF2 first.", true);
     return;
@@ -1075,9 +1074,9 @@ async function runChangeArAll() {
   const controls = [
     button,
     transmitAllButton,
-    document.getElementById("generateSoaAllButton"),
     document.getElementById("generateCf4AllButton"),
     document.getElementById("removeSoaAllButton"),
+    document.getElementById("removeGeneratedSoaAllButton"),
   ];
   controls.forEach((control) => { control.disabled = true; });
   button.textContent = "CHANGING AR INFO...";
@@ -1108,7 +1107,7 @@ async function runChangeArAll() {
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
-    button.textContent = "CHANGE AR INFO ALL";
+    button.textContent = "UPDATE AR STAFF INFO";
     controls.slice(1).forEach((control) => { control.disabled = false; });
     unlockToolbar();
   }
@@ -1119,11 +1118,11 @@ function showChangeArAllConfirm(claimCount, onConfirm) {
   root.innerHTML = `
     <div class="modal-overlay">
       <div class="modal-box">
-        <h3>Confirm Account Receivable Update</h3>
+        <h3>Confirm Batch Account Receivable Update</h3>
         <p>Apply the saved CF2 Account Receivable name, designation, and contact number to ${claimCount} draft claim${claimCount === 1 ? "" : "s"}? Each CF2 PDF Date Signed will use that claim's latest treatment date.</p>
         <div class="modal-actions">
           <button class="cyber-btn" id="changeArAllCancelBtn" type="button">CANCEL</button>
-          <button class="cyber-btn danger" id="changeArAllConfirmBtn" type="button">YES, UPDATE ALL</button>
+          <button class="cyber-btn danger" id="changeArAllConfirmBtn" type="button">YES, UPDATE BATCH</button>
         </div>
       </div>
     </div>`;
@@ -1155,10 +1154,10 @@ async function runTransmitAll() {
   const entries = Array.from(groups.entries());
   const unlockToolbar = lockClaimsToolbar(transmitAllButton);
   transmitAllButton.disabled = true;
-  document.getElementById("generateSoaAllButton").disabled = true;
   document.getElementById("generateCf4AllButton").disabled = true;
   document.getElementById("removeSoaAllButton").disabled = true;
-  transmitAllButton.textContent = "TRANSMITTING ALL...";
+  document.getElementById("removeGeneratedSoaAllButton").disabled = true;
+  transmitAllButton.textContent = "TRANSMITTING...";
   setToolbarLoading(transmitAllButton, true);
   let transmitted = 0;
   let failed = 0;
@@ -1192,10 +1191,10 @@ async function runTransmitAll() {
   } finally {
     setToolbarLoading(transmitAllButton, false);
     transmitAllButton.disabled = false;
-    document.getElementById("generateSoaAllButton").disabled = false;
     document.getElementById("generateCf4AllButton").disabled = false;
     document.getElementById("removeSoaAllButton").disabled = false;
-    transmitAllButton.textContent = "AUTO TRANSMIT ALL";
+    document.getElementById("removeGeneratedSoaAllButton").disabled = false;
+    transmitAllButton.textContent = "AUTO TRANSMIT";
     unlockToolbar();
   }
 }
@@ -1213,13 +1212,13 @@ async function runFinalizeAll() {
   const controls = [
     finalizeAllButton,
     transmitAllButton,
-    document.getElementById("generateSoaAllButton"),
     document.getElementById("generateCf4AllButton"),
     document.getElementById("removeSoaAllButton"),
+    document.getElementById("removeGeneratedSoaAllButton"),
     document.getElementById("changeArAllButton"),
   ];
   controls.forEach((control) => { control.disabled = true; });
-  finalizeAllButton.textContent = "FINALIZING ALL...";
+  finalizeAllButton.textContent = "FINALIZING...";
   setToolbarLoading(finalizeAllButton, true);
   try {
     for (let index = 0; index < rows.length; index += 1) {
@@ -1249,7 +1248,7 @@ async function runFinalizeAll() {
   } finally {
     setToolbarLoading(finalizeAllButton, false);
     controls.forEach((control) => { control.disabled = false; });
-    finalizeAllButton.textContent = "AUTO FINALIZE ALL";
+    finalizeAllButton.textContent = "AUTO FINALIZE";
     unlockToolbar();
   }
 }
@@ -1259,11 +1258,11 @@ function showFinalizeAllConfirm(claimCount, onConfirm) {
   root.innerHTML = `
     <div class="modal-overlay">
       <div class="modal-box">
-        <h3>Confirm Auto Finalize</h3>
+        <h3>Confirm Batch Auto Finalize</h3>
         <p>Generate a final PBEF and save eligibility data for ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time? Claims already finalized will be skipped.</p>
         <div class="modal-actions">
           <button class="cyber-btn" id="finalizeAllCancelBtn" type="button">CANCEL</button>
-          <button class="cyber-btn danger" id="finalizeAllConfirmBtn" type="button">YES, FINALIZE ALL</button>
+          <button class="cyber-btn danger" id="finalizeAllConfirmBtn" type="button">YES, FINALIZE BATCH</button>
         </div>
       </div>
     </div>`;
@@ -1318,15 +1317,6 @@ transmitAllButton.addEventListener("click", () => {
   showTransmitAllConfirm(transmittalCount, rowCount, runTransmitAll);
 });
 
-document.getElementById("generateSoaAllButton").addEventListener("click", () => {
-  const rows = getDraftClaimsForSoa();
-  if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for SOA generation.", true);
-    return;
-  }
-  showGenerateSoaAllConfirm(rows.length, runGenerateSoaAll);
-});
-
 document.getElementById("generateCf4AllButton").addEventListener("click", () => {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
@@ -1352,4 +1342,13 @@ document.getElementById("removeSoaAllButton").addEventListener("click", () => {
     return;
   }
   showRemoveSoaAllConfirm(rows.length, runRemoveSoaAll);
+});
+
+document.getElementById("removeGeneratedSoaAllButton").addEventListener("click", () => {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No draft claims are available for generated SOA removal.", true);
+    return;
+  }
+  showRemoveGeneratedSoaAllConfirm(rows.length, runRemoveGeneratedSoaAll);
 });

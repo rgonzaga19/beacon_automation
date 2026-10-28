@@ -267,7 +267,7 @@ function setControlsRunning(running) {
   automateBtn.classList.toggle("running", running);
   automateBtnLabel.textContent = running
     ? (soaStopRequested ? "STOPPING..." : "STOP AUTOMATION")
-    : "AUTOMATE UPLOAD";
+    : "AUTOMATE UPLOAD & GENERATE";
   browseBtn.disabled = running;
   soaFolderInput.disabled = running;
   clearBtn.disabled = running;

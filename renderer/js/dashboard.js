@@ -164,7 +164,6 @@ const workspaceButtons = {
   soaExcelIndividual: document.getElementById("btnSoaIndividual"),
   soaExcelBatch: document.getElementById("btnSoaBatch"),
   autoRename: document.getElementById("btnAutoRename"),
-  settings: document.getElementById("btnSettings"),
   users: document.getElementById("siteUsers"),
   teamCollab: document.getElementById("btnCollaborationChat"),
 };
@@ -188,6 +187,16 @@ const workspaceFrames = Object.fromEntries(
   [...document.querySelectorAll("[data-workspace-frame]")]
     .map((frame) => [frame.dataset.workspaceFrame, frame])
 );
+
+const siteHeader = document.querySelector(".site-header");
+window.addEventListener("message", (event) => {
+  if (event.origin !== location.origin
+      || event.source !== workspaceFrames.about?.contentWindow
+      || event.data?.type !== "agreement-open-state") return;
+  const isOpen = Boolean(event.data.open);
+  siteHeader.inert = isOpen;
+  siteHeader.classList.toggle("agreement-blocked", isOpen);
+});
 
 function setWorkspaceActive(activeKey) {
   Object.entries(workspaceButtons).forEach(([key, button]) => {
@@ -455,10 +464,6 @@ document.getElementById("siteUsers").addEventListener("click", () => {
   accountTrigger.setAttribute("aria-expanded", "false");
   openWorkspace("users");
 });
-document.getElementById("btnSettings").addEventListener("click", () => {
-  openWorkspace("settings");
-});
-
 // ---------------------------------------------------------------------------
 // Heartbeat Controller - monitors Beacon connection and automation activity
 // ---------------------------------------------------------------------------

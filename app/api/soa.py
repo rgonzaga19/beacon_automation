@@ -359,6 +359,51 @@ def get_documents(claim_id):
     return docs if isinstance(docs, list) else []
 
 
+def remove_generated_esoa_documents(claim_id):
+    """Delete generated ESA documents for a claim and verify they are gone."""
+    docs = get_documents(claim_id)
+    esa_docs = [
+        doc for doc in docs
+        if str(doc.get("documentType") or "").strip().upper() == "ESA"
+    ]
+    document_ids = []
+    for doc in esa_docs:
+        document_id = next((
+            doc.get(key) for key in ("phicDocumentId", "documentId", "id")
+            if doc.get(key) is not None
+        ), None)
+        if document_id is None:
+            raise RuntimeError("Beacon returned an ESA document without its document ID.")
+        document_ids.append(document_id)
+
+    for document_id in document_ids:
+        _json(browser_session.http_request(
+            "DELETE",
+            _base_url() + "/api/PHICDocument/DeletePHICDocument",
+            headers=_headers(),
+            params={"phicDocumentId": document_id, "phicClaimId": int(claim_id)},
+            timeout=30,
+        ))
+
+    remaining = [
+        doc for doc in get_documents(claim_id)
+        if str(doc.get("documentType") or "").strip().upper() == "ESA"
+    ]
+    if remaining:
+        raise RuntimeError("Beacon still returns generated ESA documents after removal.")
+    return len(document_ids)
+
+
+def get_claim_issue_count(claim_id):
+    return _json(browser_session.http_request(
+        "GET",
+        _base_url() + "/api/PHICClaimIssue/GetPHICClaimIssueCount",
+        headers=_headers(),
+        params={"claimId": int(claim_id)},
+        timeout=30,
+    ))
+
+
 def get_soa_state(claim_id):
     """Detect SOA import state and generated ESA-document state independently.
 
@@ -575,6 +620,18 @@ def validate_esoa(payload):
     return _json(browser_session.http_request("POST", _eclaims_api_base()+"/ValidateESOA",headers=_headers(),json=payload,timeout=60))
 def generate_and_upload_esoa(claim_id, facility_id=263):
     return _json(browser_session.http_request("POST", _base_url()+"/api/PHICEsoa/GenerateAndUploadEsoaXML",headers=_headers(),json={"claimId":claim_id,"facilityId":facility_id,"isUpload":True},timeout=60))
+
+
+def validate_and_generate_esoa(claim_id, facility_id=263):
+    """Validate eSOA XML, then generate and upload it through Beacon."""
+    esoa = get_esoa_xml(claim_id, facility_id)
+    validation = validate_esoa(esoa)
+    if str(validation).strip() != "XML is Valid!":
+        raise ValueError(f"SOA validation failed: {validation}")
+    generated = generate_and_upload_esoa(claim_id, facility_id)
+    if str(generated).strip().casefold() != "true":
+        raise RuntimeError(f"Beacon returned an unsuccessful SOA generation response: {generated}")
+    return {"generated": True}
 
 def parse_soa_workbook(path):
     """Parse each patient's SOA workbook dynamically from its own row values.

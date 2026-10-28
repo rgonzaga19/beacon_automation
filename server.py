@@ -1854,6 +1854,29 @@ def remove_finalize_claim_soa(transmittal_id, claim_id):
         return jsonify({"error": "Beacon could not remove all SOA charge rows."}), 502
 
 
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/soa/generated", methods=["DELETE"])
+@login_required
+def remove_finalize_claim_generated_soa(transmittal_id, claim_id):
+    user = current_user()
+    beacon_settings, auth_key = _beacon_edit_settings(user)
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+            removed_count = soa_api.remove_generated_esoa_documents(claim_id)
+            issue_count = soa_api.get_claim_issue_count(claim_id)
+        return jsonify({
+            "removed": True,
+            "document_count": removed_count,
+            "issue_count": issue_count,
+        })
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims generated SOA removal failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not remove all generated eSOA documents."}), 502
+
+
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/soa/generate", methods=["POST"])
 @login_required
 def generate_finalize_claim_soa(transmittal_id, claim_id):
@@ -1864,13 +1887,7 @@ def generate_finalize_claim_soa(transmittal_id, claim_id):
             browser_session.invalidate_auth_token()
             _require_draft_claim(transmittal_id, claim_id)
             facility_id = beacon_api.get_client_id()
-            esoa = soa_api.get_esoa_xml(claim_id, facility_id)
-            validation = soa_api.validate_esoa(esoa)
-            if str(validation).strip() != "XML is Valid!":
-                return jsonify({"error": f"SOA validation failed: {validation}"}), 400
-            generated = soa_api.generate_and_upload_esoa(claim_id, facility_id)
-            if str(generated).strip().casefold() != "true":
-                raise RuntimeError(f"Beacon returned an unsuccessful SOA generation response: {generated}")
+            soa_api.validate_and_generate_esoa(claim_id, facility_id)
         return jsonify({"generated": True})
     except (ValueError, LookupError) as exc:
         return jsonify({"error": str(exc)}), 400
@@ -2807,13 +2824,7 @@ def _run_all_generate_esoa(transmittal_number):
         raise ValueError("Beacon returned no claim for eSOA generation.")
     claim_id = int(claims[0]["id"])
     _require_draft_claim(int(transmittal["id"]), claim_id)
-    esoa = soa_api.get_esoa_xml(claim_id, facility_id)
-    validation = soa_api.validate_esoa(esoa)
-    if str(validation).strip() != "XML is Valid!":
-        raise ValueError(f"eSOA validation failed: {validation}")
-    generated = soa_api.generate_and_upload_esoa(claim_id, facility_id)
-    if str(generated).strip().casefold() != "true":
-        raise RuntimeError(f"Beacon returned an unsuccessful eSOA generation response: {generated}")
+    soa_api.validate_and_generate_esoa(claim_id, facility_id)
 
 
 def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_settings, cf4_settings, generate_soa, stop_event, run_id):
@@ -3154,7 +3165,7 @@ def run_all_start():
     }
     user_settings = get_or_create_user_settings(user)
     cf4_settings = {**DEFAULT_CF4_SETTINGS, **(user_settings.cf4_settings or {})}
-    generate_soa = request.form.get("generate_soa") == "true"
+    generate_soa = True
     stop_event = threading.Event()
     old_retry_state = _run_all_retry_states.get(user.id)
     if old_retry_state:

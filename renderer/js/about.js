@@ -23,6 +23,12 @@ const agreementSections = agreementDialog?.querySelector(".agreement-sections");
 let agreementRequired = false;
 let agreementAtBottom = false;
 
+function notifyAgreementOpenState(isOpen) {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: "agreement-open-state", open: isOpen }, location.origin);
+  }
+}
+
 function updateAgreementScrollState() {
   if (!agreementSections) return;
   agreementAtBottom = agreementSections.scrollTop + agreementSections.clientHeight >= agreementSections.scrollHeight - 2;
@@ -40,8 +46,11 @@ function openAgreement({ required = false } = {}) {
   agreementClose.disabled = true;
   agreementSections.scrollTop = 0;
   if (!agreementDialog.open) agreementDialog.showModal();
+  notifyAgreementOpenState(true);
   requestAnimationFrame(updateAgreementScrollState);
 }
+
+agreementDialog?.addEventListener("close", () => notifyAgreementOpenState(false));
 
 document.querySelectorAll("[data-open-agreement]").forEach((link) => {
   link.addEventListener("click", (event) => {
