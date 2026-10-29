@@ -463,8 +463,10 @@ accountTrigger.addEventListener("click", () => {
 });
 document.getElementById("editProfileButton").addEventListener("click", () => {
   accountMenu.hidden = true;
+  accountTrigger.setAttribute("aria-expanded", "false");
   setTopNavigation("siteHome");
   showWorkspaceHome();
+  setDashboardLayout("workflow", true);
   requestAnimationFrame(() => {
     document.getElementById("profileCard").scrollIntoView({ behavior: "smooth", block: "center" });
     document.getElementById("profileNameInput").focus({ preventScroll: true });
