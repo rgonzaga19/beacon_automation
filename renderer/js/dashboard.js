@@ -23,6 +23,8 @@ let chatReadStateKey = null;
 let latestChatState = null;
 let dashboardUptimeSeconds = null;
 let dashboardUptimeClock = 0;
+let runHistoryCursorStack = [null];
+let runHistoryLoading = false;
 
 function formatUptime(totalSeconds) {
   const days = Math.floor(totalSeconds / 86400);
@@ -103,6 +105,47 @@ function renderRecentRuns(runs = []) {
   }).join("");
 }
 
+async function loadRunHistory() {
+  if (runHistoryLoading) return;
+  runHistoryLoading = true;
+  const previous = document.getElementById("runHistoryPrevious");
+  const next = document.getElementById("runHistoryNext");
+  previous.disabled = true;
+  next.disabled = true;
+  const cursor = runHistoryCursorStack.at(-1);
+  const params = new URLSearchParams();
+  if (cursor) {
+    params.set("before_at", cursor.finished_at);
+    params.set("before_id", String(cursor.id));
+  }
+  try {
+    const query = params.toString();
+    const result = await fetchJSON(`/api/dashboard/runs${query ? `?${query}` : ""}`);
+    renderRecentRuns(result.runs || []);
+    document.getElementById("runHistoryPage").textContent = `Page ${runHistoryCursorStack.length}`;
+    previous.disabled = runHistoryCursorStack.length <= 1;
+    next.disabled = !result.has_more;
+    next.dataset.cursor = result.next_cursor ? JSON.stringify(result.next_cursor) : "";
+  } catch {
+    document.getElementById("recentRunsBody").innerHTML = '<tr><td class="activity-empty" colspan="6">Run history could not be loaded. Try refreshing.</td></tr>';
+  } finally {
+    runHistoryLoading = false;
+  }
+}
+
+document.getElementById("runHistoryPrevious").addEventListener("click", () => {
+  if (runHistoryCursorStack.length <= 1 || runHistoryLoading) return;
+  runHistoryCursorStack.pop();
+  loadRunHistory();
+});
+document.getElementById("runHistoryNext").addEventListener("click", () => {
+  if (runHistoryLoading) return;
+  const cursor = document.getElementById("runHistoryNext").dataset.cursor;
+  if (!cursor) return;
+  runHistoryCursorStack.push(JSON.parse(cursor));
+  loadRunHistory();
+});
+
 function renderOnlineUsers(users = []) {
   const root = document.getElementById("onlineUsersList");
   if (!users.length) {
@@ -123,7 +166,7 @@ async function refreshDashboardMetrics() {
     document.getElementById("metricSuccess").textContent = metrics.success_rate == null ? "—" : `${metrics.success_rate}%`;
     renderDailyRunsChart(metrics.daily_runs || []);
     renderWorkflowChart(metrics.workflow_runs || []);
-    renderRecentRuns(metrics.recent_runs || []);
+    await loadRunHistory();
     updateDashboardUptime();
   } catch {
     document.getElementById("recentRunsBody").innerHTML = '<tr><td class="activity-empty" colspan="6">Dashboard metrics could not be loaded. Refresh to try again.</td></tr>';
@@ -138,6 +181,7 @@ function updateDashboardUptime() {
 }
 
 document.getElementById("refreshMetrics").addEventListener("click", refreshDashboardMetrics);
+loadRunHistory();
 refreshDashboardMetrics();
 setInterval(updateDashboardUptime, 30000);
 

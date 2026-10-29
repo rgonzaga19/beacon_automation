@@ -378,6 +378,11 @@ def _automation_outcome(results, stopped=False, failed=False):
 def init_database():
     with app.app_context():
         db.create_all()
+        run_history_index = next(
+            index for index in AutomationRun.__table__.indexes
+            if index.name == "ix_automation_runs_finished_at_id"
+        )
+        run_history_index.create(bind=db.engine, checkfirst=True)
         run_columns = {column["name"] for column in inspect(db.engine).get_columns("automation_runs")}
         if "runner_name" not in run_columns:
             db.session.execute(text("ALTER TABLE automation_runs ADD COLUMN runner_name VARCHAR(120)"))
@@ -498,17 +503,6 @@ def dashboard_metrics():
             daily[day] += 1
         workflows[run.workflow] = workflows.get(run.workflow, 0) + 1
         statuses[run.status if run.status in statuses else "failed"] += 1
-    recent_runs = [
-        {
-            "workflow": run.workflow,
-            "status": run.status,
-            "item_count": run.item_count,
-            "duration_seconds": run.duration_seconds,
-            "runner_name": run.runner_name,
-            "finished_at": run.finished_at.isoformat(),
-        }
-        for run in AutomationRun.query.order_by(AutomationRun.finished_at.desc(), AutomationRun.id.desc()).limit(12)
-    ]
     total = len(recent)
     successful = statuses["completed"]
     return jsonify({
@@ -520,7 +514,45 @@ def dashboard_metrics():
         "daily_runs": [{"date": day, "count": count} for day, count in daily.items()],
         "workflow_runs": [{"workflow": key, "count": value} for key, value in sorted(workflows.items())],
         "statuses": statuses,
-        "recent_runs": recent_runs,
+    })
+
+
+@app.route("/api/dashboard/runs", methods=["GET"])
+@login_required
+def dashboard_runs():
+    page_size = 12
+    query = AutomationRun.query
+    cursor_at = request.args.get("before_at", "").strip()
+    cursor_id = request.args.get("before_id", type=int)
+    if cursor_at or cursor_id is not None:
+        if not cursor_at or cursor_id is None:
+            return jsonify({"error": "Both cursor values are required."}), 400
+        try:
+            before_at = datetime.fromisoformat(cursor_at.replace("Z", "+00:00"))
+        except ValueError:
+            return jsonify({"error": "Invalid run history cursor."}), 400
+        query = query.filter(or_(
+            AutomationRun.finished_at < before_at,
+            (AutomationRun.finished_at == before_at) & (AutomationRun.id < cursor_id),
+        ))
+    runs = query.order_by(AutomationRun.finished_at.desc(), AutomationRun.id.desc()).limit(page_size + 1).all()
+    has_more = len(runs) > page_size
+    runs = runs[:page_size]
+    next_cursor = None
+    if has_more and runs:
+        last_run = runs[-1]
+        next_cursor = {"finished_at": last_run.finished_at.isoformat(), "id": last_run.id}
+    return jsonify({
+        "runs": [{
+            "workflow": run.workflow,
+            "status": run.status,
+            "item_count": run.item_count,
+            "duration_seconds": run.duration_seconds,
+            "runner_name": run.runner_name,
+            "finished_at": run.finished_at.isoformat(),
+        } for run in runs],
+        "has_more": has_more,
+        "next_cursor": next_cursor,
     })
 
 

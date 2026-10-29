@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import Index
+
 from app.core.database import db
 
 
@@ -94,6 +96,7 @@ class TeamChatMessage(db.Model):
 
 class AutomationRun(db.Model):
     __tablename__ = "automation_runs"
+    __table_args__ = (Index("ix_automation_runs_finished_at_id", "finished_at", "id"),)
 
     id = db.Column(db.Integer, primary_key=True)
     workflow = db.Column(db.String(40), nullable=False, index=True)
