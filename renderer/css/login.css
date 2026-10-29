@@ -175,16 +175,32 @@
 .footer-line { height: 1px; flex: 1; background: var(--border); }
 .form-legal { margin: 24px auto 0; color: var(--text-sec); font-size: 9px; text-align: center; opacity: .72; }
 
-.login-transition-wash { position: absolute; z-index: 20; inset: 0; pointer-events: none; background: radial-gradient(circle at 73% 70%, var(--accent) 0, #0c655b 28%, var(--bg-dark) 72%); clip-path: circle(0% at 73% 70%); opacity: 0; }
-body.login-success-transition .login-transition-wash { animation: login-wash 820ms cubic-bezier(.65,0,.2,1) forwards; }
-body.login-success-transition .brand-panel { animation: brand-exit 700ms cubic-bezier(.55,0,.25,1) forwards; }
-body.login-success-transition .login-card { animation: card-exit 620ms cubic-bezier(.55,0,.25,1) forwards; }
-body.login-success-transition .auth-submit { position: relative; overflow: hidden; box-shadow: 0 0 0 4px var(--accent-soft), 0 0 30px var(--accent); }
-body.login-success-transition .auth-submit::after { position: absolute; inset: -100% -35%; background: linear-gradient(100deg, transparent 35%, rgba(255,255,255,.72) 50%, transparent 65%); content: ""; animation: login-shine 620ms ease-out forwards; }
-@keyframes brand-exit { to { opacity: 0; transform: translateX(-55px) scale(.98); filter: blur(5px); } }
-@keyframes card-exit { to { opacity: 0; transform: translateX(45px) scale(.98); filter: blur(4px); } }
-@keyframes login-wash { 0% { opacity: 0; clip-path: circle(0% at 73% 70%); } 18% { opacity: .96; } 100% { opacity: 1; clip-path: circle(145% at 73% 70%); } }
-@keyframes login-shine { from { transform: translateX(-70%) rotate(8deg); } to { transform: translateX(70%) rotate(8deg); } }
+.login-transition-wash { position:fixed; z-index:20; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:24px; overflow:hidden; pointer-events:none; color:#f5fffd; background:radial-gradient(ellipse at 50% 43%,#10423d 0%,#0b302d 42%,#081b1b 100%); opacity:0; }
+.transition-light { position:absolute; inset:-30%; overflow:hidden; background:radial-gradient(ellipse at 50% 45%,rgba(68,224,194,.3),rgba(22,120,105,.12) 28%,transparent 58%); opacity:0; transform:scale(.88); }
+.transition-light::after { position:absolute; top:-20%; bottom:-20%; left:-45%; width:34%; content:""; background:linear-gradient(90deg,transparent,rgba(180,255,241,.2) 42%,rgba(220,255,249,.48) 50%,rgba(180,255,241,.2) 58%,transparent); filter:blur(7px); transform:skewX(-18deg); }
+.transition-halo { position:absolute; left:50%; top:calc(50% - 44px); width:82px; height:82px; border:1px solid rgba(115,255,228,.72); border-radius:50%; box-shadow:0 0 28px rgba(45,212,191,.32),inset 0 0 22px rgba(45,212,191,.24); opacity:0; transform:translate(-50%,-50%) scale(.55); }
+.transition-mark { position:relative; z-index:1; display:grid; width:70px; height:70px; margin-bottom:10px; place-items:center; background:linear-gradient(145deg,rgba(255,255,255,.16),rgba(45,212,191,.12)); border:1px solid rgba(178,255,238,.62); border-radius:20px; box-shadow:0 14px 44px rgba(0,0,0,.2),0 0 28px rgba(45,212,191,.18),inset 0 1px rgba(255,255,255,.2); opacity:0; transform:translateY(12px) scale(.78) rotate(-5deg); }
+.transition-mark img { width:43px; height:43px; object-fit:contain; filter:drop-shadow(0 2px 8px rgba(45,212,191,.22)); }
+.transition-rule { position:relative; z-index:1; width:0; height:1px; margin:3px 0 4px; background:linear-gradient(90deg,transparent,rgba(146,232,212,.75),transparent); }
+.transition-title { position:relative; z-index:1; color:#f4fffc; font-size:16px; font-weight:650; letter-spacing:.1px; opacity:0; transform:translateY(5px); }
+.transition-caption { position:relative; z-index:1; color:rgba(230,248,243,.65); font-size:11px; letter-spacing:.15px; opacity:0; transform:translateY(4px); }
+body.login-success-transition .login-transition-wash { animation:workspace-reveal 620ms cubic-bezier(.2,.65,.25,1) forwards; }
+body.login-success-transition .transition-light { animation:light-bloom 900ms ease-out both; }
+body.login-success-transition .transition-light::after { animation:light-sweep 760ms 70ms cubic-bezier(.2,.65,.25,1) both; }
+body.login-success-transition .transition-halo { animation:halo-burst 740ms 70ms cubic-bezier(.15,.65,.25,1) both; }
+body.login-success-transition .transition-mark { animation:mark-settle 590ms 80ms cubic-bezier(.18,.8,.25,1.12) forwards; }
+body.login-success-transition .transition-mark img { animation:logo-light 760ms 150ms ease-out both; }
+body.login-success-transition .transition-rule { animation:rule-draw 460ms 240ms cubic-bezier(.2,.7,.25,1) forwards; }
+body.login-success-transition .transition-title { animation:copy-settle 400ms 250ms ease-out forwards; }
+body.login-success-transition .transition-caption { animation:copy-settle 400ms 320ms ease-out forwards; }
+@keyframes workspace-reveal { from { opacity:0; } to { opacity:1; } }
+@keyframes light-bloom { 0% { opacity:0; transform:scale(.88); } 40% { opacity:1; } 100% { opacity:.7; transform:scale(1.08); } }
+@keyframes light-sweep { 0% { transform:translateX(0) skewX(-18deg); opacity:0; } 18% { opacity:1; } 100% { transform:translateX(490%) skewX(-18deg); opacity:0; } }
+@keyframes halo-burst { 0% { opacity:0; transform:translate(-50%,-50%) scale(.55); } 22% { opacity:.85; } 100% { opacity:0; transform:translate(-50%,-50%) scale(2.8); } }
+@keyframes mark-settle { 0% { opacity:0; transform:translateY(12px) scale(.78) rotate(-5deg); } 72% { opacity:1; transform:translateY(-2px) scale(1.035) rotate(.6deg); } 100% { opacity:1; transform:translateY(0) scale(1) rotate(0); } }
+@keyframes logo-light { 0%,100% { filter:drop-shadow(0 2px 8px rgba(45,212,191,.22)); } 45% { filter:drop-shadow(0 0 17px rgba(158,255,235,.85)); } }
+@keyframes rule-draw { to { width:128px; } }
+@keyframes copy-settle { to { opacity:1; transform:translateY(0); } }
 
 @media (max-width: 900px) {
   .auth-layout { grid-template-columns: minmax(0, .9fr) minmax(420px, 1.1fr); }
@@ -225,5 +241,10 @@ body.login-success-transition .auth-submit::after { position: absolute; inset: -
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-  body.login-success-transition .brand-panel, body.login-success-transition .login-card, body.login-success-transition .auth-submit::after { animation: none; }
+  .transition-light,.transition-light::after,.transition-halo,.transition-mark,.transition-mark img,.transition-title,.transition-caption,.transition-rule { animation:none !important; }
+  body.login-success-transition .login-transition-wash { opacity:1; animation:none; }
+  .transition-light { opacity:.7; transform:none; }
+  .transition-light::after,.transition-halo { display:none; }
+  .transition-mark,.transition-title,.transition-caption { opacity:1; transform:none; }
+  .transition-rule { width:128px; }
 }

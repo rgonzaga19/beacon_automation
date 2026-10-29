@@ -162,7 +162,7 @@ loginForm.addEventListener("submit", async (event) => {
       : "Welcome back. Opening your workspace…";
     loginStatus.className = "login-status success";
     document.body.classList.add("login-success-transition");
-    const transitionDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 180 : 820;
+    const transitionDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 80 : 760;
     setTimeout(() => window.beabots?.goToDashboard(), transitionDelay);
   } catch (error) {
     setBusy(false);
