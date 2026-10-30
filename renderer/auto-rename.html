@@ -10,29 +10,119 @@
 </head>
 <body>
   <header class="rename-header">
-    <div><h1>PDF Auto Rename</h1><p>Organize claim PDFs by entering a name for each group.</p></div>
+    <div>
+      <h1>PDF Auto Rename</h1>
+      <p>Group claim PDFs, fix any order mismatch, check each document, then download the renamed set.</p>
+    </div>
+    <div class="header-stats" aria-live="polite">
+      <span class="stat"><b id="statFiles">0</b> PDFs</span>
+      <span class="stat"><b id="statGroups">0</b> groups</span>
+      <span class="stat"><b id="statChecked">0</b> checked</span>
+    </div>
   </header>
-  <main class="rename-body">
-    <section class="card setup-card">
-      <div class="section-heading"><div><span class="step">01</span><h2>Choose your files</h2></div><p>Select PDFs, then enter a name for each group.</p></div>
-      <div class="upload-grid">
-        <label class="field"><span>PDF files</span><input id="pdfFiles" type="file" accept=".pdf,application/pdf" multiple><small id="pdfHint">Choose the PDFs to rename. Files are sorted naturally by filename.</small></label>
+
+  <div class="layout">
+    <main class="workspace">
+
+      <!-- STEP 1 -->
+      <section class="card" id="stepFiles">
+        <div class="section-heading">
+          <span class="step">01</span>
+          <div><h2>Choose files &amp; document order</h2><p>Each group’s files take these document types in order, top to bottom.</p></div>
+        </div>
+        <div class="files-grid">
+          <label class="dropzone" id="dropzone">
+            <input id="pdfFiles" type="file" accept=".pdf,application/pdf" multiple>
+            <strong>Drop PDFs here or click to browse</strong>
+            <small id="pdfHint">Files are sorted naturally by filename.</small>
+          </label>
+          <div class="order-panel">
+            <div class="order-head">
+              <div><h3>Document order</h3><p>Move types with the arrows. Saved on this device.</p></div>
+              <button id="addType" class="quiet-btn small-btn" type="button">+ Add type</button>
+            </div>
+            <div id="documentOrder" class="order-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="card" id="stepGroups">
+        <div class="section-heading">
+          <span class="step">02</span>
+          <div><h2>Arrange groups</h2><p>Drag PDFs between groups or use the buttons on each file. Click a filename to preview it on the right.</p></div>
+        </div>
+        <div class="toolbar">
+          <div class="tool-group">
+            <label class="inline">Auto-group every <input id="groupSize" type="number" min="1" value="4"> files</label>
+            <button id="autoGroup" class="quiet-btn small-btn" type="button">Regroup</button>
+          </div>
+          <div class="tool-group">
+            <button id="addGroup" class="quiet-btn small-btn" type="button">+ Add group</button>
+            <button id="pasteGroupNames" class="quiet-btn small-btn" type="button">Paste names from clipboard</button>
+            <button id="copyNamesToFolders" class="quiet-btn small-btn" type="button">Copy filenames to folder names</button>
+            <button id="undoBtn" class="quiet-btn small-btn" type="button" disabled>↶ Undo</button>
+          </div>
+        </div>
+        <div id="groupBoard" class="board"><p class="empty">Choose PDFs to create groups.</p></div>
+        <div class="actions">
+          <button id="previewBtn" class="primary-btn" type="button">Analyze and preview</button>
+          <button id="clearBtn" class="quiet-btn" type="button">Clear</button>
+          <span id="status" role="status" aria-live="polite">Choose files to get started.</span>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="card" id="stepReview">
+        <div class="preview-heading">
+          <div class="section-heading">
+            <span class="step">03</span>
+            <div><h2>Review &amp; confirm</h2><p id="summary">Your proposed filenames will appear here.</p></div>
+          </div>
+          <div class="review-actions">
+            <button id="checkAllBtn" class="quiet-btn small-btn" type="button" disabled>Mark all checked</button>
+            <button id="downloadBtn" class="primary-btn" type="button" disabled>Rename and download ZIP</button>
+          </div>
+        </div>
+        <div id="orderBanner" class="banner" hidden></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>✓</th><th>#</th><th>Original PDF</th><th>Group</th><th>New filename</th><th>Status</th></tr></thead>
+            <tbody id="previewRows"><tr><td colspan="6" class="empty">Run Analyze and preview to see the proposed file names.</td></tr></tbody>
+          </table>
+        </div>
+        <p class="privacy-note">Click any row to open that PDF in the viewer and compare it with its new name. The download contains <strong>RENAMED / group folder / filename</strong>. Your selected originals remain unchanged.</p>
+      </section>
+    </main>
+
+    <!-- PDF VIEWER -->
+    <aside class="card viewer" id="viewer" aria-label="PDF preview">
+      <div class="viewer-head">
+        <div><h2>Document preview</h2><p id="viewerPos">Select a PDF to preview it.</p></div>
+        <div class="viewer-nav">
+          <button id="prevFile" class="quiet-btn small-btn" type="button" title="Previous file (←)">←</button>
+          <button id="nextFile" class="quiet-btn small-btn" type="button" title="Next file (→)">→</button>
+        </div>
       </div>
-      <div class="order-head"><div><h3>Document order</h3><p>Move types with the arrows. Your list saves automatically on this device.</p></div><button id="addType" class="quiet-btn small-btn" type="button">Add document type</button></div>
-      <div id="documentOrder" class="order-list"></div>
-      <div class="group-head"><div><h3>Groups</h3><p>Edit each group’s PDF range. Document types follow the order above within each range.</p></div><div class="group-tools"><button id="pasteGroupNames" class="quiet-btn small-btn" type="button">Paste names from clipboard</button><button id="copyNamesToFolders" class="quiet-btn small-btn" type="button">Copy filenames to folder names</button></div></div>
-      <div id="groupNames" class="group-list"><p class="empty">Choose PDFs to create editable groups.</p></div>
-      <div class="actions"><button id="previewBtn" class="primary-btn" type="button">Analyze and preview</button><button id="clearBtn" class="quiet-btn" type="button">Clear</button><span id="status" role="status" aria-live="polite">Choose files to get started.</span></div>
-    </section>
-    <section class="card preview-card">
-      <div class="preview-heading"><div><span class="step">02</span><div><h2>Review output</h2><p id="summary">Your proposed filenames will appear here.</p></div></div><button id="downloadBtn" class="primary-btn" type="button" disabled>Rename and download ZIP</button></div>
-      <div class="table-wrap"><table><thead><tr><th>#</th><th>Original PDF</th><th>Group</th><th>New filename</th><th>Status</th></tr></thead><tbody id="previewRows"><tr><td colspan="5" class="empty">Run Analyze and preview to see the proposed file names.</td></tr></tbody></table></div>
-      <p class="privacy-note">The download contains files in <strong>RENAMED / group folder / filename</strong>. Your selected originals remain unchanged.</p>
-    </section>
-  </main>
+      <dl class="viewer-info" id="viewerInfo" hidden>
+        <div><dt>File</dt><dd id="viName"></dd></div>
+        <div><dt>Type &amp; group</dt><dd><span class="type-badge" id="viType"></span> <span id="viGroup"></span></dd></div>
+        <div class="vi-new"><dt>Will be renamed to</dt><dd id="viNew"></dd></div>
+      </dl>
+      <div class="viewer-frame">
+        <iframe id="viewerFrame" title="PDF preview" hidden></iframe>
+        <p id="viewerEmpty" class="empty">Click a filename in a group or a row in the review table.</p>
+      </div>
+      <div class="viewer-foot">
+        <label class="check"><input type="checkbox" id="viewerChecked" disabled> This rename looks correct</label>
+        <small>Tip: use ← → to move through files.</small>
+      </div>
+    </aside>
+  </div>
+
   <footer class="credits-footer" role="contentinfo" aria-label="Credits">
-    <p>Credits to <strong>LLOYD CAJUIGAN</strong> and <strong>JOMS MANGARIN</strong></p>
+    <p>Credits to <strong>LLOYD CAJUIGAN</strong> , <strong>JOMS MANGARIN</strong> and <strong>ROMEL GONZAGA</strong> </p>
   </footer>
-  <script src="js/auto-rename.js?v=group-ranges-paste-20261006"></script>
+  <script src="js/auto-rename.js?v=group-board-viewer-20261030"></script>
 </body>
 </html>

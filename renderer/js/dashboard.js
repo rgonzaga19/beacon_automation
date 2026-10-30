@@ -516,7 +516,11 @@ document.getElementById("editProfileButton").addEventListener("click", () => {
     document.getElementById("profileNameInput").focus({ preventScroll: true });
   });
 });
-document.getElementById("accountSettings").addEventListener("click", () => openWorkspace("settings"));
+document.getElementById("accountSettings").addEventListener("click", () => {
+  accountMenu.hidden = true;
+  openWorkspace("settings");
+});
+
 document.getElementById("accountTeamChat").addEventListener("click", () => {
   accountMenu.hidden = true;
   accountTrigger.setAttribute("aria-expanded", "false");
