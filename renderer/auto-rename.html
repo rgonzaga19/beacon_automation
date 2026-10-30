@@ -32,9 +32,9 @@
         </div>
         <div class="files-grid">
           <label class="dropzone" id="dropzone">
-            <input id="pdfFiles" type="file" accept=".pdf,application/pdf" multiple>
-            <strong>Drop PDFs here or click to browse</strong>
-            <small id="pdfHint">Files are sorted naturally by filename.</small>
+            <input id="pdfFiles" type="file" accept=".pdf,.rar,application/pdf,application/vnd.rar,application/x-rar-compressed" multiple>
+            <strong>Drop PDFs or RAR archives here, or click to browse</strong>
+            <small id="pdfHint">PDFs inside RAR archives are extracted in your browser.</small>
           </label>
           <div class="order-panel">
             <div class="order-head">
@@ -100,6 +100,7 @@
       <div class="viewer-head">
         <div><h2>Document preview</h2><p id="viewerPos">Select a PDF to preview it.</p></div>
         <div class="viewer-nav">
+          <button id="expandViewer" class="quiet-btn small-btn" type="button" aria-expanded="false" aria-label="Expand document preview">Expand</button>
           <button id="prevFile" class="quiet-btn small-btn" type="button" title="Previous file (←)">←</button>
           <button id="nextFile" class="quiet-btn small-btn" type="button" title="Next file (→)">→</button>
         </div>
@@ -123,6 +124,6 @@
   <footer class="credits-footer" role="contentinfo" aria-label="Credits">
     <p>Credits to <strong>LLOYD CAJUIGAN</strong> , <strong>JOMS MANGARIN</strong> and <strong>ROMEL GONZAGA</strong> </p>
   </footer>
-  <script src="js/auto-rename.js?v=group-board-viewer-20261030"></script>
+  <script src="js/auto-rename.js?v=rar-support-20261030"></script>
 </body>
 </html>

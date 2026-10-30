@@ -12,6 +12,9 @@ const frame = $("viewerFrame");
 const ORDER_STORAGE_KEY = "beabots.autoRename.documentOrder.v1";
 
 let uid = 0;
+let archiveModulePromise = null;
+const MAX_ARCHIVE_BYTES = 100 * 1024 * 1024;
+const MAX_EXTRACTED_PDF_BYTES = 90 * 1024 * 1024;
 const nextId = () => ++uid;
 const state = {
   files: [],          // [{ id, file, name, url }] in natural filename order
@@ -153,6 +156,75 @@ function loadFiles(fileList) {
   buildGroups(Number($("groupSize").value) || types().length || 1, false);
 }
 
+async function pdfsFromSelection(fileList) {
+  const selected = [...fileList];
+  const pdfs = selected.filter((file) => /\.pdf$/i.test(file.name));
+  const archives = selected.filter((file) => /\.rar$/i.test(file.name));
+  const ignored = selected.length - pdfs.length - archives.length;
+  let extractedBytes = pdfs.reduce((total, file) => total + file.size, 0);
+  if (archives.length && extractedBytes > MAX_EXTRACTED_PDF_BYTES) {
+    throw new Error("Selected PDFs and PDFs extracted from RAR archives exceed the 90 MB limit.");
+  }
+
+  for (const archiveFile of archives) {
+    if (archiveFile.size > MAX_ARCHIVE_BYTES) {
+      throw new Error(`${archiveFile.name} exceeds the 100 MB RAR size limit.`);
+    }
+    if (!archiveModulePromise) {
+      const moduleUrl = new URL("vendor/libarchive/libarchive.js", document.baseURI);
+      archiveModulePromise = import(moduleUrl.href).then(({ Archive }) => {
+        Archive.init({ workerUrl: new URL("./worker-bundle.js", moduleUrl) });
+        return Archive;
+      });
+    }
+
+    const Archive = await archiveModulePromise;
+    const reader = await Archive.open(archiveFile);
+    try {
+      if (await reader.hasEncryptedData()) {
+        const password = window.prompt(`Enter the password for ${archiveFile.name}:`);
+        if (password === null || password === "") throw new Error(`Password required to open ${archiveFile.name}.`);
+        await reader.usePassword(password);
+      }
+      const entries = await reader.getFilesArray();
+      const pdfEntries = entries.filter(({ file }) => file && /\.pdf$/i.test(file.name || ""));
+      if (!pdfEntries.length) throw new Error(`No PDF files were found in ${archiveFile.name}.`);
+
+      for (const entry of pdfEntries) {
+        const compressed = entry.file;
+        if (extractedBytes + compressed.size > MAX_EXTRACTED_PDF_BYTES) {
+          throw new Error("Selected PDFs and PDFs extracted from RAR archives exceed the 90 MB limit.");
+        }
+        const extracted = await compressed.extract();
+        extractedBytes += extracted.size;
+        const relativeName = `${entry.path || ""}${compressed.name}`.replaceAll("/", " - ").replaceAll("\\", " - ").replace(/\s*-\s*$/, "");
+        const archiveLabel = archiveFile.name.replace(/\.rar$/i, "");
+        pdfs.push(new File([extracted], `${archiveLabel} - ${relativeName}`, {
+          type: "application/pdf",
+          lastModified: extracted.lastModified,
+        }));
+      }
+    } finally {
+      await reader.close();
+    }
+  }
+
+  if (!pdfs.length) throw new Error("Choose PDF files or RAR archives containing PDFs.");
+  if (ignored) setStatus(`${ignored} unsupported file(s) were skipped.`, true);
+  return pdfs;
+}
+
+async function handleFileSelection(fileList) {
+  try {
+    setStatus("Reading selected PDFs and RAR archives...");
+    const pdfs = await pdfsFromSelection(fileList);
+    loadFiles(pdfs);
+    setStatus(`Loaded ${pdfs.length} PDF file(s).`);
+  } catch (error) {
+    setStatus(error.message || "Could not read the selected archive.", true);
+  }
+}
+
 function buildGroups(size, withUndo = true) {
   if (withUndo) {
     if (state.groups.some((g) => g.name.trim()) && !confirm("Regrouping clears the group names you've entered. Continue?")) return;
@@ -168,7 +240,7 @@ function buildGroups(size, withUndo = true) {
   renderBoard();
 }
 
-pdfFiles.addEventListener("change", () => { loadFiles(pdfFiles.files); });
+pdfFiles.addEventListener("change", () => { handleFileSelection(pdfFiles.files); });
 const dropzone = $("dropzone");
 ["dragenter", "dragover"].forEach((evt) => dropzone.addEventListener(evt, (e) => {
   if (e.dataTransfer && [...e.dataTransfer.types].includes("Files")) { e.preventDefault(); dropzone.classList.add("over"); }
@@ -177,12 +249,7 @@ const dropzone = $("dropzone");
 dropzone.addEventListener("drop", (e) => {
   if (!e.dataTransfer || !e.dataTransfer.files.length) return;
   e.preventDefault();
-  const pdfs = [...e.dataTransfer.files].filter((f) => /\.pdf$/i.test(f.name));
-  if (!pdfs.length) { setStatus("Only PDF files can be added.", true); return; }
-  const dt = new DataTransfer();
-  pdfs.forEach((f) => dt.items.add(f));
-  pdfFiles.files = dt.files;
-  loadFiles(pdfs);
+  handleFileSelection(e.dataTransfer.files);
 });
 
 $("autoGroup").addEventListener("click", () => {
@@ -486,8 +553,21 @@ function step(delta) {
 }
 $("prevFile").addEventListener("click", () => step(-1));
 $("nextFile").addEventListener("click", () => step(1));
+const expandViewerBtn = $("expandViewer");
+function setViewerExpanded(expanded) {
+  $("viewer").classList.toggle("expanded", expanded);
+  expandViewerBtn.setAttribute("aria-expanded", String(expanded));
+  expandViewerBtn.setAttribute("aria-label", expanded ? "Restore document preview size" : "Expand document preview");
+  expandViewerBtn.textContent = expanded ? "Shrink" : "Expand";
+}
+expandViewerBtn.addEventListener("click", () => setViewerExpanded(!$("viewer").classList.contains("expanded")));
 $("viewerChecked").addEventListener("change", (e) => setChecked(state.selectedId, e.target.checked));
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("viewer").classList.contains("expanded")) {
+    setViewerExpanded(false);
+    expandViewerBtn.focus();
+    return;
+  }
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
   if (e.key === "ArrowLeft") { step(-1); e.preventDefault(); }
   else if (e.key === "ArrowRight") { step(1); e.preventDefault(); }
