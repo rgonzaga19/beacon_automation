@@ -41,7 +41,10 @@
     button:disabled { opacity:.55; cursor:not-allowed; }
     .folder-button svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
     .folder-note { margin:14px 0 0; padding:11px 12px; color:var(--text-sec); background:color-mix(in srgb,var(--accent-soft) 48%,transparent); border:1px solid color-mix(in srgb,var(--accent) 18%,var(--border)); border-radius:var(--radius-md); font-size:10px; line-height:1.55; }
+    .folder-note p { margin:0; }
+    .folder-note p + p { margin-top:9px; padding-top:9px; border-top:1px solid color-mix(in srgb,var(--accent) 18%,var(--border)); }
     .folder-note strong { color:var(--text-pri); }
+    .folder-note a { color:var(--accent); font-weight:700; text-decoration:underline; text-underline-offset:2px; }
     textarea { display:block; width:100%; min-height:166px; resize:vertical; padding:12px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:12px/1.6 var(--font-ui); }
     textarea::placeholder,input::placeholder { color:color-mix(in srgb,var(--text-sec) 78%,transparent); }
     .transmittal-footer { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-top:13px; }
@@ -81,8 +84,12 @@
       <section class="card">
         <div class="card-heading"><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5h6l2 2h9v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2h4l2 2"/><path d="M12 13v5m-2-2 2 2 2-2"/></svg></div><div><h2>Document source</h2><p>Select the parent folder containing your patient folders.</p></div></div>
         <label class="field-label" for="folderPath">Patient document folder</label>
-        <div class="folder-row"><input id="folderPath" readonly placeholder="No folder selected"><button id="browseFolder" class="folder-button" type="button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5a2 2 0 0 1 2-2h4l2 2h5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-9Z"/><path d="M10 8v5m-2-2 2 2 2-2"/></svg>Choose folder</button></div>
-        <p class="folder-note"><strong>Matching guidance</strong><br>Folders can use the surname alone or surname first followed by the first name, such as <strong>ABAO ALLEN</strong>. When surnames repeat, the full first name is preferred; an initial can still narrow a match when initials differ. A date or day number (1 to 31) can also match the CF2 treatment dates. Examples: <strong>MICAYAS 15</strong>, <strong>MICAYAS AUG 13-15</strong>, or folders <strong>ABAO ALLEN</strong> and <strong>ABAO ALIAS</strong>. Nested PDF and common image files are supported.</p>
+        <div class="folder-row"><input id="folderPath" readonly placeholder="No folder selected"><button id="browseFolder" class="folder-button" type="button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5a2 2 0 0 1 2-2h4l2 2h5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-9Z"/><path d="M10 8v5m-2-2 2 2 2-2"/></svg>Choose parent folder</button></div>
+        <div class="folder-note">
+          <p><strong>Matching guidance</strong><br>Folders can use the surname alone or surname first followed by the first name, such as <strong>ABAO ALLEN</strong>. When surnames repeat, the full first name is preferred; an initial can still narrow a match when initials differ. A date or day number (1 to 31) can also match the CF2 treatment dates. Examples: <strong>MICAYAS 15</strong>, <strong>MICAYAS AUG 13-15</strong>, or folders <strong>ABAO ALLEN</strong> and <strong>ABAO ALIAS</strong>.</p>
+          <p><strong>Beacon document categories</strong><br>Claim Signature Form (<strong>CSF</strong>), Certificate of Eligibility (<strong>COE</strong>; detected by <strong>PBEF</strong> or <strong>COE</strong> in the filename), Statement of Account (<strong>SOA</strong>), PhilHealth Hemodialysis Package Agreement Form (<strong>HDA</strong>; detected by <strong>AF</strong> as a filename token or <strong>AGREEMENT</strong> in the filename), and Other Documents (<strong>OTH</strong>; default when no marker matches).</p>
+          <p>Documents not included? Contact the developer: <a href="mailto:gonzagaromel19@gmail.com">Email</a> or <a href="viber://chat?number=%2B639556845324">Viber</a>.</p>
+        </div>
       </section>
       <section class="card">
         <div class="card-heading"><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M14 3.5v5h5M8 13h7M8 16.5h7"/></svg></div><div><h2>Transmittal list</h2><p>Paste the numbers you want to process, one per line.</p></div></div>
