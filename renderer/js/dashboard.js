@@ -500,14 +500,29 @@ document.querySelectorAll("[data-open-tool]").forEach((button) => button.addEven
 
 const accountTrigger = document.getElementById("accountTrigger");
 const accountMenu = document.getElementById("accountMenu");
+function closeAccountMenu() {
+  accountMenu.hidden = true;
+  accountTrigger.setAttribute("aria-expanded", "false");
+}
 accountTrigger.addEventListener("click", () => {
   const expanded = accountTrigger.getAttribute("aria-expanded") !== "true";
   accountTrigger.setAttribute("aria-expanded", String(expanded));
   accountMenu.hidden = !expanded;
 });
+document.addEventListener("click", (event) => {
+  if (accountMenu.hidden) return;
+  if (accountTrigger.contains(event.target) || accountMenu.contains(event.target)) return;
+  closeAccountMenu();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || accountMenu.hidden) return;
+  closeAccountMenu();
+  accountTrigger.focus();
+});
+// Clicks inside a workspace iframe do not bubble here, but they blur this window.
+window.addEventListener("blur", closeAccountMenu);
 document.getElementById("editProfileButton").addEventListener("click", () => {
-  accountMenu.hidden = true;
-  accountTrigger.setAttribute("aria-expanded", "false");
+  closeAccountMenu();
   setTopNavigation("siteHome");
   showWorkspaceHome();
   setDashboardLayout("workflow", true);
@@ -517,13 +532,12 @@ document.getElementById("editProfileButton").addEventListener("click", () => {
   });
 });
 document.getElementById("accountSettings").addEventListener("click", () => {
-  accountMenu.hidden = true;
+  closeAccountMenu();
   openWorkspace("settings");
 });
 
 document.getElementById("accountTeamChat").addEventListener("click", () => {
-  accountMenu.hidden = true;
-  accountTrigger.setAttribute("aria-expanded", "false");
+  closeAccountMenu();
   openWorkspace("teamCollab");
 });
 document.getElementById("accountLogout").addEventListener("click", () => window.beabots?.logout());
@@ -660,8 +674,7 @@ document.getElementById("btnCollaborationChat").addEventListener("click", () => 
   openWorkspace("teamCollab");
 });
 document.getElementById("siteUsers").addEventListener("click", () => {
-  accountMenu.hidden = true;
-  accountTrigger.setAttribute("aria-expanded", "false");
+  closeAccountMenu();
   openWorkspace("users");
 });
 // ---------------------------------------------------------------------------
