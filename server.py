@@ -357,6 +357,34 @@ def _record_automation_run(user_id, workflow, started_at, status, item_count):
         logger.exception("Could not save dashboard automation history for user %s", user_id)
 
 
+def track_dashboard_operation(workflow, skip_paths=()):
+    """Record a privacy-safe summary for a synchronous dashboard operation."""
+    def decorate(handler):
+        @wraps(handler)
+        def wrapper(*args, **kwargs):
+            if request.path in skip_paths:
+                return handler(*args, **kwargs)
+            user = current_user()
+            if not user:
+                return handler(*args, **kwargs)
+
+            started_at = utc_now()
+            try:
+                result = handler(*args, **kwargs)
+            except Exception:
+                _record_automation_run(user.id, workflow, started_at, "failed", 1)
+                raise
+
+            response = result[0] if isinstance(result, tuple) else result
+            status_code = result[1] if isinstance(result, tuple) and len(result) > 1 else getattr(response, "status_code", 200)
+            status = "completed" if 200 <= int(status_code) < 300 else "failed"
+            _record_automation_run(user.id, workflow, started_at, status, 1)
+            return result
+
+        return wrapper
+    return decorate
+
+
 def _automation_outcome(results, stopped=False, failed=False):
     if stopped:
         return "stopped"
@@ -687,6 +715,7 @@ def health_check():
 
 @app.route("/api/soa-excel/generate", methods=["POST"])
 @login_required
+@track_dashboard_operation("SOA Excel - Individual")
 def soa_excel_generate():
     try:
         workbook = generate_workbook(request.get_json(force=True), validate_epo_quantity=True, validate_laboratory=True)
@@ -706,6 +735,10 @@ def soa_excel_generate():
 @app.route("/api/soa-excel/batch", methods=["POST"])
 @app.route("/api/soa-excel/batch/validate", methods=["POST"])
 @login_required
+@track_dashboard_operation(
+    "SOA Excel - Batch",
+    skip_paths=("/api/soa-excel/batch/validate",),
+)
 def soa_excel_batch():
     upload = request.files.get("file")
     if not upload or not upload.filename:
@@ -1513,6 +1546,7 @@ def _require_draft_claim(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>", methods=["DELETE"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def delete_finalize_claim(transmittal_id, claim_id):
     user = current_user()
     beacon_settings, auth_key = _beacon_edit_settings(user)
@@ -1534,6 +1568,7 @@ def delete_finalize_claim(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>", methods=["DELETE"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def delete_finalize_transmittal(transmittal_id):
     user = current_user()
     beacon_settings, auth_key = _beacon_edit_settings(user)
@@ -1558,6 +1593,7 @@ def delete_finalize_transmittal(transmittal_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/transmit", methods=["POST"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def transmit_finalize_claims_transmittal(transmittal_id):
     user = current_user()
     beacon_settings, auth_key = _beacon_edit_settings(user)
@@ -1576,6 +1612,7 @@ def transmit_finalize_claims_transmittal(transmittal_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/finalize", methods=["POST"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def finalize_finalize_claim(transmittal_id, claim_id):
     user = current_user()
     beacon_settings, auth_key = _beacon_edit_settings(user)
@@ -1704,6 +1741,7 @@ def get_finalize_claim_edit_data(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/cf2", methods=["POST"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def save_finalize_claim_cf2(transmittal_id, claim_id):
     data = request.get_json(silent=True) or {}
     try:
@@ -1746,6 +1784,7 @@ def save_finalize_claim_cf2(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/receivable", methods=["POST"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def save_finalize_claim_account_receivable(transmittal_id, claim_id):
     data = request.get_json(silent=True) or {}
     name = str(data.get("name") or "").strip()
@@ -1798,6 +1837,7 @@ def save_finalize_claim_account_receivable(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/doctor", methods=["POST"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def save_finalize_claim_doctor(transmittal_id, claim_id):
     data = request.get_json(silent=True) or {}
     accreditation_number = str(data.get("accreditation_number") or "").strip()
@@ -1889,6 +1929,7 @@ def save_finalize_claim_doctor(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/cf4-vitals", methods=["POST"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def save_finalize_claim_cf4_vitals(transmittal_id, claim_id):
     data = request.get_json(silent=True) or {}
     vital_keys = ("vsbpSystolic", "vsbpDiastolic", "vshr", "vsrr", "vsTemp", "height", "weight")
@@ -1944,6 +1985,7 @@ def save_finalize_claim_cf4_vitals(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/cf4-text", methods=["POST"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def save_finalize_claim_cf4_text(transmittal_id, claim_id):
     data = request.get_json(silent=True) or {}
     field_keys = (
@@ -1986,6 +2028,7 @@ def save_finalize_claim_cf4_text(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/course-in-ward", methods=["POST"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def save_finalize_claim_course_in_ward(transmittal_id, claim_id):
     entries = (request.get_json(silent=True) or {}).get("entries")
     if not isinstance(entries, list):
@@ -2042,6 +2085,7 @@ def save_finalize_claim_course_in_ward(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/soa", methods=["DELETE"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def remove_finalize_claim_soa(transmittal_id, claim_id):
     user = current_user()
     beacon_settings, auth_key = _beacon_edit_settings(user)
@@ -2074,6 +2118,7 @@ def remove_finalize_claim_soa(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/soa/generated", methods=["DELETE"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def remove_finalize_claim_generated_soa(transmittal_id, claim_id):
     user = current_user()
     beacon_settings, auth_key = _beacon_edit_settings(user)
@@ -2097,6 +2142,7 @@ def remove_finalize_claim_generated_soa(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/soa/generate", methods=["POST"])
 @login_required
+@track_dashboard_operation("SOA Generation - Edit Claims")
 def generate_finalize_claim_soa(transmittal_id, claim_id):
     user = current_user()
     beacon_settings, auth_key = _beacon_edit_settings(user)
@@ -2116,6 +2162,7 @@ def generate_finalize_claim_soa(transmittal_id, claim_id):
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/cf4-generate", methods=["POST"])
 @login_required
+@track_dashboard_operation("Edit Claims")
 def generate_finalize_claim_cf4(transmittal_id, claim_id):
     user = current_user()
     beacon_settings, auth_key = _beacon_edit_settings(user)

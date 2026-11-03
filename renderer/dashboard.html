@@ -427,19 +427,19 @@
               </section>
               <section class="dashboard-column operations-column" id="operationsColumn" aria-label="Operations overview">
             <section class="dashboard-metrics" aria-labelledby="metricsTitle">
-              <div class="metrics-heading"><div><h2 id="metricsTitle">Operations overview</h2><p>Live service health and the last 30 days of automation activity.</p></div><button class="metrics-refresh" id="refreshMetrics" type="button">Refresh</button></div>
+              <div class="metrics-heading"><div><h2 id="metricsTitle">Operations overview</h2><p>Live service health and the last 30 days of workspace activity.</p></div><button class="metrics-refresh" id="refreshMetrics" type="button">Refresh</button></div>
               <div class="metric-grid" aria-live="polite">
                 <article class="metric-card"><span class="metric-label">App server uptime</span><strong class="metric-value" id="metricUptime">—</strong><span class="metric-footnote">Since the latest server restart</span></article>
                 <article class="metric-card"><span class="metric-label">Online users</span><strong class="metric-value" id="metricOnline">—</strong><span class="metric-footnote">Unique signed-in live connections</span></article>
-                <article class="metric-card"><span class="metric-label">Automation runs</span><strong class="metric-value" id="metricRuns">—</strong><span class="metric-footnote">Last 30 days</span></article>
-                <article class="metric-card"><span class="metric-label">Completed runs</span><strong class="metric-value" id="metricSuccess">—</strong><span class="metric-footnote">Share completed without errors</span></article>
+                <article class="metric-card"><span class="metric-label">Tracked operations</span><strong class="metric-value" id="metricRuns">—</strong><span class="metric-footnote">Last 30 days</span></article>
+                <article class="metric-card"><span class="metric-label">Completed operations</span><strong class="metric-value" id="metricSuccess">—</strong><span class="metric-footnote">Share completed without errors</span></article>
               </div>
               <article class="online-roster" aria-labelledby="onlineRosterTitle"><h3 id="onlineRosterTitle">Currently online</h3><div class="online-roster-list" id="onlineUsersList" aria-live="polite"><span class="online-empty">Loading users…</span></div></article>
               <div class="metrics-charts">
-                <article class="chart-card"><h3>Run activity</h3><p class="chart-subtitle">Automation runs by day · last 7 days</p><div id="dailyRunsChart" role="img" aria-label="Daily automation runs for the last seven days"></div></article>
-                <article class="chart-card"><h3>Workflows</h3><p class="chart-subtitle">Runs by workflow · last 30 days</p><div class="workflow-chart" id="workflowRunsChart"></div></article>
+                <article class="chart-card"><h3>Operation activity</h3><p class="chart-subtitle">Tracked operations by day · last 7 days</p><div id="dailyRunsChart" role="img" aria-label="Daily tracked operations for the last seven days"></div></article>
+                <article class="chart-card"><h3>Activity by function</h3><p class="chart-subtitle">Operations by function · last 30 days</p><div class="workflow-chart" id="workflowRunsChart"></div></article>
               </div>
-              <article class="activity-card"><div class="activity-heading"><h3>Automation run history</h3><span>12 runs per page · no patient details stored</span></div><div class="activity-scroll"><table class="activity-table"><thead><tr><th>Workflow</th><th>Run by</th><th>Status</th><th>Items</th><th>Duration</th><th>Finished</th></tr></thead><tbody id="recentRunsBody"><tr><td class="activity-empty" colspan="6">Loading activity…</td></tr></tbody></table></div><div class="activity-pagination"><span id="runHistoryPage" aria-live="polite">Page 1</span><button type="button" id="runHistoryPrevious" disabled>Previous</button><button type="button" id="runHistoryNext" disabled>Next</button></div></article>
+              <article class="activity-card"><div class="activity-heading"><h3>Operation history</h3><span>12 entries per page · no patient details stored</span></div><div class="activity-scroll"><table class="activity-table"><thead><tr><th>Function</th><th>Run by</th><th>Status</th><th>Items / actions</th><th>Duration</th><th>Finished</th></tr></thead><tbody id="recentRunsBody"><tr><td class="activity-empty" colspan="6">Loading activity…</td></tr></tbody></table></div><div class="activity-pagination"><span id="runHistoryPage" aria-live="polite">Page 1</span><button type="button" id="runHistoryPrevious" disabled>Previous</button><button type="button" id="runHistoryNext" disabled>Next</button></div></article>
             </section>
               </section>
             </div>

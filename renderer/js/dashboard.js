@@ -52,7 +52,7 @@ function escapeMetricText(value) {
 function renderDailyRunsChart(days = []) {
   const root = document.getElementById("dailyRunsChart");
   if (!days.some((day) => day.count)) {
-    root.innerHTML = '<div class="activity-empty">Run history will appear here after your next automation.</div>';
+    root.innerHTML = '<div class="activity-empty">Operation history will appear here after your next activity.</div>';
     return;
   }
   const values = days.map((day) => Number(day.count) || 0);
@@ -96,7 +96,7 @@ function renderWorkflowChart(workflows = []) {
 function renderRecentRuns(runs = []) {
   const body = document.getElementById("recentRunsBody");
   if (!runs.length) {
-    body.innerHTML = '<tr><td class="activity-empty" colspan="6">No recorded runs yet. Start an automation and activity will appear here.</td></tr>';
+    body.innerHTML = '<tr><td class="activity-empty" colspan="6">No recorded operations yet. Activity will appear here as you use the workspace.</td></tr>';
     return;
   }
   body.innerHTML = runs.map((run) => {
