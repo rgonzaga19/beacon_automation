@@ -802,6 +802,138 @@ function getDraftClaimsForSoa() {
       && String(row.dataset.transmittalStatus || "").trim().toUpperCase() === "DRAFT");
 }
 
+function showDeleteClaimsConfirm(claimCount, onConfirm) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Draft Claim Deletion</h3>
+        <p>Permanently delete all ${claimCount} visible draft claim${claimCount === 1 ? "" : "s"} and their generated ESA/eSOA documents? Afterward, any of their DRAFT transmittals that are empty will also be deleted. This cannot be undone; transmittals containing other claims will be kept.</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="deleteClaimsCancelBtn" type="button">CANCEL</button>
+          <button class="cyber-btn danger" id="deleteClaimsConfirmBtn" type="button">YES, DELETE DRAFTS</button>
+        </div>
+      </div>
+    </div>`;
+  function close() {
+    closeTransmitAllConfirm(onKey);
+  }
+  function onKey(event) {
+    if (event.key === "Escape") close();
+  }
+  document.getElementById("deleteClaimsCancelBtn").addEventListener("click", close);
+  document.getElementById("deleteClaimsConfirmBtn").addEventListener("click", () => {
+    close();
+    onConfirm();
+  });
+  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.getElementById("deleteClaimsCancelBtn").focus();
+}
+
+async function runDeleteClaims() {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No visible draft claims are available to delete. Run a lookup first.", true);
+    return;
+  }
+
+  const button = document.getElementById("deleteClaimsButton");
+  const unlockToolbar = lockClaimsToolbar(button);
+  let deleted = 0;
+  let failed = 0;
+  let deletedTransmittals = 0;
+  let keptTransmittals = 0;
+  const transmittalMessages = [];
+  const transmittals = new Map();
+  rows.forEach((row) => {
+    const claimAction = row.querySelector('[data-action="edit-claim"]');
+    const transmittalId = claimAction.dataset.transmittalId;
+    if (!transmittals.has(transmittalId)) {
+      transmittals.set(transmittalId, {
+        number: row.dataset.transmittalNumber,
+        failed: false,
+      });
+    }
+  });
+  button.textContent = "DELETING DRAFTS...";
+  setToolbarLoading(button, true);
+  try {
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const claimAction = row.querySelector('[data-action="edit-claim"]');
+      const { transmittalId, claimId } = claimAction.dataset;
+      setTransmitAllStatus(`Deleting claim ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
+      try {
+        await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}`, {
+          method: "DELETE",
+        });
+        row.remove();
+        deleted += 1;
+      } catch (error) {
+        transmittals.get(transmittalId).failed = true;
+        setBeaconMessage(row, `Claim deletion failed: ${error.message}`, true);
+        failed += 1;
+      }
+    }
+
+    let transmittalIndex = 0;
+    for (const [transmittalId, transmittal] of transmittals) {
+      transmittalIndex += 1;
+      if (transmittal.failed) {
+        keptTransmittals += 1;
+        transmittalMessages.push(`${transmittal.number}: claim deletion failed`);
+        continue;
+      }
+      setTransmitAllStatus(`Removing empty DRAFT transmittal ${transmittalIndex} of ${transmittals.size}: ${transmittal.number}...`);
+      try {
+        await editorRequest(`/api/beacon/finalize-claims/${transmittalId}`, {
+          method: "DELETE",
+        });
+        deletedTransmittals += 1;
+      } catch (error) {
+        keptTransmittals += 1;
+        transmittalMessages.push(`${transmittal.number}: ${error.message}`);
+      }
+    }
+
+    const remainingRows = claimsBody.querySelectorAll("tr[data-claim-row]");
+    const summaryItem = (label) => Array.from(summary.children)
+      .find((item) => item.querySelector("strong")?.textContent === `${label}: `);
+    const claimSummary = summaryItem("Claims");
+    if (claimSummary?.lastChild) claimSummary.lastChild.textContent = String(remainingRows.length);
+    const transmittalSummary = summaryItem("Transmittals Found");
+    if (transmittalSummary?.lastChild) {
+      const currentCount = Number(transmittalSummary.lastChild.textContent);
+      if (Number.isFinite(currentCount)) {
+        transmittalSummary.lastChild.textContent = String(Math.max(0, currentCount - deletedTransmittals));
+      }
+    }
+    if (!remainingRows.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.className = "message";
+      cell.colSpan = 10;
+      cell.textContent = "No claims remain in the current lookup.";
+      row.append(cell);
+      claimsBody.append(row);
+    }
+
+    const errors = failed + keptTransmittals;
+    setTransmitAllStatus(
+      `Deleted ${deleted} claim${deleted === 1 ? "" : "s"} and ${deletedTransmittals} empty DRAFT transmittal${deletedTransmittals === 1 ? "" : "s"}; ${failed} claim${failed === 1 ? "" : "s"} failed and ${keptTransmittals} transmittal${keptTransmittals === 1 ? "" : "s"} kept.`
+      + (transmittalMessages.length ? ` ${transmittalMessages.join("; ")}` : ""),
+      errors > 0,
+    );
+  } finally {
+    setToolbarLoading(button, false);
+    button.textContent = "DELETE DRAFT CLAIMS";
+    unlockToolbar();
+  }
+}
+
 function showGenerateCf4AllConfirm(claimCount, onConfirm) {
   const root = document.getElementById("modalRoot");
   root.innerHTML = `
@@ -1440,4 +1572,13 @@ document.getElementById("removeGeneratedSoaAllButton").addEventListener("click",
     return;
   }
   showRemoveGeneratedSoaAllConfirm(rows.length, runRemoveGeneratedSoaAll);
+});
+
+document.getElementById("deleteClaimsButton").addEventListener("click", () => {
+  const rows = getDraftClaimsForSoa();
+  if (!rows.length) {
+    setTransmitAllStatus("No visible draft claims are available to delete. Run a lookup first.", true);
+    return;
+  }
+  showDeleteClaimsConfirm(rows.length, runDeleteClaims);
 });

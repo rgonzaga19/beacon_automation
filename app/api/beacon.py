@@ -116,6 +116,59 @@ def _put(path, params=None):
     return _json(response)
 
 
+def _delete(path, params=None):
+    response = browser_session.http_request(
+        "DELETE", _base_url() + path, headers=_headers(), params=params, timeout=90
+    )
+    return _json(response)
+
+
+def delete_claim(claim_id):
+    """Delete one claim using Beacon's recorded PHICClaim endpoint."""
+    user_id = browser_session.get_user_id()
+    if not user_id:
+        raise BeaconApiError("Beacon userId is unavailable.")
+
+    result = _delete(
+        "/api/PHICClaim/DeletePHICClaim",
+        params={"claimId": int(claim_id), "userId": user_id},
+    )
+    if not isinstance(result, dict):
+        raise BeaconApiError("Beacon returned an invalid claim deletion response.")
+    if result.get("exception"):
+        raise BeaconApiError("Beacon reported an error while deleting the claim.")
+    if result.get("data") is not True:
+        raise BeaconApiError("Beacon did not confirm claim deletion.")
+
+    cache_key = browser_session._context_key()
+    _claim_cache.pop((cache_key, int(claim_id)), None)
+    for key in [key for key in _claims_cache if key[0] == cache_key]:
+        _claims_cache.pop(key, None)
+    for key in [key for key in _transmittal_cache if key[0] == cache_key]:
+        _transmittal_cache.pop(key, None)
+    return True
+
+
+def delete_transmittal(transmittal_id):
+    """Delete one empty draft transmittal using Beacon's recorded endpoint."""
+    user_id = browser_session.get_user_id()
+    if not user_id:
+        raise BeaconApiError("Beacon userId is unavailable.")
+
+    result = _delete(
+        "/api/PHICTransmittal/DeletePHICTransmittal",
+        params={"transmittalId": int(transmittal_id), "userId": user_id},
+    )
+    if result is not True:
+        raise BeaconApiError("Beacon did not confirm transmittal deletion.")
+
+    cache_key = browser_session._context_key()
+    _claims_cache.pop((cache_key, int(transmittal_id)), None)
+    for key in [key for key in _transmittal_cache if key[0] == cache_key]:
+        _transmittal_cache.pop(key, None)
+    return True
+
+
 def transmit_transmittal(transmittal_id, timeout=90):
     """Submit a draft transmittal and wait for Beacon's terminal status."""
     import time as _time

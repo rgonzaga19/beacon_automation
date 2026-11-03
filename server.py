@@ -1511,6 +1511,51 @@ def _require_draft_claim(transmittal_id, claim_id):
     return transmittal, claim
 
 
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>", methods=["DELETE"])
+@login_required
+def delete_finalize_claim(transmittal_id, claim_id):
+    user = current_user()
+    beacon_settings, auth_key = _beacon_edit_settings(user)
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+            removed_documents = soa_api.remove_generated_esoa_documents(claim_id)
+            beacon_api.delete_claim(claim_id)
+        return jsonify({"deleted": True, "documents_deleted": removed_documents})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), 404
+    except Exception as exc:
+        logger.error(f"Finalize Claims deletion failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not delete this draft claim."}), 502
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>", methods=["DELETE"])
+@login_required
+def delete_finalize_transmittal(transmittal_id):
+    user = current_user()
+    beacon_settings, auth_key = _beacon_edit_settings(user)
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            transmittal = beacon_api.get_transmittal_by_id(transmittal_id) or {}
+            if str(transmittal.get("transmittalStatusDescription") or "").strip().casefold() != "draft":
+                return jsonify({"error": "Only empty DRAFT transmittals can be deleted here."}), 409
+
+            cache_key = (browser_session._context_key(), int(transmittal_id))
+            beacon_api._claims_cache.pop(cache_key, None)
+            if beacon_api.get_claims(transmittal_id):
+                return jsonify({"error": "This DRAFT transmittal still contains claims and was not deleted."}), 409
+
+            beacon_api.delete_transmittal(transmittal_id)
+        return jsonify({"deleted": True})
+    except Exception as exc:
+        logger.error(f"Finalize Claims transmittal deletion failed for {transmittal_id}: {exc}")
+        return jsonify({"error": "Beacon could not delete this empty draft transmittal."}), 502
+
+
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/transmit", methods=["POST"])
 @login_required
 def transmit_finalize_claims_transmittal(transmittal_id):

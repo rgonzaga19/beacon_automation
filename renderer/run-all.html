@@ -65,6 +65,13 @@
   #status { flex:1; min-width:170px; color:var(--text-sec); font-size:11px; }
   #error { display:none; margin-top:12px; padding:12px 14px; color:var(--error); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font-size:11px; line-height:1.5; white-space:pre-wrap; }
   #resultsWrap { max-width:100%; overflow:auto; -webkit-overflow-scrolling:touch; }
+  .results-copy-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:0 0 10px; }
+  .results-copy-status { color:var(--text-sec); font-size:11px; }
+  .results-copy-status.error { color:var(--error); }
+  .flat-copy-option { min-height:0; padding:0; color:var(--accent); background:transparent; border:0; border-radius:0; font:inherit; font-size:11px; text-decoration:underline; text-underline-offset:2px; cursor:pointer; }
+  .flat-copy-option:hover { color:var(--text-pri); background:transparent; }
+  .flat-copy-option:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  .transmittal-copy { margin-left:8px; vertical-align:baseline; }
   table { width:100%; min-width:700px; border-collapse:collapse; font-size:12px; }
   th,td { padding:12px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
   th { color:var(--text-sec); font-size:10px; letter-spacing:.55px; text-transform:uppercase; background:var(--bg-card); }
@@ -133,6 +140,7 @@
   <section class="panel">
     <h2>Run results</h2>
     <p class="result-help">Track each patient across the workflow stages. If CF2 succeeds but an SOA upload, SOA generation, or CF4 step fails, use <b>Retry remaining stages</b> on that patient to continue without creating another draft. Stop requests take effect at a safe step boundary.</p>
+    <div class="results-copy-actions"><button class="flat-copy-option" id="copySuccessfulTransmittals" type="button" title="Copy transmittal numbers for all successful patients">Copy successful transmittals</button><span class="results-copy-status" id="copyTransmittalsStatus" aria-live="polite"></span></div>
     <div id="resultsWrap"><table><thead><tr><th>Patient</th><th>Transmittal</th><th>CF2</th><th>SOA upload</th><th>SOA generation</th><th>CF4</th><th>Details</th></tr></thead><tbody id="resultsBody"><tr><td colspan="7" class="help">No run started.</td></tr></tbody></table></div>
   </section>
   <section class="panel"><h2>Activity</h2><div id="log" aria-live="polite"></div></section>

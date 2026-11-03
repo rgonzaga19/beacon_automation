@@ -5,6 +5,7 @@ const stopBtn = document.getElementById("stopBtn");
 const statusNode = document.getElementById("status");
 const errorNode = document.getElementById("error");
 const resultsBody = document.getElementById("resultsBody");
+const copyTransmittalsStatus = document.getElementById("copyTransmittalsStatus");
 const logNode = document.getElementById("log");
 const results = new Map();
 let active = false;
@@ -81,14 +82,37 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 }
 
+function completedSuccessfully(item) {
+  return item.cf2 === "success"
+    && item.soa === "success"
+    && ["success", "skipped"].includes(item.esoa)
+    && item.cf4 === "success";
+}
+
+function getSuccessfulTransmittals() {
+  return [...new Set([...results.values()]
+    .filter((item) => completedSuccessfully(item) && item.transmittal)
+    .map((item) => String(item.transmittal).trim())
+    .filter(Boolean))];
+}
+
+function setCopyTransmittalsStatus(message, error = false) {
+  copyTransmittalsStatus.textContent = message;
+  copyTransmittalsStatus.classList.toggle("error", error);
+}
+
 function renderResults() {
   if (!results.size) return;
   resultsBody.innerHTML = [...results.values()].map((item) => {
     const isRunning = [item.cf2, item.soa, item.esoa, item.cf4].includes("running");
+    const isSuccessful = completedSuccessfully(item);
+    const transmittal = item.transmittal
+      ? `${escapeHtml(item.transmittal)}${isSuccessful ? `<button class="flat-copy-option transmittal-copy" type="button" data-transmittal="${escapeHtml(item.transmittal)}" title="Copy transmittal ${escapeHtml(item.transmittal)}" aria-label="Copy transmittal ${escapeHtml(item.transmittal)}">Copy</button>` : ""}`
+      : "—";
     return `
     <tr class="${isRunning ? "row-running" : ""}" aria-busy="${isRunning}">
       <td>${escapeHtml(item.patient_name)}</td>
-      <td>${escapeHtml(item.transmittal || "—")}</td>
+      <td>${transmittal}</td>
       <td><span class="stage ${escapeHtml(item.cf2)}">${escapeHtml(item.cf2)}</span></td>
       <td><span class="stage ${escapeHtml(item.soa)}">${escapeHtml(item.soa)}</span></td>
       <td><span class="stage ${escapeHtml(item.esoa || "skipped")}">${escapeHtml(item.esoa || "skipped")}</span></td>
@@ -97,6 +121,22 @@ function renderResults() {
     </tr>`;
   }).join("");
 }
+
+document.getElementById("copySuccessfulTransmittals").addEventListener("click", async () => {
+  const numbers = getSuccessfulTransmittals();
+  if (!numbers.length) {
+    setCopyTransmittalsStatus("No successful transmittals to copy yet.", true);
+    return;
+  }
+  try {
+    const copied = await copyTextToClipboard(numbers.join("\n"));
+    setCopyTransmittalsStatus(copied
+      ? `Copied ${numbers.length} successful transmittal${numbers.length === 1 ? "" : "s"}.`
+      : "Copy failed. Your browser blocked clipboard access.", !copied);
+  } catch (error) {
+    setCopyTransmittalsStatus(error.message || "Copy failed. Your browser blocked clipboard access.", true);
+  }
+});
 
 function appendLog(message, level = "INFO") {
   if (!message) return;
@@ -147,6 +187,7 @@ form.addEventListener("submit", async (event) => {
   }
   errorNode.style.display = "none";
   errorNode.textContent = "";
+  setCopyTransmittalsStatus("");
   results.clear();
   retryRunId = null;
   resultsBody.innerHTML = "<tr><td colspan=\"7\" class=\"help\">Checking files…</td></tr>";
@@ -170,6 +211,17 @@ form.addEventListener("submit", async (event) => {
 });
 
 resultsBody.addEventListener("click", async (event) => {
+  const copyButton = event.target.closest(".transmittal-copy");
+  if (copyButton) {
+    try {
+      const copied = await copyTextToClipboard(copyButton.dataset.transmittal);
+      if (!copied) throw new Error("Your browser blocked clipboard access.");
+      setCopyTransmittalsStatus(`Copied transmittal ${copyButton.dataset.transmittal}.`);
+    } catch (error) {
+      setCopyTransmittalsStatus(error.message || "Copy failed. Your browser blocked clipboard access.", true);
+    }
+    return;
+  }
   const button = event.target.closest(".retry-stage");
   if (!button || !retryRunId || active) return;
   try {
