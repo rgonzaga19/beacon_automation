@@ -142,7 +142,11 @@ function appendLog(message, level = "INFO") {
   if (!message) return;
   const line = document.createElement("div");
   line.className = "log-line";
-  line.textContent = `[${level}] ${message}`;
+  const formattedMessage = String(message);
+  const includesTimestampAndLevel = /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] \[[A-Z]+\]/.test(formattedMessage);
+  line.textContent = includesTimestampAndLevel
+    ? formattedMessage
+    : `[${level}] ${formattedMessage}`;
   logNode.appendChild(line);
   logNode.scrollTop = logNode.scrollHeight;
 }

@@ -17,6 +17,7 @@
   .workspace-heartbeat path { fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:150; stroke-dashoffset:150; animation:heartbeat-trace 2.8s ease-in-out infinite; }
   @keyframes heartbeat-trace { 0%,12% { stroke-dashoffset:150; opacity:.35; } 52%,78% { stroke-dashoffset:0; opacity:1; } 100% { stroke-dashoffset:-150; opacity:.35; } }
 
+  .workspace-heartbeat.heartbeat-active { color:var(--error); opacity:1; }
   .workspace-heartbeat.heartbeat-active path { animation:heartbeat-trace 1.2s ease-in-out infinite; }
   .workspace-heartbeat.heartbeat-slow path,
   .workspace-heartbeat.heartbeat-disconnected path { animation:none; stroke-dasharray:none; stroke-dashoffset:0; opacity:.4; }
@@ -322,8 +323,8 @@
         <button class="account-trigger" id="accountTrigger" type="button" aria-expanded="false"><span class="account-avatar-wrap"><span class="account-avatar" id="accountAvatar">B</span><span class="chat-unread-indicator" id="chatUnreadIndicator" hidden></span></span><span id="accountName">Account</span><span aria-hidden="true">⌄</span></button>
         <div class="account-menu" id="accountMenu" hidden>
           <div class="account-menu-group" aria-label="Account settings">
-            <button id="editProfileButton" type="button">Profile settings</button>
-            <button id="accountSettings" type="button">Beacon settings</button>
+            <button id="editProfileButton" type="button">Profile</button>
+            <button id="accountSettings" type="button">Settings</button>
             <button id="siteUsers" type="button" hidden>User Management</button>
           </div>
           <div class="account-menu-group" aria-label="Messages">
