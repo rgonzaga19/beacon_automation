@@ -155,6 +155,11 @@ function loadFiles(fileList) {
     ? `${state.files.length} PDF file(s) selected. Sorted naturally by filename.`
     : "Files are sorted naturally by filename.";
   buildGroups(Number($("groupSize").value) || types().length || 1, false);
+  const firstFileId = state.groups[0]?.fileIds[0];
+  if (firstFileId != null) {
+    if ($("viewer").hidden) toggleViewerBtn.click();
+    selectFile(firstFileId);
+  }
 }
 
 async function pdfsFromSelection(fileList) {
@@ -537,8 +542,6 @@ function updateViewer() {
   badge.textContent = type;
   badge.classList.toggle("extra", type === "EXTRA");
   $("viGroup").textContent = loc.group ? `Group ${loc.gi + 1}${loc.group.name ? ` – ${loc.group.name}` : ""}` : "Unassigned";
-  $("viNew").textContent = row ? (row.new || "— (no rename)") : "Run Analyze and preview to see the new name.";
-  $("viNew").classList.toggle("muted", !row);
   chk.disabled = !row || !isOk(row);
   chk.checked = state.checked.has(f.id);
   const list = arranged();

@@ -132,12 +132,10 @@ th:nth-child(2), td:nth-child(2) { width: 44px; min-width: 44px; color: var(--te
 .viewer { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 12px; height: calc(100vh - 32px); min-height: 460px; }
 .viewer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .viewer-nav { display: flex; gap: 6px; }
-.viewer-info { display: grid; gap: 8px; margin: 0; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; }
-.viewer-info > div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.viewer-info { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 8px; margin: 0; padding: 6px 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; }
+.viewer-info > div { display: flex; min-width: 0; align-items: baseline; gap: 6px; }
 .viewer-info dt { color: var(--text-sec); font-weight: 700; }
-.viewer-info dd { margin: 0; overflow-wrap: anywhere; }
-.vi-new dd { color: var(--accent); font-weight: 800; }
-.vi-new dd.muted { color: var(--text-sec); font-weight: 400; }
+.viewer-info dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .viewer-frame { flex: 1; min-height: 0; display: grid; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .viewer-frame iframe { width: 100%; height: 100%; border: 0; background: #fff; }
 .viewer-frame .empty { align-self: center; }
