@@ -6,6 +6,7 @@ const previewRows = $("previewRows");
 const previewBtn = $("previewBtn");
 const downloadBtn = $("downloadBtn");
 const clearBtn = $("clearBtn");
+const toggleViewerBtn = $("toggleViewer");
 const undoBtn = $("undoBtn");
 const status = $("status");
 const frame = $("viewerFrame");
@@ -554,6 +555,25 @@ function step(delta) {
 $("prevFile").addEventListener("click", () => step(-1));
 $("nextFile").addEventListener("click", () => step(1));
 const expandViewerBtn = $("expandViewer");
+toggleViewerBtn.addEventListener("click", () => {
+  const hidden = !$("viewer").hidden;
+  $("viewer").hidden = hidden;
+  $("viewer").closest(".layout").classList.toggle("viewer-hidden", hidden);
+  toggleViewerBtn.setAttribute("aria-expanded", String(!hidden));
+  toggleViewerBtn.textContent = hidden ? "Show document preview" : "Hide document preview";
+  if (hidden) setViewerExpanded(false);
+});
+$("closeViewer").addEventListener("click", () => toggleViewerBtn.click());
+const toolbarMore = document.querySelector(".toolbar-more");
+document.addEventListener("click", (e) => {
+  if (!toolbarMore.contains(e.target)) toolbarMore.open = false;
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && toolbarMore.open) {
+    toolbarMore.open = false;
+    toolbarMore.querySelector("summary").focus();
+  }
+});
 function setViewerExpanded(expanded) {
   $("viewer").classList.toggle("expanded", expanded);
   expandViewerBtn.setAttribute("aria-expanded", String(expanded));

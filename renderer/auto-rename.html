@@ -24,21 +24,24 @@
   <div class="layout">
     <main class="workspace">
 
-      <!-- STEP 1 -->
+      <!-- STEPS 1-2 -->
       <section class="card" id="stepFiles">
-        <div class="section-heading">
-          <span class="step">01</span>
-          <div><h2>Choose files &amp; document order</h2><p>Each group’s files take these document types in order, top to bottom.</p></div>
-        </div>
         <div class="files-grid">
-          <label class="dropzone" id="dropzone">
-            <input id="pdfFiles" type="file" accept=".pdf,.rar,application/pdf,application/vnd.rar,application/x-rar-compressed" multiple>
-            <strong>Drop PDFs or RAR archives here, or click to browse</strong>
-            <small id="pdfHint">PDFs inside RAR archives are extracted in your browser.</small>
-          </label>
+          <div class="file-panel">
+            <div class="section-heading">
+              <span class="step">01</span>
+              <div><h2>Choose files</h2><p>Select PDFs or RAR archives to organize.</p></div>
+            </div>
+            <label class="dropzone" id="dropzone">
+              <input id="pdfFiles" type="file" accept=".pdf,.rar,application/pdf,application/vnd.rar,application/x-rar-compressed" multiple>
+              <strong>Drop PDFs or RAR archives here, or click to browse</strong>
+              <small id="pdfHint">PDFs inside RAR archives are extracted in your browser.</small>
+            </label>
+          </div>
           <div class="order-panel">
-            <div class="order-head">
-              <div><h3>Document order</h3><p>Move types with the arrows. Saved on this device.</p></div>
+            <div class="section-heading order-head">
+              <span class="step">02</span>
+              <div><h2>Document order</h2><p>Move types with the arrows. Saved on this device.</p></div>
               <button id="addType" class="quiet-btn small-btn" type="button">+ Add type</button>
             </div>
             <div id="documentOrder" class="order-list"></div>
@@ -46,37 +49,45 @@
         </div>
       </section>
 
-      <!-- STEP 2 -->
+      <!-- STEP 3 -->
       <section class="card" id="stepGroups">
         <div class="section-heading">
-          <span class="step">02</span>
+          <span class="step">03</span>
           <div><h2>Arrange groups</h2><p>Drag PDFs between groups or use the buttons on each file. Click a filename to preview it on the right.</p></div>
         </div>
         <div class="toolbar">
-          <div class="tool-group">
-            <label class="inline">Auto-group every <input id="groupSize" type="number" min="1" value="4"> files</label>
-            <button id="autoGroup" class="quiet-btn small-btn" type="button">Regroup</button>
+          <div class="toolbar-main">
+            <div class="tool-group" aria-label="Group controls">
+              <label class="inline">Auto-group every <input id="groupSize" type="number" min="1" value="4"> files</label>
+              <button id="autoGroup" class="quiet-btn small-btn" type="button">Regroup</button>
+              <button id="addGroup" class="quiet-btn small-btn" type="button">+ Add group</button>
+              <button id="undoBtn" class="quiet-btn small-btn" type="button" disabled>↶ Undo</button>
+            </div>
+            <details class="toolbar-more">
+              <summary class="quiet-btn small-btn">More actions</summary>
+              <div class="toolbar-more-actions">
+                <button id="pasteGroupNames" class="quiet-btn small-btn" type="button">Paste names from clipboard</button>
+                <button id="copyNamesToFolders" class="quiet-btn small-btn" type="button">Copy filenames to folder names</button>
+              </div>
+            </details>
           </div>
-          <div class="tool-group">
-            <button id="addGroup" class="quiet-btn small-btn" type="button">+ Add group</button>
-            <button id="pasteGroupNames" class="quiet-btn small-btn" type="button">Paste names from clipboard</button>
-            <button id="copyNamesToFolders" class="quiet-btn small-btn" type="button">Copy filenames to folder names</button>
-            <button id="undoBtn" class="quiet-btn small-btn" type="button" disabled>↶ Undo</button>
+          <div class="tool-group toolbar-utilities" aria-label="Workspace controls">
+            <button id="toggleViewer" class="quiet-btn small-btn" type="button" aria-controls="viewer" aria-expanded="true">Hide document preview</button>
+            <button id="clearBtn" class="quiet-btn small-btn" type="button">Clear all fields</button>
           </div>
         </div>
         <div id="groupBoard" class="board"><p class="empty">Choose PDFs to create groups.</p></div>
         <div class="actions">
           <button id="previewBtn" class="primary-btn" type="button">Analyze and preview</button>
-          <button id="clearBtn" class="quiet-btn" type="button">Clear</button>
           <span id="status" role="status" aria-live="polite">Choose files to get started.</span>
         </div>
       </section>
 
-      <!-- STEP 3 -->
+      <!-- STEP 4 -->
       <section class="card" id="stepReview">
         <div class="preview-heading">
           <div class="section-heading">
-            <span class="step">03</span>
+            <span class="step">04</span>
             <div><h2>Review &amp; confirm</h2><p id="summary">Your proposed filenames will appear here.</p></div>
           </div>
           <div class="review-actions">
@@ -103,6 +114,7 @@
           <button id="expandViewer" class="quiet-btn small-btn" type="button" aria-expanded="false" aria-label="Expand document preview">Expand</button>
           <button id="prevFile" class="quiet-btn small-btn" type="button" title="Previous file (←)">←</button>
           <button id="nextFile" class="quiet-btn small-btn" type="button" title="Next file (→)">→</button>
+          <button id="closeViewer" class="quiet-btn small-btn" type="button" aria-label="Hide document preview" title="Hide document preview">×</button>
         </div>
       </div>
       <dl class="viewer-info" id="viewerInfo" hidden>
