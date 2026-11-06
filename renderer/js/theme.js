@@ -61,7 +61,7 @@
 
   // Apply immediately — don't wait for DOMContentLoaded — to avoid a
   // flash of the wrong theme.
-  applyTheme(getStoredTheme() || DEFAULT_THEME);
+  applyTheme(getStoredTheme() || document.documentElement.getAttribute("data-theme") || DEFAULT_THEME);
 
   // If another open window changes the theme, follow it.
   window.addEventListener("storage", (e) => {

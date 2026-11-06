@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,51 +17,127 @@
       <nav class="about-nav" aria-label="Page navigation"><a href="/">Home</a><a href="#about" data-section="about">About</a><a href="#contact" data-section="contact">Contact</a></nav>
       <a class="login-link" href="/login" id="accountLink">Log in</a>
     </header>
+
     <main class="about-content">
+
+      <nav class="about-rail" aria-label="On this page">
+        <span class="rail-title">On this page</span>
+        <ol>
+          <li><a href="#about"><span>01</span>Overview</a></li>
+          <li><a href="#workflow"><span>02</span>Workflow</a></li>
+          <li><a href="#principles"><span>03</span>Principles</a></li>
+          <li><a href="#privacy"><span>04</span>Privacy</a></li>
+          <li><a href="#contact"><span>05</span>Contact</a></li>
+          <li><a href="#developer"><span>06</span>Developer</a></li>
+        </ol>
+      </nav>
+
+      <!-- Overview -->
       <section class="about-intro" id="about" aria-labelledby="about-title">
-        <div class="intro-copy"><span class="section-kicker">BEABOTS · BEACON CLAIMS OPERATIONS</span>
-          <h1 id="about-title">Claims work, organized from preparation through review.</h1>
-          <p>Beabots is a web workspace for Nephro Group Dialysis Centers teams working with claims in Beacon. It brings claim preparation, document handling, Beacon workflow automation, and follow-up tools together so staff can move through repetitive steps in one place.</p>
-          <a class="intro-action" href="/login">Explore the workspace <span aria-hidden="true">&#8594;</span></a>
-        </div>
-        <aside class="intro-summary" aria-label="Workspace overview"><span class="summary-mark" aria-hidden="true">B</span><span class="summary-label">A connected claims workspace</span><strong>Prepare&nbsp; · &nbsp;Process&nbsp; · &nbsp;Review</strong><span class="summary-detail">Tools for the day-to-day Beacon claims workflow.</span></aside>
-      </section>
+        <p class="section-kicker">BEABOTS · BEACON CLAIMS OPERATIONS</p>
+        <h1 id="about-title">Claims work, organized from preparation through review.</h1>
+        <p class="lede">Beabots is a web workspace for Nephro Group Dialysis Centers teams working with claims in Beacon. It brings claim preparation, document handling, Beacon workflow automation, and follow-up tools together so staff can move through repetitive steps in one place.</p>
+        <a class="intro-action" href="/login">Explore the workspace <span aria-hidden="true">&#8594;</span></a>
 
-      <section class="workflow-section" aria-labelledby="workflow-heading">
-        <div class="section-lead"><span class="section-kicker">ONE WORKSPACE, CONNECTED STEPS</span><h2 id="workflow-heading">From source files to claim follow-up</h2><p>Choose a focused tool for a single task or use the full workflow to connect several claim steps.</p></div>
-        <div class="workflow-grid">
-          <article class="workflow-card"><span class="workflow-index">01</span><div><h3>Prepare claim data</h3><p>Build and upload workbooks for new or existing CF2 drafts. Generate SOA spreadsheets individually or in batches, then prepare CF4 details from claim information.</p><span class="workflow-tools">CF2 drafts · SOA workbooks · CF4</span></div></article>
-          <article class="workflow-card"><span class="workflow-index">02</span><div><h3>Run Beacon workflows</h3><p>Automate steps across a claim, including draft creation, matching SOA uploads, eSOA generation, and CF4 encoding. Process completed workbook rows sequentially.</p><span class="workflow-tools">Full workflow · Automation runs</span></div></article>
-          <article class="workflow-card"><span class="workflow-index">03</span><div><h3>Manage documents</h3><p>Match patient folders to transmittals for supported document uploads. Group PDF files, review proposed filenames, and download organized output.</p><span class="workflow-tools">Document upload · PDF rename</span></div></article>
-          <article class="workflow-card"><span class="workflow-index">04</span><div><h3>Review and follow up</h3><p>Find Beacon claims by transmittal, patient, or admission date. Review and edit draft claim details, run batch actions, and coordinate with your team in chat.</p><span class="workflow-tools">Claim lookup · Editing · Team chat</span></div></article>
+        <div class="pipeline" role="group" aria-label="Workspace overview">
+          <div class="pipeline-head"><span class="pipeline-label">A connected claims workspace</span><span class="pipeline-detail">Tools for the day-to-day Beacon claims workflow.</span></div>
+          <ol class="pipeline-steps">
+            <li><span class="step-no">01</span><span class="step-name">Prepare</span><span class="step-note">CF2 · SOA · CF4</span></li>
+            <li><span class="step-no">02</span><span class="step-name">Process</span><span class="step-note">Beacon automation</span></li>
+            <li><span class="step-no">03</span><span class="step-name">Review</span><span class="step-note">Human check</span></li>
+          </ol>
         </div>
       </section>
 
-      <section class="principles-section" aria-labelledby="principles-heading"><div class="section-lead"><span class="section-kicker">BUILT FOR RESPONSIBLE OPERATIONS</span><h2 id="principles-heading">Automation supports the people doing the work</h2></div>
-        <div class="principle-grid"><article><span aria-hidden="true">&#8634;</span><h3>Reduce repetitive steps</h3><p>Bring recurring preparation and processing tasks into consistent, guided workflows.</p></article><article><span aria-hidden="true">&#9678;</span><h3>Keep work visible</h3><p>Follow run progress and review claim details, messages, and generated documents as work moves forward.</p></article><article><span aria-hidden="true">&#10003;</span><h3>Keep human review central</h3><p>Automated output can contain errors. Authorized staff remain responsible for checking records and results before and after transmission.</p></article></div>
-      </section>
-
-      <section class="privacy-section" id="privacy" aria-labelledby="privacy-heading">
-        <div class="privacy-icon" aria-hidden="true">&#9673;</div><div><span class="section-kicker">ACCOUNT &amp; INFORMATION</span><h2 id="privacy-heading">Privacy at a glance</h2>
-        <p>Beabots uses account details to provide workspace access. Saved Beacon credentials are encrypted before storage and used by automation features to connect to Beacon. Claim files and personal information may be handled by Beabots and Beacon as part of the workflow. Only upload information you are authorized to use, protect your account, and review the <a href="#agreement" data-open-agreement>Security, Privacy &amp; Output Agreement</a> for important details and limitations.</p></div>
-      </section>
-
-      <section class="contact-section" id="contact" aria-labelledby="contact-heading">
-        <div class="section-lead"><span class="section-kicker">GET IN TOUCH</span><h2 id="contact-heading">Contact</h2><p>Questions, feedback, or a problem with the workspace? Reach out through either channel.</p></div>
-        <div class="contact-grid">
-          <a class="contact-card" href="mailto:gonzagaromel19@gmail.com"><span class="contact-symbol" aria-hidden="true">&#9993;</span><span class="contact-details"><small>EMAIL</small><strong>gonzagaromel19@gmail.com</strong></span><span class="external-mark" aria-hidden="true">&#8599;</span></a>
-          <a class="contact-card" href="viber://chat?number=%2B639556845324"><span class="contact-symbol viber-symbol" aria-hidden="true">V</span><span class="contact-details"><small>VIBER</small><strong>+63 955 684 5324</strong></span><span class="external-mark" aria-hidden="true">&#8599;</span></a>
-          <a class="contact-card" href="https://github.com/rgonzaga19" target="_blank" rel="noopener noreferrer"><span class="contact-symbol github-symbol" aria-hidden="true">&#8962;</span><span class="contact-details"><small>GITHUB</small><strong>github.com/rgonzaga19</strong></span><span class="external-mark" aria-hidden="true">&#8599;</span></a>
+      <!-- Workflow -->
+      <section class="block workflow-section" id="workflow" aria-labelledby="workflow-heading">
+        <header class="block-head">
+          <span class="section-kicker">ONE WORKSPACE, CONNECTED STEPS</span>
+          <h2 id="workflow-heading">From source files to claim follow-up</h2>
+          <p>Choose a focused tool for a single task or use the full workflow to connect several claim steps.</p>
+        </header>
+        <div class="spec-table">
+          <div class="spec-head" aria-hidden="true"><span>Step</span><span>What it covers</span><span>Tools</span></div>
+          <ol class="spec-rows">
+            <li class="spec-row">
+              <span class="spec-no">01</span>
+              <div class="spec-text"><h3>Prepare claim data</h3><p>Build and upload workbooks for new or existing CF2 drafts. Generate SOA spreadsheets individually or in batches, then prepare CF4 details from claim information.</p></div>
+              <ul class="spec-tools" aria-label="Tools"><li>CF2 drafts</li><li>SOA workbooks</li><li>CF4</li></ul>
+            </li>
+            <li class="spec-row">
+              <span class="spec-no">02</span>
+              <div class="spec-text"><h3>Run Beacon workflows</h3><p>Automate steps across a claim, including draft creation, matching SOA uploads, eSOA generation, and CF4 encoding. Process completed workbook rows sequentially.</p></div>
+              <ul class="spec-tools" aria-label="Tools"><li>Full workflow</li><li>Automation runs</li></ul>
+            </li>
+            <li class="spec-row">
+              <span class="spec-no">03</span>
+              <div class="spec-text"><h3>Manage documents</h3><p>Match patient folders to transmittals for supported document uploads. Group PDF files, review proposed filenames, and download organized output.</p></div>
+              <ul class="spec-tools" aria-label="Tools"><li>Document upload</li><li>PDF rename</li></ul>
+            </li>
+            <li class="spec-row">
+              <span class="spec-no">04</span>
+              <div class="spec-text"><h3>Review and follow up</h3><p>Find Beacon claims by transmittal, patient, or admission date. Review and edit draft claim details, run batch actions, and coordinate with your team in chat.</p></div>
+              <ul class="spec-tools" aria-label="Tools"><li>Claim lookup</li><li>Editing</li><li>Team chat</li></ul>
+            </li>
+          </ol>
         </div>
       </section>
 
-      <section class="developer-section" aria-labelledby="developer-heading">
-        <div class="section-heading"><span class="section-icon" aria-hidden="true">&#10022;</span><h2 id="developer-heading">About the developer</h2></div>
-        <article class="developer-card"><div class="developer-mark" aria-hidden="true">RG</div><div class="developer-copy"><h3>Romel Gonzaga</h3><p class="developer-role">Web Developer &amp; Tech Enthusiast</p><p class="developer-bio">A curious mind exploring what technology can do. Passionate about building clean, useful tools for everyday tasks—Beabots is one of them. Constantly learning, always shipping.</p><ul class="interest-tags" aria-label="Interests"><li>⌘&nbsp; Web Development</li><li>✳&nbsp; Tech Enthusiast</li><li>◇&nbsp; Lifelong Learner</li><li>⚒&nbsp; Builder</li></ul></div></article>
+      <!-- Principles -->
+      <section class="block principles-section" id="principles" aria-labelledby="principles-heading">
+        <header class="block-head">
+          <span class="section-kicker">BUILT FOR RESPONSIBLE OPERATIONS</span>
+          <h2 id="principles-heading">Automation supports the people doing the work</h2>
+        </header>
+        <div class="principle-grid">
+          <article><h3>Reduce repetitive steps</h3><p>Bring recurring preparation and processing tasks into consistent, guided workflows.</p></article>
+          <article><h3>Keep work visible</h3><p>Follow run progress and review claim details, messages, and generated documents as work moves forward.</p></article>
+          <article class="is-key"><h3>Keep human review central</h3><p>Automated output can contain errors. Authorized staff remain responsible for checking records and results before and after transmission.</p></article>
+        </div>
       </section>
-      <footer class="about-footer"><span>Beabots · Beacon claims workflow automation</span><a href="#about">Back to top &#8593;</a></footer>
+
+      <!-- Privacy -->
+      <section class="block privacy-section" id="privacy" aria-labelledby="privacy-heading">
+        <div class="note">
+          <span class="section-kicker">ACCOUNT &amp; INFORMATION</span>
+          <h2 id="privacy-heading">Privacy at a glance</h2>
+          <p>Beabots uses account details to provide workspace access. Saved Beacon credentials are encrypted before storage and used by automation features to connect to Beacon. Claim files and personal information may be handled by Beabots and Beacon as part of the workflow. Only upload information you are authorized to use, protect your account, and review the <a href="#agreement" data-open-agreement>Security, Privacy &amp; Output Agreement</a> for important details and limitations.</p>
+        </div>
+      </section>
+
+      <!-- Contact -->
+      <section class="block contact-section" id="contact" aria-labelledby="contact-heading">
+        <header class="block-head">
+          <span class="section-kicker">GET IN TOUCH</span>
+          <h2 id="contact-heading">Contact</h2>
+          <p>Questions, feedback, or a problem with the workspace? Reach out through either channel.</p>
+        </header>
+        <ul class="contact-list">
+          <li><a class="contact-card" href="mailto:gonzagaromel19@gmail.com"><small>EMAIL</small><strong>gonzagaromel19@gmail.com</strong><span class="external-mark" aria-hidden="true">&#8599;</span></a></li>
+          <li><a class="contact-card" href="viber://chat?number=%2B639556845324"><small>VIBER</small><strong>+63 955 684 5324</strong><span class="external-mark" aria-hidden="true">&#8599;</span></a></li>
+          <li><a class="contact-card" href="https://github.com/rgonzaga19" target="_blank" rel="noopener noreferrer"><small>GITHUB</small><strong>github.com/rgonzaga19</strong><span class="external-mark" aria-hidden="true">&#8599;</span></a></li>
+        </ul>
+      </section>
+
+      <!-- Developer -->
+      <section class="block developer-section" id="developer" aria-labelledby="developer-heading">
+        <header class="block-head">
+          <span class="section-kicker">BUILT BY</span>
+          <h2 id="developer-heading">About the developer</h2>
+        </header>
+        <article class="developer-card">
+          <div class="developer-mark" aria-hidden="true">RG</div>
+          <div class="developer-copy">
+            <h3>Romel Gonzaga</h3>
+            <p class="developer-role">Web Developer &amp; Tech Enthusiast</p>
+            <p class="developer-bio">A curious mind exploring what technology can do. Passionate about building clean, useful tools for everyday tasks—Beabots is one of them. Constantly learning, always shipping.</p>
+            <ul class="interest-tags" aria-label="Interests"><li>Web Development</li><li>Tech Enthusiast</li><li>Lifelong Learner</li><li>Builder</li></ul>
+          </div>
+        </article>
+      </section>
     </main>
   </div>
+
   <dialog class="agreement-dialog" id="agreementDialog" aria-labelledby="agreementTitle" aria-describedby="agreementIntro">
     <div class="agreement-dialog-header"><div><span class="section-kicker">BEABOTS WORKSPACE</span><h1 id="agreementTitle">Security, privacy, and output agreement.</h1><p id="agreementIntro">Please review these responsibilities before using the workspace.</p></div><button class="agreement-close" id="agreementClose" type="button" aria-label="Close agreement">×</button></div>
     <div class="agreement-sections" aria-label="Agreement terms">
