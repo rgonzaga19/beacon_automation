@@ -10,11 +10,15 @@
 
 (function () {
   const STORAGE_KEY = "beabots-theme";
-  const DEFAULT_THEME = "light";
+  const pageTheme = document.documentElement.getAttribute("data-theme");
+  const hasPageTheme = pageTheme === "light" || pageTheme === "dark";
+  const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+  const DEFAULT_THEME = systemTheme.matches ? "dark" : "light";
 
   function getStoredTheme() {
     try {
-      return localStorage.getItem(STORAGE_KEY);
+      const theme = localStorage.getItem(STORAGE_KEY);
+      return theme === "light" || theme === "dark" ? theme : null;
     } catch (e) {
       return null;
     }
@@ -31,7 +35,6 @@
     if (icon) {
       icon.textContent = isLight ? "☀" : "🌙";
       if (label) label.textContent = isLight ? "Light" : "Dark";
-      btn.setAttribute("aria-checked", String(isLight));
       btn.setAttribute("aria-label", actionLabel);
     } else {
       btn.textContent = isLight ? "☀" : "🌙";
@@ -61,7 +64,11 @@
 
   // Apply immediately — don't wait for DOMContentLoaded — to avoid a
   // flash of the wrong theme.
-  applyTheme(getStoredTheme() || document.documentElement.getAttribute("data-theme") || DEFAULT_THEME);
+  applyTheme(getStoredTheme() || (hasPageTheme ? pageTheme : DEFAULT_THEME));
+
+  systemTheme.addEventListener("change", (event) => {
+    if (!getStoredTheme() && !hasPageTheme) applyTheme(event.matches ? "dark" : "light");
+  });
 
   // If another open window changes the theme, follow it.
   window.addEventListener("storage", (e) => {
@@ -80,6 +87,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     const current = document.documentElement.getAttribute("data-theme") || DEFAULT_THEME;
     updateToggleIcon(current);
+    document.documentElement.classList.add("theme-ready");
     updateAppearanceRow(current);
 
     document.getElementById("btnThemeToggle")?.addEventListener("click", toggleTheme);

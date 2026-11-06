@@ -16,6 +16,7 @@
   --border: #34445D;
   --accent: #2dd4bf;
   --accent2: #14b8a6;
+  --accent-ink: #0D1422;
   --accent-soft: rgba(45, 212, 191, 0.12);
   --accent-soft-strong: rgba(45, 212, 191, 0.22);
   --success: #34d399;
@@ -52,6 +53,7 @@ html[data-theme="light"] {
   --border: #dde3ec;
   --accent: #0d9488;
   --accent2: #0f766e;
+  --accent-ink: #101828;
   --accent-soft: rgba(13, 148, 136, 0.08);
   --accent-soft-strong: rgba(13, 148, 136, 0.14);
   --success: #059669;
@@ -431,4 +433,3 @@ textarea:focus, input:focus {
   justify-content: flex-end;
   gap: 8px;
 }
-

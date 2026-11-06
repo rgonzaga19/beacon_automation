@@ -31,6 +31,9 @@ let requestInProgress = false;
 function clearStatus() {
   loginStatus.textContent = "";
   loginStatus.className = "login-status";
+  for (const input of [usernameInput, passwordInput, confirmPasswordInput]) {
+    input?.removeAttribute("aria-invalid");
+  }
 }
 
 function setAuthMode(mode, { focusTab = false } = {}) {
@@ -81,6 +84,7 @@ function setBusy(busy) {
 function showError(message, focusTarget) {
   loginStatus.textContent = message;
   loginStatus.className = "login-status error";
+  focusTarget?.setAttribute("aria-invalid", "true");
   focusTarget?.focus();
 }
 
@@ -102,6 +106,13 @@ showPasswordBtn.addEventListener("click", () => {
   showPasswordBtn.setAttribute("aria-label", showing ? "Show password" : "Hide password");
   showPasswordBtn.setAttribute("aria-pressed", String(!showing));
 });
+
+for (const input of [usernameInput, passwordInput, confirmPasswordInput]) {
+  input.addEventListener("input", () => {
+    input.removeAttribute("aria-invalid");
+    if (loginStatus.classList.contains("error")) clearStatus();
+  });
+}
 
 (async function redirectIfLoggedIn() {
   try {
