@@ -1,0 +1,517 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Hemodialysis in Ten Seconds</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a single 9:16 cinematic stage, centered, with a slim transport bar beneath it. Single dark look by design. */
+:root{
+  color-scheme:dark;
+  --ink:#050d14;
+  --panel:#0b1c28;
+  --line:#1b3747;
+  --text:#e6f1f5;
+  --muted:#93b3c1;
+  --accent:#27d3c4;
+  --blood:#e11d2e;
+  --waste:#f2b632;
+  --fluid:#8fdcff;
+  --font-d:'Barlow Condensed','Arial Narrow',Arial,sans-serif;
+  --font-b:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-m:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--ink);color:var(--text);
+  font:400 15px/1.45 var(--font-b);
+  padding-block:16px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.wrap{--w:min(100%,calc((100vh - 118px)*9/16));width:var(--w);margin:0 auto;min-width:0}
+@supports (height:100dvh){.wrap{--w:min(100%,calc((100dvh - 118px)*9/16))}}
+
+.stage{
+  position:relative;width:100%;aspect-ratio:9/16;overflow:hidden;border-radius:20px;
+  container-type:inline-size;
+  background:radial-gradient(120% 72% at 50% 36%,#10404f 0%,#0a2431 42%,#050d14 100%);
+  box-shadow:0 0 0 1px var(--line),0 30px 80px -34px #000;
+}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+.hud{position:absolute;left:0;right:0;top:0;padding:4.2cqw 4.6cqw 0;pointer-events:none}
+.legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:1.2cqw 3.4cqw;
+  font:500 max(10px,2.9cqw)/1 var(--font-m);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:1.4cqw}
+.legend i{width:2.4cqw;height:2.4cqw;min-width:8px;min-height:8px;border-radius:50%;display:block}
+.bar{position:absolute;left:0;right:0;top:0;height:3px;background:rgba(255,255,255,.07)}
+.bar i{display:block;height:100%;width:0;background:var(--accent)}
+
+#callouts{position:absolute;inset:0;pointer-events:none}
+.co{position:absolute;left:0;top:0;opacity:0;will-change:transform,opacity;--c:var(--accent)}
+.co .dot{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:var(--c);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 28%,transparent),0 0 14px var(--c)}
+.co .ln{position:absolute;top:0;height:1px;width:22px;background:var(--c)}
+.co.r .ln{left:5px}.co.l .ln{right:5px}
+.co .tx{position:absolute;top:0;transform:translateY(-50%);width:max-content;max-width:46cqw;
+  padding:.4em .7em .45em;background:rgba(5,13,20,.74);border:1px solid color-mix(in srgb,var(--c) 45%,transparent);border-radius:3px}
+.co.r .tx{left:27px}.co.l .tx{right:27px;text-align:right}
+.co b{display:block;font:600 max(12px,4.2cqw)/1.1 var(--font-d);letter-spacing:.07em;text-transform:uppercase;color:var(--text)}
+.co small{display:block;margin-top:.2em;font:400 max(11px,3.3cqw)/1.25 var(--font-b);color:var(--muted)}
+
+.cap{position:absolute;left:0;right:0;bottom:0;padding:17cqw 5.5cqw 5.2cqw;
+  background:linear-gradient(to top,rgba(5,13,20,.97) 58%,rgba(5,13,20,0));pointer-events:none}
+.steps{display:flex;gap:1.6cqw;margin-bottom:3.4cqw}
+.steps i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.14);display:block}
+.steps i.done{background:rgba(39,211,196,.55)}
+.steps i.on{background:var(--accent)}
+.cap-in{position:relative;height:29cqw}
+.c{position:absolute;inset:0;opacity:0}
+.c .k{font:500 max(11px,3.3cqw)/1 var(--font-m);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:1.6cqw}
+.c h2{margin:0;font:700 9.4cqw/.98 var(--font-d);letter-spacing:.015em;text-transform:uppercase;text-wrap:balance}
+.c p{margin:2.2cqw 0 0;font:400 max(13px,3.9cqw)/1.35 var(--font-b);color:var(--muted);max-width:32em}
+
+.nogl{position:absolute;inset:0;display:grid;place-items:center;padding:8cqw;text-align:center;color:var(--muted)}
+
+.ctl{display:flex;align-items:center;gap:12px;margin-top:12px}
+.ctl button{flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--text);
+  display:grid;place-items:center;cursor:pointer}
+.ctl button:hover{border-color:var(--accent)}
+.ctl button:focus-visible,.ctl input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.ctl input{flex:1;min-width:0;accent-color:var(--accent);height:44px;margin:0}
+.ctl output{flex:none;min-width:5.2em;text-align:right;font:500 13px/1 var(--font-m);color:var(--muted);font-variant-numeric:tabular-nums}
+.note{margin:10px 0 0;font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.c,.co{transition:none}}
+</style>
+
+<h1 class="sr">Hemodialysis in Ten Seconds</h1>
+<div class="wrap">
+  <div class="stage" id="stage">
+    <canvas id="gl" role="img" aria-label="3D animation: blood leaves the patient's arm, is pumped through a dialyzer where waste and excess fluid are removed, then returns clean to the body."></canvas>
+    <div class="hud">
+      <ul class="legend">
+        <li><i style="background:var(--blood)"></i>Blood</li>
+        <li><i style="background:var(--waste)"></i>Waste</li>
+        <li><i style="background:var(--fluid)"></i>Excess fluid</li>
+        <li><i style="background:var(--accent)"></i>Dialysate</li>
+      </ul>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+    <div id="callouts"></div>
+    <div class="cap">
+      <div class="steps" id="steps"><i></i><i></i><i></i><i></i></div>
+      <div class="cap-in" id="caps"></div>
+    </div>
+    <div class="nogl" id="nogl" hidden>This animation needs WebGL, which is not available in this browser.</div>
+  </div>
+  <div class="ctl">
+    <button id="play" type="button" aria-label="Pause"></button>
+    <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Animation time">
+    <output id="time" for="scrub">0.0 s</output>
+  </div>
+  <p class="note">Stylized educational model, not to scale. Loops every 10 seconds.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+var T=10;
+function $(id){return document.getElementById(id);}
+function sstep(a,b,x){var k=Math.min(1,Math.max(0,(x-a)/(b-a)));return k*k*(3-2*k);}
+function win(t,a,b,f){return Math.min(sstep(a,a+f,t),1-sstep(b-f,b,t));}
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+var R=rng(20261106);
+
+var stage=$('stage'),canvas=$('gl'),renderer;
+try{
+  renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
+}catch(e){renderer=null;}
+if(!renderer||!renderer.getContext()){$('nogl').hidden=false;return;}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.setClearColor(0x000000,0);
+
+var scene=new THREE.Scene();
+var camera=new THREE.PerspectiveCamera(36,9/16,0.1,80);
+
+/* ---------- lights ---------- */
+scene.add(new THREE.HemisphereLight(0xa9e6ff,0x0a1620,0.62));
+var key=new THREE.DirectionalLight(0xffffff,0.95);key.position.set(4,7,9);scene.add(key);
+var rimC=new THREE.DirectionalLight(0x27d3c4,1.0);rimC.position.set(-6,3,-5);scene.add(rimC);
+var rimW=new THREE.DirectionalLight(0xff7a5c,0.55);rimW.position.set(6,-2,-4);scene.add(rimW);
+var kPt=new THREE.PointLight(0xff5a6a,0.7,6);kPt.position.set(0,3.5,0.8);scene.add(kPt);
+
+/* ---------- helpers ---------- */
+function glassMat(c,o,dbl){return new THREE.MeshPhongMaterial({color:c,transparent:true,opacity:o,shininess:150,specular:0xdff6ff,depthWrite:false,side:dbl?THREE.DoubleSide:THREE.FrontSide});}
+function solid(c,sh,em){return new THREE.MeshPhongMaterial({color:c,shininess:sh||40,emissive:em||0x000000});}
+function V3(p){return new THREE.Vector3(p[0],p[1],p[2]);}
+function curveOf(pts){var c=new THREE.CatmullRomCurve3(pts.map(V3),false,'centripetal');c.arcLengthDivisions=600;return c;}
+function limb(a,b,r1,r2,mat){
+  var A=V3(a),B=V3(b),len=A.distanceTo(B);
+  var m=new THREE.Mesh(new THREE.CylinderGeometry(r2,r1,len,20,1),mat);
+  m.position.copy(A).add(B).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),B.clone().sub(A).normalize());
+  return m;
+}
+
+/* ---------- patient ---------- */
+var patient=new THREE.Group();scene.add(patient);
+var prof=[[0.02,2.55],[0.7,2.58],[0.88,2.85],[0.86,3.4],[0.95,3.95],[1.22,4.5],[1.12,4.74],[0.6,4.86],[0.26,4.97],[0.24,5.1]].map(function(p){return new THREE.Vector2(p[0],p[1]);});
+var sp=new THREE.SplineCurve(prof).getPoints(60);
+sp.forEach(function(p){p.x=Math.max(p.x,0.001);});
+var torsoGeo=new THREE.LatheGeometry(sp,48);
+torsoGeo.scale(1.12,1,0.58);
+var bodyGlass=glassMat(0x5ec8e0,0.15,true);
+var bodyWire=new THREE.MeshBasicMaterial({color:0x7fe6f5,wireframe:true,transparent:true,opacity:0.09,depthWrite:false});
+patient.add(new THREE.Mesh(torsoGeo,bodyGlass));
+patient.add(new THREE.Mesh(torsoGeo,bodyWire));
+var head=new THREE.Mesh(new THREE.SphereGeometry(0.5,32,24),bodyGlass);head.position.set(0,5.62,0);head.scale.set(0.9,1.05,0.95);patient.add(head);
+var headW=new THREE.Mesh(new THREE.SphereGeometry(0.5,20,14),bodyWire);headW.position.copy(head.position);headW.scale.copy(head.scale);patient.add(headW);
+[-1,1].forEach(function(s){
+  patient.add(limb([s*1.3,4.5,0],[s*2.05,2.55,0.05],0.22,0.15,bodyGlass));
+  patient.add(limb([s*1.3,4.5,0],[s*2.05,2.55,0.05],0.22,0.15,bodyWire));
+  var pad=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.14,0.08),solid(0xe9eef0,30));pad.position.set(s*2.03,2.78,0.2);pad.rotation.z=s*-0.3;patient.add(pad);
+});
+var kidneys=[];
+[-1,1].forEach(function(s){
+  var k=new THREE.Mesh(new THREE.SphereGeometry(1,28,20),solid(0xb23a48,70,0x5a1020));
+  k.scale.set(0.2,0.42,0.17);k.position.set(s*0.5,3.55,-0.12);k.rotation.z=s*0.28;patient.add(k);kidneys.push(k);
+});
+
+/* ---------- circuit curves ---------- */
+var PA=[[-2.0,2.85,0.28],[-2.38,2.05,0.3],[-2.56,0.5,0.3],[-2.5,-1.3,0.3],[-2.32,-2.3,0.3],[-2.15,-2.95,0.3],[-1.99,-3.29,0.3],[-1.6,-3.45,0.3],[-1.21,-3.29,0.3],[-1.05,-2.95,0.3],[-0.7,-2.5,0.25],[-0.25,-2.1,0.12],[0,-1.8,0]];
+var PV=[[0,1.8,0],[0.2,2.05,0.2],[0.8,1.95,0.3],[1.4,1.7,0.3],[1.75,1.85,0.3],[1.75,2.25,0.3],[1.75,2.6,0.3],[1.95,2.85,0.28]];
+var PDI=[[2.7,-2.6,-0.5],[2.95,-1.4,-0.5],[2.9,0.2,-0.4],[2.5,1.0,-0.2],[1.6,1.0,-0.04],[1.15,1.0,0]];
+var PDO=[[1.15,-1.0,0],[1.6,-1.0,-0.04],[2.1,-1.25,-0.25],[2.3,-1.9,-0.35],[2.2,-2.6,-0.35]];
+var curveA=curveOf(PA),curveV=curveOf(PV),curveDI=curveOf(PDI),curveDO=curveOf(PDO);
+var LA=curveA.getLength(),LV=curveV.getLength(),LD=3.6,DY0=-1.8;
+var LB=LA+LD+LV,vB=LB/T;
+var LDI=curveDI.getLength(),LDO=curveDO.getLength(),PORT=0.53,LSH=2.0;
+var LDT=LDI+PORT+LSH+PORT+LDO;
+
+function addTube(curve,rOut,rIn,outMat,inMat){
+  scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve,240,rIn,12,false),inMat));
+  scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve,240,rOut,14,false),outMat));
+}
+addTube(curveA,0.10,0.074,glassMat(0xbfe9f7,0.22),new THREE.MeshPhongMaterial({color:0x7a0f20,emissive:0x3a0510,shininess:60}));
+addTube(curveV,0.10,0.074,glassMat(0xbfe9f7,0.22),new THREE.MeshPhongMaterial({color:0xe11d2e,emissive:0x5a0610,shininess:60}));
+addTube(curveDI,0.08,0.056,glassMat(0xbff6f0,0.2),new THREE.MeshPhongMaterial({color:0x1fb7aa,emissive:0x0b5a54,shininess:60}));
+addTube(curveDO,0.08,0.056,glassMat(0xbff6f0,0.2),new THREE.MeshPhongMaterial({color:0x1fb7aa,emissive:0x0b5a54,shininess:60}));
+
+/* ---------- machine ---------- */
+var machine=new THREE.Mesh(new THREE.BoxGeometry(6.4,2.8,1.4),solid(0x12303e,40,0x04121a));
+machine.position.set(0,-4.0,-0.7);scene.add(machine);
+var strip=new THREE.Mesh(new THREE.BoxGeometry(6.4,0.05,1.4),new THREE.MeshBasicMaterial({color:0x27d3c4}));
+strip.position.set(0,-2.6,-0.7);scene.add(strip);
+function screenTex(){
+  var c=document.createElement('canvas');c.width=512;c.height=256;var g=c.getContext('2d');
+  g.fillStyle='#04202a';g.fillRect(0,0,512,256);
+  g.strokeStyle='#14586a';g.lineWidth=2;g.strokeRect(6,6,500,244);
+  g.fillStyle='#27d3c4';g.font='600 26px monospace';
+  g.fillText('BLOOD FLOW',24,48);g.fillText('DIALYSATE',284,48);
+  g.fillStyle='#e6f1f5';g.font='700 46px monospace';
+  g.fillText('300',24,104);g.fillText('500',284,104);
+  g.fillStyle='#93b3c1';g.font='500 20px monospace';
+  g.fillText('mL/min',24,132);g.fillText('mL/min',284,132);
+  g.strokeStyle='#e11d2e';g.lineWidth=3;g.beginPath();
+  for(var x=24;x<=488;x+=2){var ph=((x-24)%116)/116;var y=200-(ph<0.1?60*Math.sin(ph/0.1*Math.PI):(ph>0.3&&ph<0.5?14*Math.sin((ph-0.3)/0.2*Math.PI):0));if(x===24)g.moveTo(x,y);else g.lineTo(x,y);}
+  g.stroke();
+  var t=new THREE.CanvasTexture(c);return t;
+}
+var screen=new THREE.Mesh(new THREE.PlaneGeometry(2.2,1.1),new THREE.MeshBasicMaterial({map:screenTex()}));
+screen.position.set(1.35,-3.55,0.02);scene.add(screen);
+[0,1,2].forEach(function(i){var led=new THREE.Mesh(new THREE.SphereGeometry(0.05,12,8),new THREE.MeshBasicMaterial({color:i===2?0xf2b632:0x41e08a}));led.position.set(-2.9+i*0.2,-2.85,0.02);scene.add(led);});
+
+/* pump */
+var pump=new THREE.Group();pump.position.set(-1.6,-2.95,0.15);scene.add(pump);
+var disc=new THREE.Mesh(new THREE.CylinderGeometry(0.72,0.72,0.22,40),solid(0x1b3b4c,60,0x06141c));disc.rotation.x=Math.PI/2;pump.add(disc);
+var track=new THREE.Mesh(new THREE.TorusGeometry(0.62,0.04,10,48),solid(0x7aa6b8,80));track.position.z=0.12;pump.add(track);
+var rotor=new THREE.Group();rotor.position.z=0.15;pump.add(rotor);
+var hub=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.2,20),solid(0xcfe3ea,90));hub.rotation.x=Math.PI/2;rotor.add(hub);
+[0,1,2].forEach(function(i){
+  var a=i*Math.PI*2/3;
+  var spoke=limb([0,0,0],[Math.cos(a)*0.46,Math.sin(a)*0.46,0],0.04,0.04,solid(0x9fbcc8,60));rotor.add(spoke);
+  var roller=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,0.26,16),solid(0xe6f1f5,100));
+  roller.rotation.x=Math.PI/2;roller.position.set(Math.cos(a)*0.46,Math.sin(a)*0.46,0);rotor.add(roller);
+});
+
+/* air trap */
+var trap=new THREE.Group();trap.position.set(1.75,2.2,0.3);scene.add(trap);
+trap.add(new THREE.Mesh(new THREE.CylinderGeometry(0.21,0.21,0.85,24,1,true),glassMat(0xd8f3fb,0.26,true)));
+var tf=new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.17,0.56,24),new THREE.MeshPhongMaterial({color:0xe11d2e,emissive:0x5a0610,transparent:true,opacity:0.85}));tf.position.y=-0.13;trap.add(tf);
+[-0.45,0.45].forEach(function(y){var cap=new THREE.Mesh(new THREE.CylinderGeometry(0.23,0.23,0.08,24),solid(0x31515f,50));cap.position.y=y;trap.add(cap);});
+
+/* ---------- dialyzer ---------- */
+var dz=new THREE.Group();scene.add(dz);
+dz.add(new THREE.Mesh(new THREE.CylinderGeometry(0.85,0.85,2.6,48,1,true),glassMat(0xbfe9f7,0.13,true)));
+[-1,1].forEach(function(s){
+  var pot=new THREE.Mesh(new THREE.CylinderGeometry(0.85,0.85,0.07,48),new THREE.MeshPhongMaterial({color:0xd9c58a,transparent:true,opacity:0.5,shininess:30,depthWrite:false}));
+  pot.position.y=s*1.3;dz.add(pot);
+  var ring=new THREE.Mesh(new THREE.TorusGeometry(0.86,0.028,10,48),new THREE.MeshBasicMaterial({color:0x8fdcff,transparent:true,opacity:0.7}));ring.rotation.x=Math.PI/2;ring.position.y=s*1.3;dz.add(ring);
+  var hdr=new THREE.Mesh(new THREE.CylinderGeometry(s>0?0.2:0.85,s>0?0.85:0.2,0.4,36,1,true),glassMat(0x7fc6e4,0.26,true));hdr.position.y=s*1.5;dz.add(hdr);
+  var stub=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.12,16),solid(0xdfeaee,60));stub.position.y=s*1.76;dz.add(stub);
+  var sp2=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.4,16),glassMat(0x6fe6dc,0.4));sp2.rotation.z=Math.PI/2;sp2.position.set(1.0,s*1.0,0);dz.add(sp2);
+});
+var fibers=[];
+[[0,1],[0.22,6],[0.43,12],[0.64,18]].forEach(function(rg,ri){
+  for(var i=0;i<rg[1];i++){var a=Math.PI*2*i/rg[1]+ri*0.31;fibers.push({x:Math.cos(a)*rg[0],z:Math.sin(a)*rg[0],r:rg[0],a:a,ring:ri});}
+});
+var outerFibers=fibers.filter(function(f){return f.ring===3;});
+var fGeo=new THREE.CylinderGeometry(0.045,0.045,2.6,8,20,true);
+(function(){
+  var p=fGeo.attributes.position,cols=new Float32Array(p.count*3),cv=new THREE.Color(0x7a0f20),cb=new THREE.Color(0xe11d2e),tmp=new THREE.Color();
+  for(var i=0;i<p.count;i++){tmp.copy(cv).lerp(cb,sstep(0.15,0.85,(p.getY(i)+1.3)/2.6));cols[i*3]=tmp.r;cols[i*3+1]=tmp.g;cols[i*3+2]=tmp.b;}
+  fGeo.setAttribute('color',new THREE.BufferAttribute(cols,3));
+})();
+var fMat=new THREE.MeshPhongMaterial({vertexColors:true,emissive:0x2a0508,shininess:60,transparent:true,opacity:0.5,depthWrite:false});
+var mGeo=new THREE.CylinderGeometry(0.056,0.056,2.6,8,1,true);
+var mMat=new THREE.MeshPhongMaterial({color:0xeaf6fa,transparent:true,opacity:0.2,depthWrite:false,shininess:100});
+fibers.forEach(function(f){
+  var a=new THREE.Mesh(fGeo,fMat),b=new THREE.Mesh(mGeo,mMat);
+  a.position.set(f.x,0,f.z);b.position.copy(a.position);dz.add(a);dz.add(b);
+});
+
+/* ---------- atmosphere ---------- */
+function glowTex(){var c=document.createElement('canvas');c.width=c.height=128;var g=c.getContext('2d');var gr=g.createRadialGradient(64,64,0,64,64,64);gr.addColorStop(0,'rgba(255,255,255,0.9)');gr.addColorStop(0.35,'rgba(255,255,255,0.25)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,128,128);return new THREE.CanvasTexture(c);}
+var gt=glowTex();
+var glow=new THREE.Sprite(new THREE.SpriteMaterial({map:gt,color:0x27d3c4,transparent:true,opacity:0.3,depthWrite:false,blending:THREE.AdditiveBlending}));
+glow.scale.set(7.5,7.5,1);glow.position.set(0,0,-1.6);scene.add(glow);
+var glowK=new THREE.Sprite(new THREE.SpriteMaterial({map:gt,color:0xff5a6a,transparent:true,opacity:0.2,depthWrite:false,blending:THREE.AdditiveBlending}));
+glowK.scale.set(4.5,4.5,1);glowK.position.set(0,3.5,-0.8);scene.add(glowK);
+var dustPos=new Float32Array(150*3);
+for(var di=0;di<150;di++){dustPos[di*3]=(R()-0.5)*11;dustPos[di*3+1]=(R()-0.5)*14;dustPos[di*3+2]=-4+R()*7;}
+var dustGeo=new THREE.BufferGeometry();dustGeo.setAttribute('position',new THREE.BufferAttribute(dustPos,3));
+var dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({size:0.04,color:0x9fe9f5,transparent:true,opacity:0.35,depthWrite:false}));scene.add(dust);
+
+/* ---------- particles ---------- */
+var D=new THREE.Object3D();
+function inst(n,geo,mat){var m=new THREE.InstancedMesh(geo,mat,n);m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);m.frustumCulled=false;scene.add(m);return m;}
+function put(m,i,x,y,z,sx,sy,sz){D.position.set(x,y,z);D.scale.set(sx,sy,sz);D.updateMatrix();m.setMatrixAt(i,D.matrix);}
+var sph=new THREE.SphereGeometry(1,10,8);
+var NC=260,NW=84,NF=56,ND=110;
+var cells=inst(NC,sph,new THREE.MeshPhongMaterial({color:0xffffff,emissive:0x2a0508,shininess:50}));
+var wasteM=inst(NW,sph,new THREE.MeshPhongMaterial({color:0xf2b632,emissive:0xa06a00,shininess:80}));
+var fluidM=inst(NF,sph,new THREE.MeshPhongMaterial({color:0x8fdcff,emissive:0x2a7fa8,transparent:true,opacity:0.85,shininess:120}));
+var dialM=inst(ND,sph,new THREE.MeshBasicMaterial({color:0x27d3c4,transparent:true,opacity:0.9}));
+var cellItems=[],wasteItems=[],fluidItems=[],dialItems=[];
+var col=new THREE.Color(),cV=new THREE.Color(0x7a0f20),cB=new THREE.Color(0xe11d2e);
+function jit(s){return (R()-0.5)*2*s;}
+for(var i=0;i<NC;i++){cellItems.push({o:(i+R()*0.6)/NC,f:fibers[(R()*fibers.length)|0],jx:jit(0.035),jy:jit(0.035),jz:jit(0.035)});cells.setColorAt(i,cV);}
+function mk(n,tx0,tx1){var a=[];for(var i=0;i<n;i++)a.push({o:(i+R()*0.6)/n,f:outerFibers[(R()*outerFibers.length)|0],yc:-0.85+R()*1.35,tx:tx0+R()*(tx1-tx0),rt:0.775,jx:jit(0.035),jy:jit(0.035),jz:jit(0.035)});return a;}
+wasteItems=mk(NW,0.8,1.0);fluidItems=mk(NF,0.7,0.9);
+for(var j=0;j<ND;j++){var ra=R()*Math.PI*2,rr=Math.sqrt(R())*0.7;dialItems.push({o:(j+R()*0.6)/ND,rx:Math.cos(ra)*rr,rz:Math.sin(ra)*rr});}
+
+var tmpP=new THREE.Vector3(),lastFan=0;
+function fanAt(d){return sstep(0,0.5,d)*(1-sstep(LD-0.5,LD,d));}
+function bloodAt(d,f,out){
+  lastFan=0;
+  if(d<LA){curveA.getPointAt(d/LA,out);return 0;}
+  d-=LA;
+  if(d<LD){lastFan=fanAt(d);out.set(f.x*lastFan,DY0+d,f.z*lastFan);return sstep(0.25,0.8,d/LD);}
+  d-=LD;curveV.getPointAt(Math.min(d/LV,1),out);return 1;
+}
+var grow=1;
+function travel(it,t,out){
+  var tau=((it.o+t/T)%1)*T,tA=LA/vB,dC=it.yc-DY0,tIn=dC/vB,tX=it.tx;grow=1;
+  if(tau<tA){curveA.getPointAt(tau/tA,out);out.x+=it.jx;out.y+=it.jy;out.z+=it.jz;return Math.min(1,tau/0.35);}
+  tau-=tA;
+  if(tau<tIn){var d=tau*vB,fn=fanAt(d);out.set(it.f.x*fn,DY0+d,it.f.z*fn);return 1;}
+  tau-=tIn;
+  if(tau<tX){var k=sstep(0,1,tau/tX),rr=it.f.r+(it.rt-it.f.r)*k;out.set(Math.cos(it.f.a)*rr,it.yc+0.18*k,Math.sin(it.f.a)*rr);grow=1+0.5*k;return 1;}
+  tau-=tX;grow=1.5;
+  var rem=T-(tA+tIn+tX),u=Math.min(tau/rem,1),x1=Math.cos(it.f.a)*it.rt,z1=Math.sin(it.f.a)*it.rt,y1=it.yc+0.18;
+  if(u<0.35){var k1=u/0.35;out.set(x1,y1+(-0.9-y1)*k1,z1);}
+  else if(u<0.5){var k2=(u-0.35)/0.15;out.set(x1+(1.15-x1)*k2,-0.9-0.1*k2,z1*(1-k2));}
+  else{curveDO.getPointAt(Math.min((u-0.5)/0.5,1),out);}
+  return u>0.9?Math.max(0,(1-u)/0.1):1;
+}
+function dialAt(it,t,out){
+  var q=((it.o+t/T)%1)*LDT,k;
+  if(q<LDI){curveDI.getPointAt(q/LDI,out);return;}
+  q-=LDI;
+  if(q<PORT){k=q/PORT;out.set(1.15+(0.62-1.15)*k,1.0,0);return;}
+  q-=PORT;
+  if(q<LSH){k=q/LSH;var w=sstep(0,0.25,k)*(1-sstep(0.75,1,k));out.set(0.62+(it.rx-0.62)*w,1.0-2.0*k,it.rz*w);return;}
+  q-=LSH;
+  if(q<PORT){k=q/PORT;out.set(0.62+(1.15-0.62)*k,-1.0,0);return;}
+  q-=PORT;curveDO.getPointAt(Math.min(q/LDO,1),out);
+}
+function updateParticles(t){
+  var i,it,c,s;
+  for(i=0;i<NC;i++){
+    it=cellItems[i];c=bloodAt(((it.o+t/T)%1)*LB,it.f,tmpP);
+    var jf=1-lastFan;s=0.05-0.016*lastFan;
+    put(cells,i,tmpP.x+it.jx*jf,tmpP.y+it.jy*jf,tmpP.z+it.jz*jf,s,s*0.7,s);
+    col.copy(cV).lerp(cB,c);cells.setColorAt(i,col);
+  }
+  cells.instanceMatrix.needsUpdate=true;cells.instanceColor.needsUpdate=true;
+  for(i=0;i<NW;i++){s=travel(wasteItems[i],t,tmpP)*0.044*grow;put(wasteM,i,tmpP.x,tmpP.y,tmpP.z,s,s,s);}
+  wasteM.instanceMatrix.needsUpdate=true;
+  for(i=0;i<NF;i++){s=travel(fluidItems[i],t,tmpP)*0.042*(grow>1?grow*1.15:1);put(fluidM,i,tmpP.x,tmpP.y,tmpP.z,s,s,s);}
+  fluidM.instanceMatrix.needsUpdate=true;
+  for(i=0;i<ND;i++){dialAt(dialItems[i],t,tmpP);put(dialM,i,tmpP.x,tmpP.y,tmpP.z,0.026,0.026,0.026);}
+  dialM.instanceMatrix.needsUpdate=true;
+}
+
+/* ---------- camera ---------- */
+/* t, focus x,y,z, distance, azimuth, elevation */
+var K=[
+  [0,    0,1.1,0,    17.5, 0,     0.05],
+  [1.25, -1.15,3.45,0, 9.2, 0.2,  0.06],
+  [3.1,  -1.5,-2.4,0.2, 7.8, 0.22, 0.05],
+  [4.4,  0,-0.1,0,    9.0, -0.25, 0.06],
+  [5.8,  0.1,0,0.1,   6.0, 0.42,  0.1],
+  [7.2,  0.15,0.2,0.1, 6.4, 0.12, 0.08],
+  [8.4,  1.15,2.2,0.2, 8.6, -0.25,0.05],
+  [10,   0,1.1,0,    17.5, 0,     0.05]
+];
+var cv6=[0,0,0,0,0,0];
+function camAt(t){
+  var n=K.length,i=0;
+  while(i<n-2&&t>=K[i+1][0])i++;
+  var a=K[i],b=K[i+1],p=K[i===0?n-2:i-1],q=K[i+2<n?i+2:1];
+  var tp=i===0?p[0]-T:p[0],tq=i+2<n?q[0]:q[0]+T;
+  var h=b[0]-a[0],s=(t-a[0])/h,s2=s*s,s3=s2*s;
+  var h00=2*s3-3*s2+1,h10=s3-2*s2+s,h01=-2*s3+3*s2,h11=s3-s2;
+  for(var c=1;c<=6;c++){
+    var m0=(b[c]-p[c])/(b[0]-tp),m1=(q[c]-a[c])/(tq-a[0]);
+    cv6[c-1]=h00*a[c]+h10*h*m0+h01*b[c]+h11*h*m1;
+  }
+  var d=cv6[3],az=cv6[4],el=cv6[5];
+  camera.position.set(cv6[0]+d*Math.sin(az)*Math.cos(el),cv6[1]+d*Math.sin(el),cv6[2]+d*Math.cos(az)*Math.cos(el));
+  camera.lookAt(cv6[0],cv6[1]-0.11*d*0.727,cv6[2]);
+}
+
+/* ---------- captions & callouts ---------- */
+var CAPS=[
+  {w:[0.1,1.3],k:'3D animation',t:'Hemodialysis',d:'How a dialysis machine does the work of failing kidneys.'},
+  {w:[1.3,3.1],k:'01',t:'Blood leaves the body',d:'Blood is drawn from the arm access into sterile tubing.'},
+  {w:[3.1,4.4],k:'02',t:'A pump drives the circuit',d:'A roller pump pushes blood toward the filter at 300 to 400 mL per minute.'},
+  {w:[4.4,7.3],k:'03',t:'The dialyzer filters it',d:'Waste and extra fluid cross the membrane into the dialysate. Blood cells stay inside.'},
+  {w:[7.3,8.9],k:'04',t:'Clean blood returns',d:'Filtered blood passes an air trap, then flows back into the body.'},
+  {w:[8.9,9.9],k:'Per treatment',t:'About 4 hours',d:'Usually 3 to 4 hours, three times a week.'}
+];
+var capsEl=$('caps');
+CAPS.forEach(function(c){
+  var el=document.createElement('div');el.className='c';
+  el.innerHTML='<div class="k"></div><h2></h2><p></p>';
+  el.children[0].textContent=c.k;el.children[1].textContent=c.t;el.children[2].textContent=c.d;
+  capsEl.appendChild(el);c.el=el;
+});
+var stepEls=$('steps').children;
+var COS=[
+  {a:[-2.0,2.9,0.3],  w:[0.7,3.0],  t:'Vascular access',  s:'Blood drawn from the arm',   side:'r',c:'#27d3c4'},
+  {a:[-1.6,-2.95,0.4],w:[3.0,4.4],  t:'Blood pump',       s:'Roller pump',               side:'r',c:'#27d3c4'},
+  {a:[0.3,1.15,0.7],  w:[4.3,5.5],  t:'Hollow-fiber membrane',s:'Thousands of hair-thin tubes',side:'r',c:'#27d3c4'},
+  {a:[0.2,-0.4,0.85], w:[5.2,6.5],  t:'Waste',            s:'Urea, creatinine, toxins',  side:'l',c:'#f2b632'},
+  {a:[-0.45,0.7,0.8], w:[5.9,7.1],  t:'Excess fluid',     s:'Drawn out through the pores',side:'r',c:'#8fdcff'},
+  {a:[0.85,-1.0,0.2], w:[6.4,7.4],  t:'Dialysate',        s:'Flows the opposite way',    side:'l',c:'#27d3c4'},
+  {a:[1.75,2.2,0.5],  w:[7.2,8.3],  t:'Air trap',         s:'Safety check before return',side:'l',c:'#27d3c4'},
+  {a:[2.0,2.9,0.3],   w:[8.2,9.4],  t:'Clean blood',      s:'Returned to the body',      side:'l',c:'#e11d2e'}
+];
+var coWrap=$('callouts');
+COS.forEach(function(c){
+  var el=document.createElement('div');el.className='co '+c.side;el.style.setProperty('--c',c.c);
+  el.innerHTML='<i class="dot"></i><span class="ln"></span><div class="tx"><b></b><small></small></div>';
+  el.querySelector('b').textContent=c.t;el.querySelector('small').textContent=c.s;
+  coWrap.appendChild(el);c.el=el;c.tx=el.querySelector('.tx');c.v=V3(c.a);c.cls=c.side;c.tw=0;
+});
+var pv=new THREE.Vector3();
+function overlays(t,W,H){
+  var i,o;
+  for(i=0;i<CAPS.length;i++){
+    o=win(t,CAPS[i].w[0],CAPS[i].w[1],0.25);
+    CAPS[i].el.style.opacity=o.toFixed(3);
+    CAPS[i].el.style.transform='translateY('+((1-o)*8).toFixed(1)+'px)';
+  }
+  var step=t<1.3?0:t<3.1?1:t<4.4?2:t<7.3?3:t<8.9?4:0;
+  for(i=0;i<4;i++){stepEls[i].className=(i+1<step)?'done':(i+1===step?'on':'');}
+  for(i=0;i<COS.length;i++){
+    var c=COS[i];o=win(t,c.w[0],c.w[1],0.25);
+    if(o<0.01){c.el.style.opacity=0;continue;}
+    pv.copy(c.v).project(camera);
+    var x=(pv.x*0.5+0.5)*W,y=(-pv.y*0.5+0.5)*H;
+    if(pv.z>1||x<-20||x>W+20||y<-20||y>H+20){c.el.style.opacity=0;continue;}
+    if(!c.tw)c.tw=c.tx.offsetWidth||140;
+    var side=c.side;
+    if(side==='r'&&x+27+c.tw>W-8)side='l';
+    else if(side==='l'&&x-27-c.tw<8)side='r';
+    if(side!==c.cls){c.el.className='co '+side;c.cls=side;}
+    c.el.style.opacity=o.toFixed(3);
+    c.el.style.transform='translate3d('+x.toFixed(1)+'px,'+y.toFixed(1)+'px,0)';
+  }
+}
+
+/* ---------- frame ---------- */
+var W=1,H=1;
+function resize(){
+  W=stage.clientWidth;H=stage.clientHeight;if(!W||!H)return;
+  renderer.setSize(W,H,false);camera.aspect=W/H;camera.updateProjectionMatrix();
+}
+if(window.ResizeObserver){new ResizeObserver(resize).observe(stage);}else{window.addEventListener('resize',resize);}
+resize();
+
+function draw(t){
+  camAt(t);
+  rotor.rotation.z=t/T*Math.PI*2*3;
+  var pulse=0.5+0.5*Math.sin(t/T*Math.PI*2*5);
+  kidneys.forEach(function(k){k.material.emissive.setRGB(0.35+0.18*pulse,0.06,0.1);});
+  glow.material.opacity=0.2+0.4*win(t,4.0,7.8,1.0);
+  glowK.material.opacity=0.14+0.08*pulse;
+  dust.position.y=Math.sin(t/T*Math.PI*2)*0.2;
+  dust.rotation.y=Math.sin(t/T*Math.PI*2)*0.05;
+  updateParticles(t);
+  camera.updateMatrixWorld();
+  overlays(t,W,H);
+  renderer.render(scene,camera);
+}
+
+/* ---------- transport ---------- */
+var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var playing=!reduce,Tn=reduce?5.8:0,dragging=false,last=null,visible=!('IntersectionObserver' in window),rafId=0;
+var btn=$('play'),scrub=$('scrub'),timeEl=$('time'),barEl=$('bar');
+var ICON_PAUSE='<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.4" height="12" rx="1" fill="currentColor"/><rect x="9.6" y="2" width="3.4" height="12" rx="1" fill="currentColor"/></svg>';
+var ICON_PLAY='<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.2v11.6a.6.6 0 0 0 .9.5l9-5.8a.6.6 0 0 0 0-1L4.9 1.7a.6.6 0 0 0-.9.5z" fill="currentColor"/></svg>';
+function setBtn(){btn.innerHTML=playing?ICON_PAUSE:ICON_PLAY;btn.setAttribute('aria-label',playing?'Pause':'Play');}
+setBtn();
+btn.addEventListener('click',function(){playing=!playing;setBtn();});
+scrub.addEventListener('pointerdown',function(){dragging=true;});
+window.addEventListener('pointerup',function(){dragging=false;});
+scrub.addEventListener('input',function(){Tn=Math.min(T-0.001,scrub.value/1000*T);});
+function canRender(){return visible&&document.visibilityState==='visible';}
+function setRenderState(){
+  if(canRender()){
+    last=null;
+    if(!rafId)rafId=requestAnimationFrame(loop);
+  }else if(rafId){
+    cancelAnimationFrame(rafId);
+    rafId=0;
+    last=null;
+  }
+}
+if('IntersectionObserver' in window){
+  new IntersectionObserver(function(entries){
+    visible=entries[0].isIntersecting;
+    setRenderState();
+  }).observe(stage);
+}
+document.addEventListener('visibilitychange',setRenderState);
+function loop(now){
+  rafId=0;
+  if(!canRender())return;
+  var dt=last===null?0:Math.min(0.1,Math.max(0,(now-last)/1000));last=now;
+  if(playing&&!dragging)Tn=(Tn+dt)%T;
+  if(!dragging)scrub.value=Math.round(Tn/T*1000);
+  timeEl.textContent=Tn.toFixed(1)+' s';
+  barEl.style.width=(Tn/T*100).toFixed(2)+'%';
+  draw(Tn);
+  rafId=requestAnimationFrame(loop);
+}
+if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){COS.forEach(function(c){c.tw=0;});});}
+setRenderState();
+})();
+</script>
+
+</body></html>

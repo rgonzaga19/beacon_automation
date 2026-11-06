@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" class="landing-document">
+<html lang="en" class="landing-document" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f7fb">
-  <title>Beabots | Claims workflow automation</title>
+  <meta name="theme-color" content="#0b1424">
+  <meta name="description" content="Prepare dialysis patient PhilHealth E-Claims with a focused workspace for claim encoding, SOA workbooks, forms, and supporting documents.">
+  <title>BEABOTS | Dialysis Claims Processing</title>
+  <script>try { if (!localStorage.getItem("beabots-theme")) localStorage.setItem("beabots-theme", "dark"); } catch (error) { document.documentElement.dataset.theme = "dark"; }</script>
   <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/landing.css">
@@ -22,54 +24,86 @@
     <main>
       <section class="landing-hero">
         <div class="hero-copy">
-          <div class="hero-eyebrow"><span class="eyebrow-pulse"></span> BEACON CLAIMS WORKFLOW</div>
-          <h1>Make claims work<br>feel <span>more manageable.</span></h1>
-          <p class="hero-description">A focused workspace for preparing, reviewing, and organizing PhilHealth E-Claims, with everyday Beacon tasks gathered in one place.</p>
-          <div class="hero-actions"><a class="cta-primary" id="workspaceLink" href="/login">Open workspace <span aria-hidden="true">→</span></a><a class="cta-secondary" href="#tools">Explore the tools</a></div>
-          <div class="hero-assurance"><span class="assurance-mark" aria-hidden="true">✓</span><span>Designed for the details behind every claim.</span></div>
+          <div class="hero-eyebrow"><span class="eyebrow-pulse"></span> PHILHEALTH E-CLAIMS · DIALYSIS</div>
+          <h1>Dialysis Claims<br>Processing,<br><span>Simplified.</span></h1>
+          <p class="hero-description">Automate encoding, organize patient claims, and streamline PhilHealth E-Claims workflows with one intelligent workspace.</p>
+          <div class="hero-actions"><a class="cta-primary" id="workspaceLink" href="/login">Open Workspace</a><a class="cta-secondary" href="#tools">Explore Features</a></div>
+          <div class="hero-proof"><span class="proof-rule"></span><span>One connected workflow, from source files to claim review.</span></div>
         </div>
 
-        <!-- Replace this illustrative preview with a product screenshot when one is ready. -->
-        <div class="hero-art" role="img" aria-label="Illustrated preview of the Beabots claims workspace">
-          <div class="art-orbit art-orbit-one"></div><div class="art-orbit art-orbit-two"></div>
-          <div class="floating-note note-top"><span class="note-icon">✓</span><span><b>Review with confidence</b><small>Claim details in one workspace</small></span></div>
-          <div class="workspace-preview">
-            <div class="preview-topbar"><span class="preview-brand"><i></i> BEABOTS</span><span class="preview-user">RG</span></div>
-            <div class="preview-content">
-              <div class="preview-sidebar"><i></i><i></i><i></i><i></i><i></i></div>
-              <div class="preview-main"><div class="preview-eyebrow">CLAIMS WORKSPACE</div><div class="preview-title">Your workspace</div><div class="preview-subtitle">Your tools, ready when you are.</div>
-                <div class="preview-summary"><div><small>WORKFLOW</small><strong>Claims processing</strong></div><span class="preview-status"><i></i> Ready</span></div>
-                <div class="preview-tool"><span class="tool-symbol">▤</span><span><b>SOA Excel Generator</b><small>Prepare claim workbooks</small></span><span class="tool-arrow">→</span></div>
-                <div class="preview-tool"><span class="tool-symbol tool-symbol-alt">✓</span><span><b>Claim Form 2</b><small>Prepare claim details</small></span><span class="tool-arrow">→</span></div>
-                <div class="preview-tool preview-tool-muted"><span class="tool-symbol">⇧</span><span><b>Upload SOA</b><small>Organize supporting files</small></span><span class="tool-arrow">→</span></div>
+        <div class="hero-product" aria-label="Illustrative Beabots dialysis claims workspace preview">
+          <div class="product-window">
+            <div class="product-topbar"><div class="product-brand"><span class="brand-mark">B</span><span>BEABOTS <small>CLAIMS WORKSPACE</small></span></div><span class="workspace-label"><i></i> DIALYSIS · PHILHEALTH</span><span class="user-chip">RG</span></div>
+            <div class="product-layout">
+              <aside class="product-rail" aria-hidden="true"><span class="rail-logo">B</span><span class="rail-item is-active">▦</span><span class="rail-item">⌘</span><span class="rail-item">▤</span><span class="rail-item">↥</span><span class="rail-bottom">⚙</span></aside>
+              <div class="product-main">
+                <div class="product-heading"><div><span class="product-kicker">OPERATIONS OVERVIEW</span><h2>Claims operations</h2><p>Your tools for preparation, documents, and review.</p></div><span class="date-chip"><span>▦</span> WORKSPACE</span></div>
+                <div class="metric-row" aria-label="Claim operations tool groups">
+                  <article class="metric-card"><span>CLAIM PREPARATION</span><strong>SOA</strong><small><i class="metric-dot dot-teal"></i> Workbooks &amp; encoding</small><span class="metric-spark spark-one"></span></article>
+                  <article class="metric-card"><span>PHILHEALTH FORMS</span><strong>CF2 <span class="metric-amp">&amp;</span> CF4</strong><small><i class="metric-dot dot-blue"></i> Form preparation</small><span class="metric-spark spark-two"></span></article>
+                  <article class="metric-card"><span>DOCUMENT WORKFLOW</span><strong>Files</strong><small><i class="metric-dot dot-green"></i> Upload &amp; organize</small><span class="metric-spark spark-three"></span></article>
+                </div>
+                <div class="claims-panel">
+                  <div class="panel-heading"><div><strong>Workflow tools</strong><small>Claim preparation and document operations</small></div><a href="/login">Open workspace <span aria-hidden="true">→</span></a></div>
+                  <div class="claim-table-wrap"><table class="claim-table"><thead><tr><th>TOOL</th><th>WORKFLOW</th><th>AREA</th><th>AVAILABILITY</th></tr></thead><tbody>
+                    <tr><td><span class="record-icon">XLS</span><span class="record-name">SOA Excel Generator</span></td><td>Build workbooks</td><td>Preparation</td><td><span class="status-pill status-ready"><i></i> Available</span></td></tr>
+                    <tr><td><span class="record-icon record-blue">CF</span><span class="record-name">CF2 &amp; signatories</span></td><td>Prepare claim forms</td><td>Encoding</td><td><span class="status-pill status-ready"><i></i> Available</span></td></tr>
+                    <tr><td><span class="record-icon record-violet">DOC</span><span class="record-name">PhilHealth documents</span></td><td>Upload &amp; organize</td><td>Documents</td><td><span class="status-pill status-ready"><i></i> Available</span></td></tr>
+                  </tbody></table></div>
+                  <div class="panel-foot"><span><i class="secure-mark">✓</i> Preparation, encoding, and review tools</span><span>Workspace preview</span></div>
+                </div>
+                <div class="product-activity"><span class="activity-icon">↗</span><span><b>Operations in one workspace</b><small>SOA · CF2 · CF4 · supporting documents</small></span><span class="activity-time">BEABOTS</span></div>
               </div>
             </div>
           </div>
-          <div class="floating-note note-bottom"><span class="note-icon note-icon-blue">▣</span><span><b>Tools in one place</b><small>Prepare · review · organize</small></span></div>
-          <div class="art-glow"></div>
+          <div class="product-caption"><span class="caption-pulse"></span> A focused view of claims operations <span>ILLUSTRATIVE WORKSPACE OVERVIEW</span></div>
         </div>
       </section>
 
-      <section class="tool-band" aria-label="Available workflow tools"><span>BUILT AROUND YOUR WORKFLOW</span><div><b>SOA workbooks</b><i></i><b>Claim Forms 2 &amp; 4</b><i></i><b>Claim review</b><i></i><b>Document tools</b></div></section>
+      <section class="workflow-section landing-section" id="workflow">
+        <div class="section-heading scroll-reveal"><div><span class="section-kicker">A CONNECTED WORKFLOW</span><h2>Every step, in one clear view.</h2></div><p>Move dialysis claims forward with a repeatable process that keeps source files, generated forms, and review together.</p></div>
+        <div class="workflow-track" aria-label="Six steps from patient data import to submission preparation">
+          <article class="workflow-step scroll-reveal"><span class="step-index">01</span><span class="step-icon">↥</span><h3>Import</h3><p>Bring in patient data from Excel or CSV.</p><small>EXCEL · CSV</small></article>
+          <article class="workflow-step scroll-reveal"><span class="step-index">02</span><span class="step-icon">⌘</span><h3>Organize</h3><p>Process and arrange claim information.</p><small>CLAIM DETAILS</small></article>
+          <article class="workflow-step scroll-reveal"><span class="step-index">03</span><span class="step-icon">▤</span><h3>Generate SOA</h3><p>Prepare consistent statement workbooks.</p><small>SOA WORKBOOKS</small></article>
+          <article class="workflow-step scroll-reveal"><span class="step-index">04</span><span class="step-icon">▧</span><h3>Prepare forms</h3><p>Work with PhilHealth Claim Forms 2 and 4.</p><small>CF2 · CF4</small></article>
+          <article class="workflow-step scroll-reveal"><span class="step-index">05</span><span class="step-icon">✓</span><h3>Review</h3><p>Validate encoded information before moving on.</p><small>CHECK · VALIDATE</small></article>
+          <article class="workflow-step scroll-reveal"><span class="step-index">06</span><span class="step-icon">⇧</span><h3>Organize files</h3><p>Gather documents and prepare claims for submission.</p><small>DOCUMENTS · SUBMIT</small></article>
+        </div>
+      </section>
 
       <section class="landing-section tools-section" id="tools">
-        <div class="section-heading scroll-reveal"><div><span class="section-kicker">THE WORKSPACE</span><h2>Everything has a place.</h2></div><p>Move through common claims tasks with a clear set of focused tools.</p></div>
+        <div class="section-heading scroll-reveal"><div><span class="section-kicker">PURPOSE-BUILT TOOLS</span><h2>Less switching. More clarity.</h2></div><p>Purpose-built utilities bring everyday dialysis claims preparation into a focused workspace.</p></div>
         <div class="feature-grid">
-          <article class="feature-card scroll-reveal"><div class="feature-photo"><img src="assets/landing/doctor-reviewing-records.jpg" alt="Doctor reviewing clinical paperwork" loading="lazy"><a href="https://unsplash.com/photos/doctor-writing-on-clipboard-in-office-xDNwySMfR5I" target="_blank" rel="noreferrer" aria-label="Photo by Vitaly Gariev on Unsplash">PHOTO: VITALY GARIEV / UNSPLASH</a></div><span class="feature-icon icon-teal">▤</span><span class="feature-number">01 / PREPARE</span><h3>Build claim workbooks</h3><p>Prepare SOA Excel files and organize the information needed for claim forms.</p><a href="/login#soaExcel">Explore preparation tools <span>→</span></a></article>
-          <article class="feature-card scroll-reveal"><div class="feature-photo"><img src="assets/landing/doctor-using-computer.jpg" alt="Doctor working at a computer in a clinic" loading="lazy"><a href="https://unsplash.com/photos/doctor-typing-on-computer-in-office-vHm47nsCBkM" target="_blank" rel="noreferrer" aria-label="Photo by Vitaly Gariev on Unsplash">PHOTO: VITALY GARIEV / UNSPLASH</a></div><span class="feature-icon icon-blue">✓</span><span class="feature-number">02 / REVIEW</span><h3>Review claim details</h3><p>Find, edit, and finalize claims through a dedicated review workflow.</p><a href="/login#finalizeClaims">Explore claim review <span>→</span></a></article>
-          <article class="feature-card scroll-reveal"><div class="feature-photo"><img src="assets/landing/doctor-consulting-patient.jpg" alt="Doctor documenting a patient consultation" loading="lazy"><a href="https://unsplash.com/photos/doctor-consulting-with-patient-at-desk-GBcLdqOBbXE" target="_blank" rel="noreferrer" aria-label="Photo by Vitaly Gariev on Unsplash">PHOTO: VITALY GARIEV / UNSPLASH</a></div><span class="feature-icon icon-amber">⇧</span><span class="feature-number">03 / ORGANIZE</span><h3>Keep documents moving</h3><p>Upload SOAs and use file tools to prepare documents for processing.</p><a href="/login#uploadSoa">Explore document tools <span>→</span></a></article>
+          <article class="feature-card scroll-reveal"><span class="feature-icon icon-teal">▤</span><span class="feature-number">01 / PREPARE</span><h3>SOA workbooks, ready to review</h3><p>Generate and organize statement data in Excel workbooks as part of your claims routine.</p><a href="/login#soaExcel">Explore SOA tools <span>→</span></a></article>
+          <article class="feature-card scroll-reveal"><span class="feature-icon icon-blue">▧</span><span class="feature-number">02 / ENCODE</span><h3>Claim Forms 2 and 4</h3><p>Prepare key PhilHealth claim details using dedicated CF2 and CF4 workflows.</p><a href="/login#cf2">Explore claim tools <span>→</span></a></article>
+          <article class="feature-card scroll-reveal"><span class="feature-icon icon-violet">✓</span><span class="feature-number">03 / REVIEW</span><h3>Documents and claim checks</h3><p>Keep supporting files organized and review encoded information before submission.</p><a href="/login#finalizeClaims">Explore review tools <span>→</span></a></article>
         </div>
       </section>
 
-      <section class="workflow-section scroll-reveal">
-        <div class="workflow-copy"><span class="section-kicker">A CLEARER ROUTINE</span><h2>From source details<br>to claim ready.</h2><p>Beabots takes repetitive preparation and encoding work through a clear sequence, so claim details are easier to move forward.</p><a href="/about.html">Learn about Beabots <span aria-hidden="true">→</span></a></div>
-        <div class="workflow-steps"><article class="scroll-reveal"><span>01</span><div><h3>Prepare</h3><p>Bring patient details and supporting files together.</p></div></article><article class="scroll-reveal"><span>02</span><div><h3>Encode</h3><p>Prepare CF2, CF4, and SOA information through Beacon-focused tools.</p></div></article><article class="scroll-reveal"><span>03</span><div><h3>Validate</h3><p>Review the completed claim before it moves to transmission.</p></div></article></div>
+      <section class="hemo-section landing-section scroll-reveal">
+        <div class="hemo-copy">
+          <span class="section-kicker">BUILT AROUND DIALYSIS CARE</span>
+          <h2>Understand the treatment behind the claim.</h2>
+          <p>Explore a short visual guide to how hemodialysis works, from the blood circuit to the dialyzer and return flow.</p>
+          <p class="hemo-disclaimer">An educational model, not to scale.</p>
+        </div>
+        <iframe class="hemo-frame" src="/hemo-animated.html" title="Interactive 3D animation explaining hemodialysis" loading="lazy"></iframe>
       </section>
 
-      <section class="closing-cta scroll-reveal"><div><span class="section-kicker">BEABOTS WORKSPACE</span><h2>Ready to get started?</h2><p>Sign in to open your claims tools and account settings.</p></div><a class="cta-primary" id="bottomWorkspaceLink" href="/login">Go to workspace <span aria-hidden="true">→</span></a></section>
     </main>
 
-    <footer class="landing-footer"><span>© <span id="copyrightYear"></span> Beabots. All rights reserved.</span><span class="footer-divider" aria-hidden="true">·</span><span id="landingVersion">Loading version…</span></footer>
+    <footer class="landing-footer">
+      <div class="footer-main">
+        <a class="footer-brand" href="/" aria-label="Beabots home"><img src="assets/bot.ico" alt=""><span><strong>BEABOTS</strong><small>BEACON AUTOMATION</small></span></a>
+        <p>Focused tools for dialysis claims preparation, documents, and review.</p>
+        <nav class="footer-links" aria-label="Footer navigation">
+          <div><strong>Platform</strong><a href="#workflow">Workflow</a><a href="#tools">Features</a><a href="/login" id="footerWorkspaceLink">Workspace</a></div>
+          <div><strong>Company</strong><a href="/about.html">About Beabots</a><a href="/about.html#contact">Contact</a></div>
+        </nav>
+      </div>
+      <div class="footer-bottom"><span>© <span id="copyrightYear"></span> Beabots. All rights reserved.</span><span id="landingVersion">Loading version…</span></div>
+    </footer>
   </div>
   <script>
     document.getElementById('copyrightYear').textContent = new Date().getFullYear();
@@ -83,8 +117,7 @@
         document.getElementById('accountLink').textContent = 'Open workspace';
         document.getElementById('accountLink').href = '/dashboard.html';
         document.getElementById('workspaceLink').href = '/dashboard.html';
-        document.getElementById('bottomWorkspaceLink').href = '/dashboard.html';
-        document.getElementById('claimsLink').href = '/dashboard.html#soaExcel';
+        document.getElementById('footerWorkspaceLink').href = '/dashboard.html';
       }
     }).catch(() => {});
   </script>
