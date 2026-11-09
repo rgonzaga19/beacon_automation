@@ -523,13 +523,13 @@ document.addEventListener("keydown", (event) => {
 window.addEventListener("blur", closeAccountMenu);
 document.getElementById("editProfileButton").addEventListener("click", () => {
   closeAccountMenu();
-  setTopNavigation("siteHome");
-  showWorkspaceHome();
-  setDashboardLayout("workflow", true);
-  requestAnimationFrame(() => {
-    document.getElementById("profileCard").scrollIntoView({ behavior: "smooth", block: "center" });
-    document.getElementById("profileNameInput").focus({ preventScroll: true });
-  });
+  openWorkspace("settings");
+  const frame = workspaceFrames.settings;
+  const focusProfile = () => frame.contentWindow?.postMessage({ type: "settings-focus-profile" }, location.origin);
+  if (frame.getAttribute("src") === workspaceRoutes.settings
+      && frame.contentDocument?.readyState === "complete"
+      && frame.contentWindow.location.pathname.endsWith("/settings.html")) focusProfile();
+  else frame.addEventListener("load", focusProfile, { once: true });
 });
 document.getElementById("accountSettings").addEventListener("click", () => {
   closeAccountMenu();
@@ -569,58 +569,40 @@ async function loadSignedInProfile() {
     } else if (pendingAgreementEmail) {
       sessionStorage.removeItem("beabots-agreement-pending");
     }
-    const displayName = user.display_name || user.profile_name || user.email || "Account";
-    document.getElementById("accountName").textContent = displayName;
-    document.getElementById("accountAvatar").textContent = (displayName.trim()[0] || "B").toUpperCase();
+    updateDashboardProfile(user);
     updateChatUnreadIndicator();
-    document.getElementById("homeGreeting").textContent = `Welcome${user.display_name ? `, ${user.display_name}` : " to Beabots"}`;
-    document.getElementById("profileNameInput").value = user.profile_name || "";
-    document.getElementById("displayNameInput").value = user.display_name || "";
-    document.getElementById("upgradeAccountName").textContent = displayName;
-    document.getElementById("upgradeAccountEmail").textContent = user.email || "";
-    const upgradeButton = document.getElementById("upgradeAccountButton");
-    if (user.is_admin || user.role === "subscriber") {
-      upgradeButton.hidden = true;
-    } else if (user.upgrade_request_status === "pending") {
-      upgradeButton.textContent = "Request pending";
-      upgradeButton.disabled = true;
-    }
   } catch {
     window.location.replace("/login");
   }
 }
 
-document.getElementById("profileForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const status = document.getElementById("profileStatus");
-  status.textContent = "Saving…";
-  try {
-    const result = await fetchJSON("/api/auth/profile", {
-      method: "PATCH",
-      body: JSON.stringify({
-        profile_name: document.getElementById("profileNameInput").value,
-        display_name: document.getElementById("displayNameInput").value,
-      }),
-    });
-    const user = result.user;
-    const name = user.display_name || user.profile_name || user.email || "Account";
-    document.getElementById("accountName").textContent = name;
-    document.getElementById("accountAvatar").textContent = (name.trim()[0] || "B").toUpperCase();
-    document.getElementById("homeGreeting").textContent = `Welcome${user.display_name ? `, ${user.display_name}` : " to Beabots"}`;
-    status.textContent = "Profile saved.";
-  } catch (error) {
-    status.textContent = error.message || "Could not save your profile.";
-  }
-});
+function updateDashboardProfile(user) {
+  const displayName = user.display_name || user.profile_name || user.email || "Account";
+  document.getElementById("accountName").textContent = displayName;
+  document.getElementById("accountAvatar").textContent = (displayName.trim()[0] || "B").toUpperCase();
+  document.getElementById("homeGreeting").textContent = `Welcome${user.display_name ? `, ${user.display_name}` : " to Beabots"}`;
+  document.getElementById("upgradeAccountName").textContent = displayName;
+  document.getElementById("upgradeAccountEmail").textContent = user.email || "";
+}
+
 loadSignedInProfile();
 window.setInterval(refreshChatUnread, 30000);
 
 const upgradeDialog = document.getElementById("upgradeDialog");
 const upgradeRequestForm = document.getElementById("upgradeRequestForm");
-document.getElementById("upgradeAccountButton").addEventListener("click", () => {
-  document.getElementById("upgradeRequestMessage").value = "";
-  document.getElementById("upgradeRequestStatus").textContent = "";
-  upgradeDialog.showModal();
+let upgradeRequestFrame = null;
+window.addEventListener("message", (event) => {
+  if (event.origin !== location.origin || event.source !== workspaceFrames.settings?.contentWindow) return;
+  if (event.data?.type === "settings-profile-updated" && event.data.user) {
+    updateDashboardProfile(event.data.user);
+    return;
+  }
+  if (event.data?.type === "settings-upgrade-request") {
+    upgradeRequestFrame = event.source;
+    document.getElementById("upgradeRequestMessage").value = "";
+    document.getElementById("upgradeRequestStatus").textContent = "";
+    upgradeDialog.showModal();
+  }
 });
 document.getElementById("cancelUpgradeRequest").addEventListener("click", () => upgradeDialog.close());
 upgradeRequestForm.addEventListener("submit", async (event) => {
@@ -635,9 +617,7 @@ upgradeRequestForm.addEventListener("submit", async (event) => {
       body: JSON.stringify({ message: document.getElementById("upgradeRequestMessage").value }),
     });
     status.textContent = "Request sent. An administrator will review it.";
-    const upgradeButton = document.getElementById("upgradeAccountButton");
-    upgradeButton.textContent = "Request pending";
-    upgradeButton.disabled = true;
+    upgradeRequestFrame?.postMessage({ type: "settings-upgrade-request-pending" }, location.origin);
     setTimeout(() => upgradeDialog.close(), 1100);
   } catch (error) {
     status.textContent = error.message || "Could not send your request.";
