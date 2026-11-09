@@ -44,7 +44,7 @@
   .account-chat-unread { width:8px; height:8px; flex:0 0 8px; background:#dc3545; border-radius:50%; }
   .account-chat-unread[hidden] { display:none; }
   .dashboard-layout:not(.claims-mode) .sidebar-column { display:none; }
-  .sidebar-column { width:300px; flex:0 0 300px; display:flex; flex-direction:column; min-height:0; background:var(--bg-panel); border-right:1px solid var(--border); transition:width 180ms ease,flex-basis 180ms ease; }
+  .sidebar-column { width:260px; flex:0 0 260px; display:flex; flex-direction:column; min-height:0; background:var(--bg-panel); border-right:1px solid var(--border); transition:width 180ms ease,flex-basis 180ms ease; }
   .sidebar-column.collapsed { width:68px; flex-basis:68px; }
   .sidebar-topbar { height:56px; flex:0 0 56px; display:flex; align-items:center; justify-content:center; padding:6px; overflow:hidden; }
   .content-column { position:relative; flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; }
@@ -58,14 +58,16 @@
   .sidebar-group-toggle { justify-content:flex-start; }
   .sidebar-group-toggle .group-chevron { margin-left:auto; color:var(--text-sec); font-size:12px; transition:transform 140ms ease; }
   .sidebar-group-toggle[aria-expanded="true"] .group-chevron { transform:rotate(90deg); }
-  .sidebar-subnav { display:flex; flex-direction:column; gap:4px; padding-left:18px; }
+  .sidebar-subnav { display:flex; flex-direction:column; gap:6px; padding:8px; margin-left:0; background:color-mix(in srgb,var(--bg-card) 92%,var(--bg-panel)); border:1px solid var(--border); border-radius:var(--radius-md); }
   .sidebar-subnav[hidden] { display:none; }
-  .sidebar-subnav .side-link { height:38px; padding-left:12px; font-size:10px; }
+  .sidebar-subnav .side-link { height:38px; padding-left:12px; font-size:10px; background:transparent; border-color:transparent; }
+  .sidebar-subnav .side-link:hover { background:var(--accent-soft); border-color:var(--border); }
+  .sidebar-subnav .side-link.active { background:var(--accent-soft-strong); border-color:var(--accent); }
   .sidebar-subnav .side-icon svg { width:17px; height:17px; overflow:visible; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
   .sidebar-column.collapsed .sidebar-group-toggle .group-chevron { display:none; }
   .sidebar-column.collapsed .sidebar-subnav { display:none; }
   @media(min-width:761px) {
-    .sidebar-subnav { margin-left:18px; padding-left:12px; border-left:1px solid var(--border); }
+    .sidebar-subnav { margin-left:0; padding:8px; border-left:1px solid var(--border); }
     .sidebar-subnav .side-link { padding-left:14px; }
   }
   .sidebar-footer { margin-top:auto; padding:15px 2px 4px; }
@@ -86,7 +88,7 @@
   .sidebar-column.collapsed .sidebar-help-icon { width:34px; height:34px; flex-basis:34px; }
   .sidebar-column.collapsed .sidebar-copyright, .sidebar-column.collapsed .sidebar-version-full { display:none; }
   .sidebar-column.collapsed .sidebar-version-short { display:block; }
-  .side-link { width:100%; height:44px; display:flex; align-items:center; gap:12px; padding:0 13px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:var(--radius-md); font:700 11px var(--font-ui); letter-spacing:.25px; white-space:nowrap; cursor:pointer; transition:color 140ms ease,background 140ms ease,border-color 140ms ease; }
+  .side-link { width:100%; min-height:44px; display:flex; align-items:center; gap:12px; padding:8px 13px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:var(--radius-md); font:700 11px var(--font-ui); letter-spacing:.25px; white-space:normal; cursor:pointer; transition:color 140ms ease,background 140ms ease,border-color 140ms ease; }
   .side-link[hidden] { display:none; }
   .sidebar-nav-separator { height:1px; margin:7px 6px; background:var(--border); border:0; }
   .side-link.external-link { text-decoration:none; }
@@ -94,7 +96,7 @@
   .side-link.active { color:var(--text-pri); background:var(--accent-soft-strong); border-color:var(--accent); }
   .side-link .side-icon { width:20px; min-width:20px; height:20px; display:grid; place-items:center; color:var(--accent); font-size:17px; }
   .side-link .side-icon svg { width:20px; height:20px; overflow:visible; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
-  .side-link .side-label { opacity:1; transition:opacity 100ms ease; }
+  .side-link .side-label { min-width:0; flex:1; text-align:left; line-height:1.25; opacity:1; transition:opacity 100ms ease; }
   .sidebar-column.collapsed .side-label { opacity:0; pointer-events:none; }
   .external-link-indicator { margin-left:auto; color:var(--text-sec); font-size:12px; line-height:1; }
   .sidebar-column.collapsed .external-link-indicator { display:none; }
@@ -298,8 +300,8 @@
     .dashboard-layout.claims-mode .sidebar-column.collapsed { width:min(90vw,320px); flex-basis:min(90vw,320px); }
     .sidebar-nav .side-link { height:auto; min-height:44px; padding-top:8px; padding-bottom:8px; white-space:normal; }
     .sidebar-nav .side-link .side-label { min-width:0; line-height:1.25; }
-    .sidebar-subnav { margin-left:18px; padding-left:12px; border-left:2px solid var(--accent-soft-strong); }
-    .sidebar-subnav .side-link { padding-left:14px; }
+    .sidebar-subnav { margin-left:0; padding:8px; background:color-mix(in srgb,var(--bg-card) 92%,var(--bg-panel)); border-left:1px solid var(--border); }
+    .sidebar-subnav .side-link { padding-left:14px; background:transparent; }
     .sidebar-column .sidebar-topbar { display:none; }
     .sidebar-backdrop:not([hidden]) { position:absolute; z-index:20; inset:0; display:block; width:100%; height:100%; padding:0; background:rgba(0,0,0,.48); border:0; }
     .body { padding:22px 14px; }
@@ -358,10 +360,10 @@
             <section class="sidebar-group">
               <button class="side-link sidebar-group-toggle" type="button" data-sidebar-group="automation" aria-expanded="false" aria-controls="automationSubnav" title="Automation"><span class="side-icon" aria-hidden="true">⟳</span><span class="side-label">Automation</span><span class="group-chevron" aria-hidden="true">›</span></button>
               <div class="sidebar-subnav" id="automationSubnav" hidden>
-                <button class="side-link" id="btnCf2" type="button" title="Create draft, CF2 &amp; signatories"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M5 2.75h6l4 4v10.5H5z"/><path d="M11 2.75v4h4M7.5 10h5M7.5 13h5"/></svg></span><span class="side-label">Create draft, CF2 &amp; signatories</span></button>
-                <button class="side-link" id="btnUploadSoa" type="button" title="Upload SOA with discounts &amp; generate"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 12V3.5M6.5 7 10 3.5 13.5 7M4 11.5v4.75h12v-4.75"/></svg></span><span class="side-label">Upload SOA with discounts &amp; generate</span></button>
-                <button class="side-link" id="btnCf4" type="button" title="CF4 &amp; D.M. mapping"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M5 2.75h6l4 4v10.5H5z"/><path d="M11 2.75v4h4M7.25 10.25l1.5 1.5 2.75-2.75M7.5 14.25h5"/></svg></span><span class="side-label">CF4 &amp; D.M. mapping</span></button>
-                <button class="side-link" id="btnUploadDocuments" type="button" title="Upload PhilHealth documents"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6.5 5.5h8v11h-8zM4 14.5h-1v-12h8v2"/><path d="M8.5 9h4M8.5 12h4"/></svg></span><span class="side-label">Upload PhilHealth documents</span></button>
+                <button class="side-link" id="btnCf2" type="button" title="Claim Form 2"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M5 2.75h6l4 4v10.5H5z"/><path d="M11 2.75v4h4M7.5 10h5M7.5 13h5"/></svg></span><span class="side-label">Claim Form 2</span></button>
+                <button class="side-link" id="btnUploadSoa" type="button" title="Upload SOA"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 12V3.5M6.5 7 10 3.5 13.5 7M4 11.5v4.75h12v-4.75"/></svg></span><span class="side-label">Upload SOA</span></button>
+                <button class="side-link" id="btnCf4" type="button" title="Claim Form 4"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M5 2.75h6l4 4v10.5H5z"/><path d="M11 2.75v4h4M7.25 10.25l1.5 1.5 2.75-2.75M7.5 14.25h5"/></svg></span><span class="side-label">Claim Form 4</span></button>
+                <button class="side-link" id="btnUploadDocuments" type="button" title="Upload PhilHealth docs"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6.5 5.5h8v11h-8zM4 14.5h-1v-12h8v2"/><path d="M8.5 9h4M8.5 12h4"/></svg></span><span class="side-label">Upload PhilHealth docs</span></button>
               </div>
             </section>
             <button class="side-link" id="btnFinalizeClaims" type="button" title="Edit Claims"><span class="side-icon" aria-hidden="true">&#10003;</span><span class="side-label">Edit Claims</span></button>
