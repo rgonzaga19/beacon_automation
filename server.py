@@ -15,6 +15,8 @@ import shutil
 import uuid
 import re
 import json
+import time
+from calendar import monthrange
 from io import BytesIO
 from datetime import date, datetime, timedelta, timezone
 from contextvars import ContextVar
@@ -36,12 +38,28 @@ from openpyxl import load_workbook
 from app.core.config import AppConfig
 from app.core.database import db
 import app.models  # noqa: F401 - imported so SQLAlchemy registers the tables
-from app.models import AutomationRun, TeamChatMessage, UpgradeRequest, User, UserSetting, utc_now
+from app.models import (
+    AutomationRun,
+    ClaimBillingSchedule,
+    TeamChatMessage,
+    UpgradeRequest,
+    User,
+    UserSetting,
+    utc_now,
+)
 from app.core import browser_session
 from app.core.logger import logger
 from app.core.version import APP_VERSION
 from app.domain.patient_record import PatientRecord
 from app.domain.date_parser import MONTHS, parse_dates
+from app.domain.claim_analytics import (
+    build_claim_analytics,
+    classify_claim_status,
+    default_billing_weeks,
+    initial_billing_weeks,
+    parse_billing_month,
+    validate_billing_weeks,
+)
 from app.domain.time_parser import parse_time_range, format_beacon_time
 from app.domain.cf2_mapper import build_cf2_data
 from app.automation.cf2 import CF2Automation
@@ -68,6 +86,8 @@ UPLOAD_DIR = Path(
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__, static_folder=str(BASE_DIR / "renderer"), static_url_path="")
+_claim_analytics_cache = {}
+_claim_analytics_cache_lock = threading.Lock()
 app.config.from_object(AppConfig)
 app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("BEABOTS_MAX_UPLOAD_MB", "100")) * 1024 * 1024
 db.init_app(app)
@@ -543,6 +563,204 @@ def dashboard_metrics():
         "workflow_runs": [{"workflow": key, "count": value} for key, value in sorted(workflows.items())],
         "statuses": statuses,
     })
+
+
+@app.route("/api/dashboard/claim-analytics", methods=["GET"])
+@login_required
+def dashboard_claim_analytics():
+    date_to = datetime.now(timezone(timedelta(hours=8))).date()
+    date_from = date_to - timedelta(days=89)
+    group = request.args.get("group", "month").strip().lower()
+    month_value = request.args.get("month", date_to.strftime("%Y-%m")).strip()
+    filter_month = request.args.get("filter_month", "all").strip()
+    if group not in {"month", "week"}:
+        return jsonify({"error": "Group must be month or week."}), 400
+    try:
+        month_start = parse_billing_month(month_value)
+        if filter_month != "all":
+            parse_billing_month(filter_month)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    user = current_user()
+    try:
+        beacon_settings, auth_key = _beacon_edit_settings(user)
+        cache_key = (user.id, date_from.isoformat(), date_to.isoformat())
+        force_refresh = request.args.get("refresh") == "1"
+        with _claim_analytics_cache_lock:
+            now = time.time()
+            for key, entry in list(_claim_analytics_cache.items()):
+                if now - entry["cached_at"] > 300:
+                    _claim_analytics_cache.pop(key, None)
+            cached = _claim_analytics_cache.get(cache_key)
+
+        if not cached or force_refresh:
+            daily_counts = {}
+            missing_admission_dates = 0
+            transmittals_scanned = 0
+            claims_scanned = 0
+            with browser_session.use_auth_context(beacon_settings, key=auth_key):
+                browser_session.invalidate_auth_token()
+                transmittals = beacon_api.get_transmittals_in_range(date_from, date_to)
+                transmittals_scanned = len(transmittals)
+                seen_claims = set()
+                for transmittal in transmittals:
+                    transmittal_id = transmittal.get("id")
+                    if transmittal_id is None:
+                        logger.warning("Dashboard claim analytics skipped a transmittal without an ID.")
+                        continue
+                    transmittal_status = transmittal.get("transmittalStatusDescription")
+                    claims = beacon_api.get_claims(transmittal_id, refresh=True)
+                    claims_scanned += len(claims)
+                    for claim in claims:
+                        if not isinstance(claim, dict):
+                            continue
+                        claim_id = claim.get("id")
+                        if claim_id is not None:
+                            claim_key = str(claim_id)
+                            if claim_key in seen_claims:
+                                continue
+                            seen_claims.add(claim_key)
+
+                        cf2 = claim.get("phiccF2")
+                        cf2 = cf2 if isinstance(cf2, dict) else {}
+                        admission_value = cf2.get("admissionDateTime") or claim.get("admissionDateTime")
+                        if not admission_value and claim_id is not None:
+                            try:
+                                cf2 = cf2_api.get_cf2(claim_id) or {}
+                                admission_value = cf2.get("admissionDateTime")
+                            except Exception as exc:
+                                logger.warning(f"Dashboard analytics could not retrieve a claim admission date: {exc}")
+
+                        try:
+                            admission = _beacon_local_datetime(admission_value)
+                        except (TypeError, ValueError):
+                            admission = None
+                        if admission is None:
+                            missing_admission_dates += 1
+                            continue
+                        admission_day = admission.date()
+                        if not date_from <= admission_day <= date_to:
+                            continue
+                        category = classify_claim_status(
+                            claim.get("claimStatusDescription") or claim.get("status"),
+                            transmittal_status,
+                        )
+                        day_counts = daily_counts.setdefault(admission_day.isoformat(), {
+                            "draft": 0,
+                            "transmitted": 0,
+                            "other": 0,
+                        })
+                        day_counts[category] += 1
+
+            cached = {
+                "cached_at": time.time(),
+                "daily_counts": daily_counts,
+                "missing_admission_dates": missing_admission_dates,
+                "transmittals_scanned": transmittals_scanned,
+                "claims_scanned": claims_scanned,
+            }
+            with _claim_analytics_cache_lock:
+                _claim_analytics_cache[cache_key] = cached
+
+        schedules = {}
+        cursor = date(date_from.year, date_from.month, 1)
+        while cursor <= date_to:
+            month_key = cursor.strftime("%Y-%m")
+            schedule = db.session.get(ClaimBillingSchedule, month_key)
+            if schedule:
+                schedules[month_key] = schedule.weeks
+            elif month_key in {"2026-09", "2026-10", "2026-11"}:
+                schedules[month_key] = initial_billing_weeks(month_key)
+            else:
+                schedules[month_key] = default_billing_weeks(cursor)
+            if cursor.month == 12:
+                cursor = date(cursor.year + 1, 1, 1)
+            else:
+                cursor = date(cursor.year, cursor.month + 1, 1)
+
+        schedule = db.session.get(ClaimBillingSchedule, month_value)
+        if schedule:
+            schedule_source = "saved"
+            editor_weeks = schedule.weeks
+        elif month_value in {"2026-09", "2026-10", "2026-11"}:
+            schedule_source = "sample"
+            editor_weeks = initial_billing_weeks(month_value)
+        else:
+            schedule_source = "automatic"
+            editor_weeks = default_billing_weeks(month_start)
+
+        analytics = build_claim_analytics(
+            date_from,
+            date_to,
+            group,
+            [
+                (date.fromisoformat(day), counts)
+                for day, counts in cached["daily_counts"].items()
+            ],
+            schedules,
+            missing_admission_dates=cached["missing_admission_dates"],
+            filter_month=filter_month,
+        )
+        analytics.update({
+            "month": month_value,
+            "weeks": editor_weeks,
+            "estimated": schedule_source == "automatic",
+            "schedule_source": schedule_source,
+            "transmittals_scanned": cached["transmittals_scanned"],
+            "claims_scanned": cached["claims_scanned"],
+            "cache_age_seconds": max(0, int(time.time() - cached["cached_at"])),
+        })
+        return jsonify(analytics)
+    except Exception as exc:
+        logger.error(f"Dashboard claim analytics failed: {exc}")
+        return jsonify({"error": str(exc) or "Unable to load Beacon claim analytics."}), 502
+
+
+@app.route("/api/dashboard/claim-billing-schedule", methods=["GET", "POST"])
+@login_required
+def dashboard_claim_billing_schedule():
+    month_value = request.args.get("month", "").strip()
+    if request.method == "POST":
+        if not current_user().is_admin:
+            return jsonify({"error": "Administrator access is required to change billing periods."}), 403
+        payload = request.get_json(silent=True) or {}
+        if not isinstance(payload, dict):
+            return jsonify({"error": "A billing schedule object is required."}), 400
+        month_value = str(payload.get("month") or month_value).strip()
+    try:
+        parse_billing_month(month_value)
+        if request.method == "POST":
+            weeks = validate_billing_weeks(month_value, payload.get("weeks"))
+            schedule = db.session.get(ClaimBillingSchedule, month_value)
+            if schedule is None:
+                schedule = ClaimBillingSchedule(month=month_value, weeks=weeks)
+                db.session.add(schedule)
+            else:
+                schedule.weeks = weeks
+            db.session.commit()
+        else:
+            schedule = db.session.get(ClaimBillingSchedule, month_value)
+            if schedule:
+                weeks = schedule.weeks
+                source = "saved"
+            elif month_value in {"2026-09", "2026-10", "2026-11"}:
+                weeks = initial_billing_weeks(month_value)
+                source = "sample"
+            else:
+                weeks = default_billing_weeks(month_value)
+                source = "estimated"
+        return jsonify({
+            "month": month_value,
+            "estimated": source == "estimated" if request.method == "GET" else False,
+            "source": source if request.method == "GET" else "saved",
+            "weeks": weeks,
+        })
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        db.session.rollback()
+        logger.error(f"Dashboard billing schedule could not be saved or loaded: {exc}")
+        return jsonify({"error": "Billing schedule could not be saved or loaded."}), 500
 
 
 @app.route("/api/dashboard/runs", methods=["GET"])

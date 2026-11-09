@@ -401,9 +401,9 @@ def get_transmittal_by_id(transmittal_id):
     )
 
 
-def get_claims(transmittal_id):
+def get_claims(transmittal_id, refresh=False):
     cache_key = (browser_session._context_key(), int(transmittal_id))
-    if cache_key in _claims_cache:
+    if not refresh and cache_key in _claims_cache:
         return _claims_cache[cache_key]
 
     try:
@@ -428,6 +428,7 @@ def get_claims(transmittal_id):
             "phicClaims",
             "claims",
             "claimList",
+            "transmittalClaims",
             "items",
             "data",
         ):

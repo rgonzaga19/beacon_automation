@@ -64,9 +64,16 @@ const API_BASE = window.beabots.apiBase || window.location.origin;
 async function fetchJSON(path, options) {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
+    cache: "no-store",
     ...options,
   });
-  return res.json();
+  const body = await res.text();
+  try {
+    return JSON.parse(body);
+  } catch {
+    const detail = res.status ? ` (${res.status})` : "";
+    throw new Error(`The server returned a non-JSON response${detail}. Restart the app server and reload the page.`);
+  }
 }
 
 /** Renders a simple OK-dismissable modal (replaces messagebox.showinfo/showerror/showwarning). */

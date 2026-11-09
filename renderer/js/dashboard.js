@@ -180,6 +180,209 @@ function updateDashboardUptime() {
   document.getElementById("metricUptime").textContent = formatUptime(dashboardUptimeSeconds + elapsed);
 }
 
+function renderClaimAnalyticsChart(buckets) {
+  const root = document.getElementById("claimAnalyticsChart");
+  if (!buckets.length) {
+    root.innerHTML = '<div class="activity-empty">No periods in the selected date range.</div>';
+    return;
+  }
+  const maxTotal = Math.max(1, ...buckets.map((bucket) => Number(bucket.total) || 0));
+  root.innerHTML = buckets.map((bucket) => {
+    const total = Number(bucket.total) || 0;
+    const segment = (name) => {
+      const count = Number(bucket[name]) || 0;
+      const width = total ? (count / total) * 100 : 0;
+      return `<span class="analytics-bar-${name}" style="width:${width}%" title="${count} ${name}"></span>`;
+    };
+    return `<div class="analytics-chart-row"><span class="analytics-chart-label">${escapeMetricText(bucket.label)}</span><div class="analytics-bar-track" role="img" aria-label="${escapeMetricText(bucket.label)}: ${total} claims"><div class="analytics-bar" style="width:${(total / maxTotal) * 100}%">${segment("draft")}${segment("transmitted")}${segment("other")}</div></div><strong>${total}</strong></div>`;
+  }).join("");
+}
+
+function renderClaimAnalyticsTable(buckets) {
+  const body = document.getElementById("claimAnalyticsTableBody");
+  if (!buckets.length) {
+    body.innerHTML = '<tr><td class="analytics-empty" colspan="5">No admission periods in this date range.</td></tr>';
+    return;
+  }
+  body.innerHTML = buckets.map((bucket) => `<tr><td>${escapeMetricText(bucket.label)}</td><td>${Number(bucket.draft) || 0}</td><td>${Number(bucket.transmitted) || 0}</td><td>${Number(bucket.other) || 0}</td><td><strong>${Number(bucket.total) || 0}</strong></td></tr>`).join("");
+}
+
+function currentPhilippineMonth() {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year").value;
+  const month = parts.find((part) => part.type === "month").value;
+  return `${year}-${month}`;
+}
+
+function billingWeekInputs() {
+  return [...document.querySelectorAll("#billingWeekRows tr")].map((row, index) => {
+    return {
+      week: index + 1,
+      start: row.querySelector("[data-week-start]").value,
+      end: row.querySelector("[data-week-end]").value,
+    };
+  });
+}
+
+function showBillingWeeks(weeks, month, source) {
+  const monthStart = `${month}-01`;
+  const monthEndDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
+  const monthEnd = `${month}-${String(monthEndDay).padStart(2, "0")}`;
+  const rows = document.getElementById("billingWeekRows");
+  rows.innerHTML = weeks.map((week, index) => `<tr>
+    <td>Week ${index + 1}</td>
+    <td><input type="date" data-week-start aria-label="Week ${index + 1} start date" min="${monthStart}" max="${monthEnd}" value="${escapeMetricText(week.start)}"></td>
+    <td><input type="date" data-week-end aria-label="Week ${index + 1} end date" min="${monthStart}" max="${monthEnd}" value="${escapeMetricText(week.end)}"></td>
+    <td><button type="button" data-remove-week aria-label="Remove week ${index + 1}" ${weeks.length <= 1 ? "disabled" : ""}>Remove</button></td>
+  </tr>`).join("");
+  const badge = document.getElementById("billingScheduleBadge");
+  const status = document.getElementById("billingScheduleStatus");
+  badge.textContent = source === "saved" ? "Saved · workspace" : source === "sample" ? "Sample ranges" : "Automatic";
+  status.textContent = source === "saved"
+    ? "Workspace billing periods loaded."
+    : source === "sample"
+      ? "Using your supplied sample ranges. Save after edits to share the schedule."
+      : "Automatically grouped Monday through Saturday, skipping Sundays. Save edits to set shared billing ranges.";
+  document.getElementById("addBillingWeek").disabled = weeks.length >= 6;
+}
+
+function setClaimAnalyticsControlsDisabled(disabled) {
+  document.getElementById("refreshClaimAnalytics").disabled = disabled;
+  document.getElementById("claimAnalyticsGroup").disabled = disabled;
+  document.getElementById("claimAnalyticsFilterMonth").disabled = disabled;
+  document.getElementById("billingScheduleMonth").disabled = disabled;
+  document.getElementById("addBillingWeek").disabled = disabled || document.querySelectorAll("#billingWeekRows tr").length >= 6;
+  document.getElementById("saveBillingSchedule").disabled = disabled;
+  for (const input of document.querySelectorAll(".billing-schedule-table input, .billing-schedule-table button")) input.disabled = disabled;
+}
+
+let claimAnalyticsLoading = false;
+async function refreshClaimAnalytics(forceRefresh = false) {
+  if (claimAnalyticsLoading) return;
+  claimAnalyticsLoading = true;
+  const month = document.getElementById("billingScheduleMonth").value;
+  const group = document.getElementById("claimAnalyticsGroup").value;
+  const filterMonth = document.getElementById("claimAnalyticsFilterMonth").value || "all";
+  const status = document.getElementById("claimAnalyticsStatus");
+  setClaimAnalyticsControlsDisabled(true);
+  status.textContent = "Loading Beacon claims…";
+  try {
+    const params = new URLSearchParams({ month, group, filter_month: filterMonth });
+    if (forceRefresh) params.set("refresh", "1");
+    const analytics = await fetchJSON(`/api/dashboard/claim-analytics?${params}`);
+    if (analytics.error) throw new Error(analytics.error);
+    if (!Array.isArray(analytics.buckets) || !Array.isArray(analytics.weeks) || analytics.weeks.length < 1 || analytics.weeks.length > 6) {
+      throw new Error("The server returned an invalid analytics response. Restart the app server and reload the page.");
+    }
+    const filter = document.getElementById("claimAnalyticsFilterMonth");
+    const selectedFilter = filterMonth;
+    const months = [];
+    const cursor = new Date(`${analytics.date_from}T12:00:00`);
+    const last = new Date(`${analytics.date_to}T12:00:00`);
+    cursor.setDate(1);
+    while (cursor <= last) {
+      months.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    filter.innerHTML = '<option value="all">All last 90 days</option>' + months.map((value) => {
+      const label = new Intl.DateTimeFormat([], { month: "long", year: "numeric" }).format(new Date(`${value}-01T12:00:00`));
+      return `<option value="${value}">${escapeMetricText(label)}</option>`;
+    }).join("");
+    filter.value = months.includes(selectedFilter) ? selectedFilter : "all";
+    showBillingWeeks(analytics.weeks, month, analytics.schedule_source || "automatic");
+    document.getElementById("claimAnalyticsBucketHeading").textContent = group === "month" ? "Month" : "Billing week";
+    document.getElementById("claimMetricDraft").textContent = String(Number(analytics.draft_claims) || 0);
+    document.getElementById("claimMetricTransmitted").textContent = String(Number(analytics.transmitted_claims) || 0);
+    document.getElementById("claimMetricOther").textContent = String(Number(analytics.other_claims) || 0);
+    document.getElementById("claimMetricTotal").textContent = String(Number(analytics.total_claims) || 0);
+    renderClaimAnalyticsChart(analytics.buckets || []);
+    const rows = [...(analytics.buckets || [])];
+    if (Number(analytics.unassigned?.total) > 0) rows.push(analytics.unassigned);
+    renderClaimAnalyticsTable(rows);
+    const missing = Number(analytics.missing_admission_dates) || 0;
+    const unassigned = Number(analytics.unassigned?.total) || 0;
+    const periodLabel = filterMonth === "all"
+      ? "Latest 90 days"
+      : new Intl.DateTimeFormat([], { month: "long", year: "numeric" }).format(new Date(`${filterMonth}-01T12:00:00`));
+    const notes = [`${periodLabel} · Counts are grouped by claim admission date.`];
+    if (unassigned) notes.push(`${unassigned} claim${unassigned === 1 ? "" : "s"} fall outside the configured ranges.`);
+    if (missing) notes.push(`${missing} candidate claim${missing === 1 ? "" : "s"} had no admission date, so could not be placed in the 90-day window.`);
+    notes.push(`Beacon checked ${Number(analytics.transmittals_scanned) || 0} transmittals and ${Number(analytics.claims_scanned) || 0} claims for admission dates from ${analytics.date_from} through ${analytics.date_to}.`);
+    status.textContent = notes.join(" ");
+  } catch (error) {
+    const message = error && error.message ? error.message : "Unable to load Beacon claim analytics.";
+    status.textContent = `Claim analytics could not be loaded: ${message}`;
+    document.getElementById("billingScheduleStatus").textContent = message;
+    document.getElementById("claimAnalyticsTableBody").innerHTML = `<tr><td class="analytics-empty" colspan="5">${escapeMetricText(message)}</td></tr>`;
+  } finally {
+    claimAnalyticsLoading = false;
+    setClaimAnalyticsControlsDisabled(false);
+  }
+}
+
+async function saveClaimBillingSchedule() {
+  if (claimAnalyticsLoading) return;
+  const month = document.getElementById("billingScheduleMonth").value;
+  const status = document.getElementById("billingScheduleStatus");
+  let saved = false;
+  claimAnalyticsLoading = true;
+  setClaimAnalyticsControlsDisabled(true);
+  status.textContent = "Saving workspace billing periods…";
+  try {
+    const result = await fetchJSON("/api/dashboard/claim-billing-schedule", {
+      method: "POST",
+      body: JSON.stringify({ month, weeks: billingWeekInputs() }),
+    });
+    if (result.error) throw new Error(result.error);
+    if (!Array.isArray(result.weeks) || result.weeks.length < 1 || result.weeks.length > 6) {
+      throw new Error("The server returned an invalid billing schedule response. Restart the app server and reload the page.");
+    }
+    showBillingWeeks(result.weeks, month, "saved");
+    status.textContent = "Billing periods saved for the workspace.";
+    saved = true;
+  } catch (error) {
+    const message = error && error.message ? error.message : "Unable to save billing periods.";
+    status.textContent = `Billing periods could not be saved: ${message}`;
+  } finally {
+    claimAnalyticsLoading = false;
+    setClaimAnalyticsControlsDisabled(false);
+  }
+  if (saved) refreshClaimAnalytics();
+}
+
+document.getElementById("billingScheduleMonth").value = currentPhilippineMonth();
+document.getElementById("refreshClaimAnalytics").addEventListener("click", () => refreshClaimAnalytics(true));
+document.getElementById("claimAnalyticsGroup").addEventListener("change", () => refreshClaimAnalytics());
+document.getElementById("claimAnalyticsFilterMonth").addEventListener("change", () => refreshClaimAnalytics());
+document.getElementById("billingScheduleMonth").addEventListener("change", () => refreshClaimAnalytics());
+document.getElementById("saveBillingSchedule").addEventListener("click", saveClaimBillingSchedule);
+document.getElementById("addBillingWeek").addEventListener("click", () => {
+  const weeks = billingWeekInputs();
+  if (weeks.length >= 6) return;
+  weeks.push({ week: weeks.length + 1, start: "", end: "" });
+  showBillingWeeks(weeks, document.getElementById("billingScheduleMonth").value, "saved");
+  document.getElementById("billingScheduleBadge").textContent = "Unsaved edits";
+  document.getElementById("billingScheduleStatus").textContent = "Billing ranges changed. Save to apply them for the workspace.";
+});
+document.getElementById("billingWeekRows").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-week]");
+  if (!button) return;
+  const weeks = billingWeekInputs();
+  weeks.splice([...button.closest("tbody").rows].indexOf(button.closest("tr")), 1);
+  showBillingWeeks(weeks, document.getElementById("billingScheduleMonth").value, "saved");
+  document.getElementById("billingScheduleBadge").textContent = "Unsaved edits";
+  document.getElementById("billingScheduleStatus").textContent = "Billing ranges changed. Save to apply them for the workspace.";
+});
+document.getElementById("billingWeekRows").addEventListener("input", () => {
+  document.getElementById("billingScheduleBadge").textContent = "Unsaved edits";
+  document.getElementById("billingScheduleStatus").textContent = "Billing ranges changed. Save to apply them for the workspace.";
+});
+refreshClaimAnalytics();
+
 document.getElementById("refreshMetrics").addEventListener("click", refreshDashboardMetrics);
 loadRunHistory();
 refreshDashboardMetrics();
@@ -344,6 +547,7 @@ function playDashboardEntrance() {
 window.beabots?.onDashboardEnter(playDashboardEntrance);
 
 const workspaceButtons = {
+  dashboard: document.getElementById("btnDashboard"),
   cf2: document.getElementById("btnCf2"),
   runAll: document.getElementById("btnRunAll"),
   uploadSoa: document.getElementById("btnUploadSoa"),
@@ -400,7 +604,7 @@ function showWorkspaceHome() {
   dashboardLayout.classList.remove("claims-mode");
   workspaceColumn.classList.remove("workspace-active");
   Object.values(workspaceFrames).forEach((frame) => frame.classList.remove("active"));
-  setWorkspaceActive(null);
+  setWorkspaceActive("dashboard");
   history.replaceState(null, "", "dashboard.html");
 }
 
@@ -451,6 +655,10 @@ function setTopNavigation(active) {
 }
 
 document.getElementById("siteHome").addEventListener("click", () => {
+  setTopNavigation("siteHome");
+  showWorkspaceHome();
+});
+document.getElementById("btnDashboard").addEventListener("click", () => {
   setTopNavigation("siteHome");
   showWorkspaceHome();
 });
@@ -551,6 +759,8 @@ async function loadSignedInProfile() {
     }
     const user = result.user || {};
     signedInIsAdmin = Boolean(user.is_admin);
+    document.getElementById("billingScheduleEditor").hidden = !signedInIsAdmin;
+    document.getElementById("billingScheduleMonthControl").hidden = !signedInIsAdmin;
     chatReadStateKey = `beabots-chat-read:v1:${user.id}`;
     await refreshChatUnread();
     document.getElementById("siteUsers").hidden = !signedInIsAdmin;
@@ -849,4 +1059,5 @@ if (workspaceRoutes[initialWorkspace] || initialWorkspace === "agreement") {
   else openWorkspace(initialWorkspace);
 } else {
   setTopNavigation("siteHome");
+  setWorkspaceActive("dashboard");
 }

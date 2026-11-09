@@ -1,6 +1,7 @@
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const form = document.getElementById("runForm");
 const startBtn = document.getElementById("startBtn");
+const clearFieldsBtn = document.getElementById("clearFieldsBtn");
 const stopBtn = document.getElementById("stopBtn");
 const statusNode = document.getElementById("status");
 const errorNode = document.getElementById("error");
@@ -154,10 +155,35 @@ function appendLog(message, level = "INFO") {
 function setActive(value) {
   active = value;
   startBtn.disabled = value;
+  clearFieldsBtn.disabled = value;
   stopBtn.classList.toggle("visible", value);
   statusNode.textContent = value ? "Running one patient at a time…" : statusNode.textContent;
   renderResults();
 }
+
+clearFieldsBtn.addEventListener("click", () => {
+  if (active) return;
+  form.reset();
+  monthSelect.value = monthNames[new Date().getMonth()];
+  yearSelect.value = String(new Date().getFullYear());
+  updateFileMeta(
+    document.getElementById("workbook"),
+    document.getElementById("workbookMeta"),
+    "No workbook selected",
+    "Choose the New Draft CF2 workbook.",
+    "workbook"
+  );
+  updateFileMeta(
+    document.getElementById("soaFiles"),
+    document.getElementById("soaMeta"),
+    "No SOA files selected",
+    "Names will be checked against the workbook.",
+    "SOA files"
+  );
+  errorNode.textContent = "";
+  errorNode.style.display = "none";
+  statusNode.textContent = "Fields cleared. Ready when you are.";
+});
 
 const socket = io(API_BASE);
 socket.on("log", (entry) => appendLog(entry?.message, entry?.level));

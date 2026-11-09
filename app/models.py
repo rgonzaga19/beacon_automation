@@ -65,6 +65,19 @@ class UserSetting(db.Model):
     user = db.relationship("User", back_populates="settings")
 
 
+class ClaimBillingSchedule(db.Model):
+    __tablename__ = "claim_billing_schedules"
+
+    month = db.Column(db.String(7), primary_key=True)
+    weeks = db.Column(db.JSON, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+
+
 class UpgradeRequest(db.Model):
     __tablename__ = "upgrade_requests"
 
