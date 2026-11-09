@@ -14,6 +14,7 @@
       <h1 id="pageTitle">Individual Claims</h1>
       <p>Prepare accurate statements with a simpler workflow.</p>
     </div>
+    <div id="systemStatus" class="status-card ready"><span class="status-dot"></span><span>System Ready</span></div>
   </header>
 
   <main class="page-body">
@@ -24,48 +25,42 @@
 
     <section class="tab-page active" id="individualPage" role="tabpanel" aria-labelledby="tabIndividual">
       <div class="individual-layout">
-        <div class="left-stack">
-          <section class="card settings-card">
-            <h2>General Settings</h2>
-            <div class="divider"></div>
-            <div class="settings-grid">
-              <div class="field">
-                <label>Access Type</label>
-                <div class="choice-stack">
-                  <label class="choice-pill"><input type="radio" name="accessType" value="fistula" checked><span>Fistula</span></label>
-                  <label class="choice-pill"><input type="radio" name="accessType" value="subkit"><span>Subkit</span></label>
-                </div>
-              </div>
-              <div class="field">
-                <label>Dialyzer Type</label>
-                <div class="choice-stack">
-                  <label class="choice-pill"><input type="radio" name="fluxType" value="high" checked><span>High Flux</span></label>
-                  <label class="choice-pill"><input type="radio" name="fluxType" value="low"><span>Low Flux</span></label>
-                </div>
-              </div>
-              <div class="field">
-                <label for="claimCount">Number of Claims</label>
-                <input id="claimCount" type="number" min="1" max="7" value="1">
-              </div>
+        <section class="card settings-card individual-settings" aria-label="Claim settings">
+          <div class="settings-grid">
+          <div class="field">
+            <label>Access Type</label>
+            <div class="choice-stack">
+              <label class="choice-pill"><input type="radio" name="accessType" value="fistula" checked><span>Fistula</span></label>
+              <label class="choice-pill"><input type="radio" name="accessType" value="subkit"><span>Subkit</span></label>
             </div>
-          </section>
+          </div>
+          <div class="field">
+            <label>Dialyzer Type</label>
+            <div class="choice-stack">
+              <label class="choice-pill"><input type="radio" name="fluxType" value="high" checked><span>High Flux</span></label>
+              <label class="choice-pill"><input type="radio" name="fluxType" value="low"><span>Low Flux</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="claimCount">Number of Claims</label>
+            <input id="claimCount" type="number" min="1" max="7" value="1">
+          </div>
+          <div class="individual-helpers">
+            <button id="applyDateToAll" class="quiet-btn" type="button" disabled>Apply date to all</button>
+            <button id="copyPreviousRow" class="quiet-btn" type="button" disabled>Copy previous row</button>
+          </div>
+          </div>
+        </section>
 
-          <div id="claims"></div>
-        </div>
-
-        <aside class="right-stack">
-          <div id="systemStatus" class="status-card ready"><span class="status-dot"></span><span>System Ready</span></div>
-          <section class="card summary-card">
-            <h2>Summary</h2>
-            <div class="divider"></div>
-            <div id="summary"></div>
-          </section>
+        <div id="claims" class="claims-table" role="table" aria-label="Individual claim details"></div>
+      </div>
+      <footer class="individual-footer">
+          <div id="summary" class="individual-summary" aria-live="polite"></div>
           <div class="side-actions">
             <button id="clearBtn" class="quiet-btn" type="button">Clear Form</button>
             <button id="generate" class="primary-btn" type="button">Generate Excel</button>
           </div>
-        </aside>
-      </div>
+      </footer>
     </section>
 
     <section class="tab-page" id="batchPage" role="tabpanel" aria-labelledby="tabBatch" hidden>

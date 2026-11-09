@@ -58,6 +58,7 @@ const downloadTemplateButton = document.getElementById("downloadTemplate");
 const claimCount = document.getElementById("claimCount");
 
 let claimState = [newClaim()];
+let generateAttempted = false;
 
 const tabButtons = {
   individual: document.getElementById("tabIndividual"),
@@ -97,37 +98,46 @@ function setStatus(message, type = "ready") {
 function renderClaims() {
   const today = new Date().toISOString().slice(0, 10);
   const laboratorySelected = claimState.some((claim) => claim.hasLab);
-  claims.innerHTML = claimState.map((claim, index) => `
-    <section class="claim ${claimState.length > 1 ? "can-remove" : ""}" data-index="${index}">
-      <div class="claim-head">
-        <h2 class="claim-title">Claim #${index + 1}</h2>
-        <button class="quiet-btn remove" type="button">Remove</button>
-      </div>
-      <div class="claim-grid">
-        <label class="claim-field">Render Date
-          <input data-field="renderDate" type="date" value="${claim.renderDate}" min="2020-01-01" max="${today}">
+  claims.innerHTML = `
+    <div class="claim-table-header" role="row">
+      <span role="columnheader">#</span><span role="columnheader">Render Date</span><span role="columnheader">Has EPO</span><span role="columnheader">EPO Type</span><span role="columnheader">Qty</span><span role="columnheader">Laboratory</span><span role="columnheader">Status</span><span role="columnheader">Actions</span>
+    </div>
+    ${claimState.map((claim, index) => `
+      <div class="claim-row${generateAttempted && !claim.renderDate ? " is-invalid" : ""}" data-index="${index}" role="row">
+        <strong class="claim-number" role="rowheader">${index + 1}</strong>
+        <label class="claim-field" role="cell" aria-label="Render date for claim ${index + 1}">
+          <input data-field="renderDate" type="date" value="${claim.renderDate}" min="2020-01-01" max="${today}" aria-label="Render date for claim ${index + 1}">
         </label>
-        <label class="claim-field">Has EPO
-          <span class="check-pill"><input data-field="hasEpo" type="checkbox" ${claim.hasEpo ? "checked" : ""}><span>${claim.hasEpo ? "Yes" : "No"}</span></span>
+        <label class="claim-field" role="cell" aria-label="Has EPO for claim ${index + 1}">
+          <span class="check-pill"><input data-field="hasEpo" type="checkbox" ${claim.hasEpo ? "checked" : ""}><span>${claim.hasEpo ? "On" : "Off"}</span></span>
         </label>
-        <label class="claim-field">Include Laboratory
-          <span class="check-pill"><input data-field="hasLab" type="checkbox" ${claim.hasLab ? "checked" : ""} ${laboratorySelected && !claim.hasLab ? 'disabled title="Laboratory is already selected for another claim. Uncheck it there first."' : ""}><span>${claim.hasLab ? "Yes" : "No"}</span></span>
-          ${laboratorySelected && !claim.hasLab ? '<small>Laboratory is selected in another claim.</small>' : ""}
-        </label>
-        <label class="claim-field compact">EPO Type
-          <select data-field="epoType" ${claim.hasEpo ? "" : "disabled"}>
+        <div class="claim-field" role="cell">
+          ${claim.hasEpo ? `<select data-field="epoType" aria-label="EPO type for claim ${index + 1}">
             <option value="alfa" ${claim.epoType === "alfa" ? "selected" : ""}>Alfa</option>
             <option value="beta" ${claim.epoType === "beta" ? "selected" : ""}>Beta</option>
-          </select>
+          </select>` : '<span class="not-applicable">Not applicable</span>'}
+        </div>
+        <div class="claim-field" role="cell">
+          ${claim.hasEpo ? `<input data-field="epoQty" type="number" min="1" step="1" max="${claim.epoType === "beta" ? "1" : "2"}" value="${claim.epoQty}" aria-label="EPO quantity for claim ${index + 1}">` : '<span class="not-applicable quantity-placeholder">—</span>'}
+        </div>
+        <label class="claim-field" role="cell" aria-label="Laboratory for claim ${index + 1}">
+          <span class="check-pill"><input data-field="hasLab" type="checkbox" ${claim.hasLab ? "checked" : ""} ${laboratorySelected && !claim.hasLab ? 'disabled title="Laboratory is already selected for another claim. Uncheck it there first."' : ""}><span>${claim.hasLab ? "On" : "Off"}</span></span>
         </label>
-        <label class="claim-field compact">EPO Quantity
-          <input data-field="epoQty" type="number" min="1" step="1" max="${claim.epoType === "beta" ? "1" : "2"}" value="${claim.epoQty}" ${claim.hasEpo ? "" : "disabled"}>
-        </label>
-      </div>
-    </section>`).join("");
+        ${generateAttempted && !claim.renderDate ? '<span class="claim-error" role="cell">Render date required</span>' : '<span role="cell"></span>'}
+        <div class="claim-row-action" role="cell">
+          <button class="danger-btn claim-delete" type="button" aria-label="Delete claim ${index + 1}" title="${claimState.length === 1 ? "At least one claim is required" : `Delete claim ${index + 1}`}" ${claimState.length === 1 ? "disabled" : ""}>Delete</button>
+        </div>
+      </div>`).join("")}`;
 
-  claims.querySelectorAll(".claim").forEach((row, index) => {
-    row.querySelector('[data-field="epoQty"]').addEventListener("input", (event) => {
+  claims.querySelectorAll(".claim-row").forEach((row, index) => {
+    row.querySelector(".claim-delete").addEventListener("click", () => {
+      if (claimState.length <= 1) return;
+      claimState.splice(index, 1);
+      claimCount.value = claimState.length;
+      renderClaims();
+    });
+    const quantityInput = row.querySelector('[data-field="epoQty"]');
+    quantityInput?.addEventListener("input", (event) => {
       const input = event.target;
       const max = claimState[index].epoType === "beta" ? 1 : 2;
       const quantity = Math.max(1, Math.min(Math.trunc(Number(input.value)) || 1, max));
@@ -149,40 +159,41 @@ function renderClaims() {
       }
       renderClaims();
     }));
-    row.querySelectorAll('input[type="date"]').forEach((input) => {
-      input.addEventListener("click", () => {
-        try {
-          input.showPicker?.();
-        } catch (error) {
-          input.focus();
-        }
-      });
-    });
-    row.querySelector(".remove").addEventListener("click", () => {
-      if (claimState.length <= 1) return;
-      claimState.splice(index, 1);
-      claimCount.value = claimState.length;
-      renderClaims();
+    row.querySelector('input[type="date"]').addEventListener("click", (event) => {
+      try {
+        event.currentTarget.showPicker?.();
+      } catch (error) {
+        event.currentTarget.focus();
+      }
     });
   });
 
+  document.getElementById("applyDateToAll").disabled = !claimState[0]?.renderDate;
+  document.getElementById("copyPreviousRow").disabled = claimState.length < 2;
   renderSummary();
 }
 
 function renderSummary() {
-  const labIndex = claimState.findIndex((claim) => claim.hasLab);
-  const claimDetails = claimState.map((claim, index) => `
-    <div class="summary-claim">
-      <strong>Claim ${index + 1}</strong>
-      <span>Date: ${claim.renderDate || "-"}<br>EPO: ${claim.hasEpo ? `${claim.epoType.toUpperCase()} x${claim.epoQty}` : "None"}${claim.hasLab ? "<br>LAB: Yes" : ""}</span>
-    </div>`).join("");
-
-  summary.innerHTML = `
-    <div class="summary-row"><strong>Access:</strong><span>${selectedValue("accessType")}</span></div>
-    <div class="summary-row"><strong>Dialyzer:</strong><span>${selectedValue("fluxType")}</span></div>
-    <div class="summary-row"><strong>Claims:</strong><span>${claimState.length}</span></div>
-    <div class="summary-row"><strong>Laboratory:</strong><span>${labIndex === -1 ? "None" : `Claim #${labIndex + 1}`}</span></div>
-    <div class="summary-claims">${claimDetails}</div>`;
+  const missingDates = claimState.filter((claim) => !claim.renderDate).length;
+  const parts = [
+    selectedValue("accessType") === "fistula" ? "Fistula" : "Subkit",
+    selectedValue("fluxType") === "high" ? "High Flux" : "Low Flux",
+    `${claimState.length} ${claimState.length === 1 ? "claim" : "claims"}`,
+    `${claimState.filter((claim) => claim.hasEpo).length} with EPO`,
+    `${claimState.filter((claim) => claim.hasLab).length} with lab`,
+  ];
+  summary.replaceChildren();
+  parts.forEach((text, index) => {
+    if (index) summary.append(document.createTextNode(" · "));
+    summary.append(document.createTextNode(text));
+  });
+  if (missingDates) {
+    summary.append(document.createTextNode(" · "));
+    const missing = document.createElement("span");
+    missing.className = generateAttempted ? "summary-warning" : "summary-missing";
+    missing.textContent = `${missingDates} ${missingDates === 1 ? "date" : "dates"} missing`;
+    summary.append(missing);
+  }
 }
 
 function syncClaimCount() {
@@ -207,8 +218,10 @@ async function download(blob, filename) {
 }
 
 async function generateIndividual() {
+  generateAttempted = true;
   const missing = claimState.some((claim) => !claim.renderDate);
   if (missing) {
+    renderClaims();
     setStatus("Enter all render dates", "error");
     alert("Enter a render date for every claim.");
     return;
@@ -271,6 +284,7 @@ function initBatchPeriod() {
 
 function clearIndividual() {
   claimState = [newClaim()];
+  generateAttempted = false;
   claimCount.value = 1;
   document.querySelector('input[name="accessType"][value="fistula"]').checked = true;
   document.querySelector('input[name="fluxType"][value="high"]').checked = true;
@@ -291,6 +305,24 @@ function clearBatch() {
 
 document.querySelectorAll('input[name="accessType"], input[name="fluxType"]').forEach((input) => input.addEventListener("change", renderSummary));
 claimCount.addEventListener("change", syncClaimCount);
+document.getElementById("applyDateToAll").addEventListener("click", () => {
+  const date = claimState[0]?.renderDate;
+  if (!date) return;
+  claimState.forEach((claim) => { claim.renderDate = date; });
+  renderClaims();
+});
+document.getElementById("copyPreviousRow").addEventListener("click", () => {
+  if (claimState.length < 2) return;
+  const lastIndex = claimState.length - 1;
+  const previous = claimState[lastIndex - 1];
+  claimState[lastIndex] = { ...previous };
+  if (previous.hasLab) {
+    claimState.forEach((claim, index) => {
+      if (index !== lastIndex) claim.hasLab = false;
+    });
+  }
+  renderClaims();
+});
 document.getElementById("clearBtn").addEventListener("click", clearIndividual);
 document.getElementById("generate").addEventListener("click", generateIndividual);
 batchFile.addEventListener("change", (event) => {

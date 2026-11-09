@@ -291,8 +291,6 @@ lookupForm.addEventListener("submit", async (event) => {
         transmitButton.setAttribute("aria-label", `Transmit ${claim.transmittal_number}`);
         actionButtons.append(editButton, transmitButton);
         actionCell.append(actionButtons);
-      } else {
-        actionCell.append(document.createTextNode("-"));
       }
       row.append(actionCell);
       row.dataset.transmittalNumber = claim.transmittal_number || "";
