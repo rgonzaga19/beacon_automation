@@ -4,6 +4,9 @@ const lookupButton = document.getElementById("lookupButton");
 const summary = document.getElementById("summary");
 const claimsBody = document.getElementById("claimsBody");
 const claimsSort = document.getElementById("claimsSort");
+const selectAllClaims = document.getElementById("selectAllClaims");
+const selectedCount = document.getElementById("selectedCount");
+const batchActionButtons = Array.from(document.querySelectorAll(".page-toolbar .solid-btn"));
 const claimEditor = document.getElementById("claimEditor");
 const editorSubtitle = document.getElementById("editorSubtitle");
 const transmitAllButton = document.getElementById("transmitAllButton");
@@ -43,6 +46,28 @@ function setToolbarLoading(button, loading) {
   if (loading) button.setAttribute("aria-busy", "true");
   else button.removeAttribute("aria-busy");
 }
+
+function updateSelectionControls() {
+  const rows = Array.from(claimsBody.querySelectorAll("tr[data-claim-row]"));
+  const selectedRows = rows.filter((row) => row.classList.contains("selected"));
+  selectedCount.textContent = String(selectedRows.length);
+  selectAllClaims.checked = rows.length > 0 && selectedRows.length === rows.length;
+  selectAllClaims.indeterminate = selectedRows.length > 0 && selectedRows.length < rows.length;
+  selectAllClaims.disabled = rows.length === 0;
+  batchActionButtons.forEach((button) => {
+    button.disabled = selectedRows.length === 0;
+  });
+}
+
+selectAllClaims.addEventListener("change", () => {
+  const selected = selectAllClaims.checked;
+  claimsBody.querySelectorAll("tr[data-claim-row]").forEach((row) => {
+    row.classList.toggle("selected", selected);
+    row.setAttribute("aria-selected", String(selected));
+    row.querySelector(".selection-checkbox").checked = selected;
+  });
+  updateSelectionControls();
+});
 
 function lockClaimsToolbar(activeButton) {
   const buttons = Array.from(document.querySelectorAll(".page-toolbar button"));
@@ -139,11 +164,12 @@ function showMessage(message, error = false) {
   claimsBody.replaceChildren();
   const row = document.createElement("tr");
   const cell = document.createElement("td");
-  cell.colSpan = 9;
+  cell.colSpan = 10;
   cell.className = `message${error ? " error" : ""}`;
   cell.textContent = message;
   row.append(cell);
   claimsBody.append(row);
+  updateSelectionControls();
 }
 
 lookupForm.addEventListener("submit", async (event) => {
@@ -227,6 +253,8 @@ lookupForm.addEventListener("submit", async (event) => {
       return;
     }
     claimsBody.replaceChildren();
+    selectAllClaims.checked = false;
+    selectAllClaims.indeterminate = false;
     result.claims.forEach((claim) => {
       const row = document.createElement("tr");
       row.dataset.claimRow = "";
@@ -235,9 +263,14 @@ lookupForm.addEventListener("submit", async (event) => {
       row.tabIndex = 0;
       row.setAttribute("aria-selected", "false");
       const actionCell = document.createElement("td");
+      const selectionCheckbox = document.createElement("input");
+      selectionCheckbox.className = "selection-checkbox";
+      selectionCheckbox.type = "checkbox";
+      selectionCheckbox.setAttribute("aria-label", `Select claim ${claim.claim_series || "in transmittal " + claim.transmittal_number}`);
+      actionCell.append(selectionCheckbox);
       if (claim.transmittal_id && claim.claim_id && statusClass(claim.transmittal_status) === "status-draft") {
         const actionButtons = document.createElement("div");
-        actionButtons.style.cssText = "display:flex;gap:6px;align-items:center";
+        actionButtons.className = "claims-row-actions";
         const editButton = document.createElement("button");
         editButton.className = "cyber-btn icon-btn";
         editButton.type = "button";
@@ -259,7 +292,7 @@ lookupForm.addEventListener("submit", async (event) => {
         actionButtons.append(editButton, transmitButton);
         actionCell.append(actionButtons);
       } else {
-        actionCell.textContent = "-";
+        actionCell.append(document.createTextNode("-"));
       }
       row.append(actionCell);
       row.dataset.transmittalNumber = claim.transmittal_number || "";
@@ -269,6 +302,13 @@ lookupForm.addEventListener("submit", async (event) => {
         cell.textContent = value || "-";
         row.append(cell);
       });
+      const claimStatusCell = row.children[7];
+      const claimStatus = document.createElement("span");
+      claimStatus.className = `claim-status ${statusClass(claim.status)}`;
+      const claimStatusDot = document.createElement("i");
+      claimStatusDot.className = "status-dot";
+      claimStatus.append(claimStatusDot, document.createTextNode(claim.status || "-"));
+      claimStatusCell.replaceChildren(claimStatus);
       const transmittalCell = row.children[1];
       if (transmittalCell && claim.transmittal_number) {
         const copyButton = document.createElement("button");
@@ -309,6 +349,7 @@ lookupForm.addEventListener("submit", async (event) => {
       claimsBody.append(row);
     });
     claimsSort.disabled = false;
+    updateSelectionControls();
   } catch (error) {
     showMessage(error.message || "Beacon lookup failed. Try again.", true);
   } finally {
@@ -535,12 +576,28 @@ function selectClaimRow(row) {
     const isSelected = item === row;
     item.classList.toggle("selected", isSelected);
     item.setAttribute("aria-selected", String(isSelected));
+    item.querySelector(".selection-checkbox").checked = isSelected;
   });
+  updateSelectionControls();
 }
 
 function toggleClaimRowSelection(row) {
-  selectClaimRow(row.classList.contains("selected") ? null : row);
+  const selected = !row.classList.contains("selected");
+  row.classList.toggle("selected", selected);
+  row.setAttribute("aria-selected", String(selected));
+  row.querySelector(".selection-checkbox").checked = selected;
+  updateSelectionControls();
 }
+
+claimsBody.addEventListener("change", (event) => {
+  const checkbox = event.target.closest(".selection-checkbox");
+  if (!checkbox || checkbox === selectAllClaims) return;
+  const row = checkbox.closest("tr[data-claim-row]");
+  if (!row) return;
+  row.classList.toggle("selected", checkbox.checked);
+  row.setAttribute("aria-selected", String(checkbox.checked));
+  updateSelectionControls();
+});
 
 claimsBody.addEventListener("click", (event) => {
   const row = event.target.closest("tr[data-claim-row]");
@@ -550,6 +607,7 @@ claimsBody.addEventListener("click", (event) => {
 
 claimsBody.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" && event.key !== " ") return;
+  if (event.target.closest("button, input, select, textarea, a")) return;
   const row = event.target.closest("tr[data-claim-row]");
   if (!row) return;
   event.preventDefault();

@@ -157,63 +157,198 @@
       .summary { gap:8px 14px; }
     }
   </style>
-</head>
-<body>
-  <div class="page">
-    <header class="header"><h1>Edit Claims</h1><p>Search Beacon by transmittal number or patient name.</p></header>
-    <main>
-      <section class="lookup-card" aria-label="Transmittal claims lookup">
-        <form id="lookupForm" class="lookup-form">
-          <div class="field"><label for="transmittalInput">Transmittal Number or Patient Name</label><div class="lookup-control-row"><input id="transmittalInput" type="text" autocomplete="off" placeholder="Enter transmittals or a patient name"></div><span class="field-hint">Separate multiple transmittal numbers with spaces, or enter a full or partial patient name.</span></div>
-          <div class="lookup-control-row" style="margin-top:12px">
-            <div class="field"><label for="admissionFrom">Admission From</label><input id="admissionFrom" type="date"></div>
-            <div class="field"><label for="admissionTo">Admission To</label><input id="admissionTo" type="date"></div>
-            <button class="cyber-btn lookup-icon-button" id="lookupButton" type="submit" title="Search claims" aria-label="Search claims" style="align-self:flex-end"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg></button>
-          </div>
-          <span class="field-hint">Or leave the text field empty and filter by admission date range (used only when the text field is empty).</span>
-          <div style="margin-top:10px;padding:9px 12px;border:1px solid color-mix(in srgb,#f0ad4e 45%,transparent);border-radius:var(--radius-md);background:color-mix(in srgb,#f0ad4e 10%,transparent);color:#f0ad4e;font-size:11px;line-height:1.5"><strong>NOTE:</strong> Using date filtering may take 5&ndash;10 minutes or more, depending on the number and age of the claims. When possible, use a transmittal number instead.</div>
-        </form>
-        <div class="status-legend" aria-label="Transmittal status legend">
-          <span class="legend-title">STATUS LEGEND</span>
-          <span class="legend-item status-draft"><i class="status-dot"></i>DRAFT</span>
-          <span class="legend-item status-transmitting"><i class="status-dot"></i>TRANSMITTING</span>
-          <span class="legend-item status-transmitted"><i class="status-dot"></i>TRANSMITTED</span>
-          <span class="legend-item status-transmit-error"><i class="status-dot"></i>TRANSMIT ERROR</span>
-          <span class="legend-item status-complete"><i class="status-dot"></i>COMPLETE</span>
-          <span class="legend-item status-on-queue"><i class="status-dot"></i>ON QUEUE</span>
-        </div>
-        <div class="summary" id="summary" hidden></div>
-        <div class="page-toolbar" aria-label="Claim actions toolbar">
-          <div class="toolbar-batch-indicator">Batch processing</div>
-          <section class="toolbar-group" aria-labelledby="toolbarWorkflowLabel"><h2 class="toolbar-group-label" id="toolbarWorkflowLabel">Finalize &amp; transmit</h2><div class="toolbar-group-actions">
-            <button class="solid-btn" id="finalizeAllButton" type="button" title="Generate final PBEF eligibility data for a batch of draft claims" aria-label="Auto Finalize">AUTO FINALIZE</button>
-            <button class="solid-btn" id="transmitAllButton" type="button" title="Auto Transmit a batch of draft claims" aria-label="Auto Transmit">AUTO TRANSMIT</button>
-          </div></section>
-          <section class="toolbar-group" aria-labelledby="toolbarGenerateLabel"><h2 class="toolbar-group-label" id="toolbarGenerateLabel">Generate</h2><div class="toolbar-group-actions">
-            <button class="solid-btn" id="generateCf4AllButton" type="button" title="Generate CF4 for a batch of draft claims" aria-label="Generate CF4">GENERATE CF4</button>
-            <button class="solid-btn" id="generateSoaAllButton" type="button" title="Generate SOA for a batch of draft claims" aria-label="Generate SOA">GENERATE SOA</button>
-          </div></section>
-          <section class="toolbar-group" aria-labelledby="toolbarRemoveLabel"><h2 class="toolbar-group-label" id="toolbarRemoveLabel">Remove data</h2><div class="toolbar-group-actions">
-            <button class="solid-btn danger-action" id="removeGeneratedSoaAllButton" type="button" title="Remove generated eSOA documents from a batch of draft claims" aria-label="Remove Generated SOA">REMOVE GENERATED SOA</button>
-            <button class="solid-btn danger-action" id="removeSoaAllButton" type="button" title="Remove SOA charge data from a batch of draft claims" aria-label="Remove SOA Charges">REMOVE SOA CHARGES</button>
-            <button class="solid-btn danger-action" id="deleteClaimsButton" type="button" title="Delete visible draft claims and then remove any resulting empty DRAFT transmittals" aria-label="Delete Draft Claims">DELETE DRAFT CLAIMS</button>
-          </div></section>
-          <section class="toolbar-group" aria-labelledby="toolbarOtherLabel"><h2 class="toolbar-group-label" id="toolbarOtherLabel">Other actions</h2><div class="toolbar-group-actions">
-            <button class="solid-btn" id="copyTransmittalsButton" type="button" title="Copy Transmittal" aria-label="Copy Transmittal">COPY TRANSMITTAL</button>
-            <button class="solid-btn" id="changeArAllButton" type="button" title="Apply saved CF2 Account Receivable details to a batch of draft claims" aria-label="Update AR Staff Info">UPDATE AR STAFF INFO</button>
-          </div></section>
-          <span class="toolbar-status" id="transmitAllStatus" aria-live="polite"></span>
-        </div>
-        <label class="claims-sort" for="claimsSort">Sort patients <select id="claimsSort" disabled><option value="">Default order</option><option value="surname-asc">Surname A–Z</option><option value="surname-desc">Surname Z–A</option></select></label>
-        <div class="table-wrap">
-          <table aria-label="Claims in transmittal">
-            <thead><tr><th>Action</th><th>Transmittal</th><th>Claim Series</th><th>Patient</th><th>Member</th><th>Admission</th><th>Discharge</th><th>Claim Status</th><th>Transmittal Status</th><th>Beacon Message</th></tr></thead>
-            <tbody id="claimsBody"><tr><td class="message" colspan="10">Enter a transmittal number to view its claims.</td></tr></tbody>
-          </table>
-        </div>
-      </section>
-    </main>
-  </div>
+    <style>
+      body { background:var(--bg-dark); }
+      .page { height:100vh; height:100dvh; }
+      .workspace { display:block; width:100%; min-width:0; min-height:0; overflow:auto; padding:18px clamp(18px,2.7vw,34px) 28px; }
+      .workspace-inner { width:min(100%,1440px); margin:0 auto; }
+      .breadcrumb { margin:0 0 3px; color:var(--text-sec); font-size:10px; }
+      .breadcrumb span { margin:0 6px; color:var(--text-sec); }
+      .page-title { margin:0; color:var(--text-pri); font-size:22px; font-weight:750; letter-spacing:-.55px; line-height:1.3; }
+      .page-subtitle { margin:3px 0 14px; color:var(--text-sec); font-size:11px; }
+      .lookup-card,.results-card { min-width:0; overflow:visible; background:var(--bg-panel); border:1px solid color-mix(in srgb,var(--border) 75%,transparent); border-radius:12px; box-shadow:var(--shadow-sm); }
+      .lookup-card { padding:14px 16px 12px; }
+      .lookup-form { display:grid; gap:11px; }
+      .lookup-toprow { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      .mode-switch { display:inline-flex; gap:3px; padding:3px; background:var(--bg-dark); border:1px solid var(--border); border-radius:9px; }
+      .mode-switch label { display:inline-flex; min-height:27px; align-items:center; padding:0 11px; color:var(--text-sec); border-radius:6px; cursor:pointer; font-size:10px; font-weight:700; white-space:nowrap; }
+      .mode-switch input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+      .mode-switch input:checked + span { color:var(--accent); }
+      .mode-switch label:has(input:checked) { background:var(--bg-panel); box-shadow:0 1px 3px rgba(0,0,0,.2); }
+      .mode-switch label:focus-within { outline:2px solid var(--accent); outline-offset:2px; }
+      .date-warning { max-width:490px; padding:5px 10px; color:#fbbf24; background:color-mix(in srgb,#fbbf24 10%,transparent); border:1px solid color-mix(in srgb,#fbbf24 36%,transparent); border-radius:7px; font-size:9px; line-height:1.45; }
+      html[data-theme="light"] .date-warning { color:#92400e; background:#fffbeb; border-color:#fcd34d; }
+      .lookup-fields { display:grid; grid-template-columns:minmax(230px,1fr) minmax(120px,140px) minmax(120px,140px) auto; align-items:start; gap:9px; }
+      .field label { margin-bottom:4px; font-size:9px; }
+      .field input { height:35px; padding:0 10px; font-size:10px; }
+      .field-hint { margin-top:4px; font-size:9px; line-height:1.35; }
+      #transmittalInput-wrap { position:relative; }
+      #transmittalInput-wrap svg { position:absolute; top:10px; left:10px; width:15px; height:15px; fill:none; stroke:var(--text-sec); stroke-width:2; stroke-linecap:round; }
+      #transmittalInput { padding-left:32px; }
+      .lookup-control-row { display:block; }
+      .lookup-icon-button { display:inline-flex; width:auto; min-width:92px; height:35px; align-items:center; justify-content:center; gap:7px; padding:0 12px; color:var(--accent-ink); background:var(--accent); border:0; font-size:10px; font-weight:750; }
+      .lookup-icon-button:hover { background:var(--accent2); }
+      .lookup-icon-button svg { width:14px; height:14px; }
+      .lookup-fields > .lookup-icon-button { align-self:end; }
+      .lookup-note { margin:0; color:var(--text-sec); font-size:9px; }
+      .lookup-warning-old { display:none !important; }
+      .results-card { position:relative; margin-top:13px; overflow:visible; }
+      .page-toolbar { position:relative; z-index:3; display:flex; min-height:52px; align-items:center; gap:5px; margin:0; padding:8px 12px; background:var(--bg-panel); border-bottom:1px solid var(--border); border-radius:12px 12px 0 0; }
+      .toolbar-batch-indicator { display:inline-flex; flex:none; grid-column:auto; min-height:24px; align-items:center; margin-right:4px; padding:0 9px; color:var(--text-sec); background:var(--bg-dark); border:1px solid var(--border); border-radius:999px; font-size:9px; font-weight:700; letter-spacing:0; text-transform:none; white-space:nowrap; }
+      .toolbar-batch-indicator::before { display:none; }
+      .toolbar-group { display:flex; min-width:0; align-items:center; gap:4px; padding:0 5px; background:none; border:0; border-radius:0; }
+      .toolbar-group + .toolbar-group { border-left:1px solid var(--border); }
+      .toolbar-group-label { display:none; }
+      .toolbar-group-actions { display:flex; gap:4px; }
+      .page-toolbar .solid-btn { position:relative; display:grid; width:38px; min-width:38px; height:38px; min-height:38px; place-items:center; padding:0; color:var(--accent); background:var(--bg-dark); border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border)); border-radius:6px; font-size:0; line-height:1; white-space:nowrap; }
+      .page-toolbar .solid-btn:hover:not(:disabled) { background:var(--accent-soft); border-color:var(--accent); }
+      .page-toolbar .solid-btn:not(.danger-action):not(#finalizeAllButton):not(#transmitAllButton) { background:#12233b; }
+      .page-toolbar .solid-btn svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+      .page-toolbar .solid-btn#finalizeAllButton,.page-toolbar .solid-btn#transmitAllButton { color:var(--accent-ink); background:var(--accent); border-color:var(--accent); }
+      .page-toolbar .solid-btn.danger-action { color:var(--error); background:var(--bg-dark); border-color:color-mix(in srgb,var(--error) 55%,var(--border)); }
+      .page-toolbar .solid-btn:disabled { opacity:.4; cursor:not-allowed; }
+      button:focus-visible,.rail-link:focus-visible,.topnav a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+      .page-toolbar .solid-btn:focus-visible,.lookup-icon-button:focus-visible,.mode-switch input:focus-visible + span { outline:2px solid var(--accent); outline-offset:2px; }
+      .page-toolbar .solid-btn[data-tip]::after { position:absolute; top:calc(100% + 7px); left:50%; z-index:30; width:max-content; max-width:240px; padding:6px 9px; color:#172033; background:#f8fafc; border:1px solid #d5deea; border-radius:6px; box-shadow:0 5px 16px rgba(0,0,0,.24); content:attr(data-tip); font:600 10px/1.35 var(--font-ui); opacity:0; pointer-events:none; transform:translate(-50%,-3px); transition:opacity .12s ease,transform .12s ease; white-space:normal; }
+      .page-toolbar .solid-btn[data-tip]:hover::after,.page-toolbar .solid-btn[data-tip]:focus-visible::after { opacity:1; transform:translate(-50%,0); }
+      .toolbar-status { position:absolute; top:100%; left:12px; z-index:4; width:max-content; max-width:calc(100% - 24px); min-height:0; padding:5px 8px; background:var(--bg-dark); border-radius:6px; font-size:10px; }
+      .toolbar-status:empty { display:none; }
+      .claims-sort { flex:none; margin:0 0 0 auto; font-size:9px; white-space:nowrap; }
+      .claims-sort select { min-height:29px; font-size:9px; }
+      .summary { margin:0; padding:6px 13px; font-size:10px; }
+      .table-wrap { overflow:auto; border:0; border-radius:0; }
+      table { min-width:980px; font-size:10px; }
+      th { background:var(--bg-dark); font-size:9px; }
+      th,td { padding:9px 11px; }
+      tbody tr[data-claim-row]:hover { background:color-mix(in srgb,var(--accent) 5%,var(--bg-panel)); }
+      tbody tr[data-claim-row].selected { background:color-mix(in srgb,var(--accent) 11%,var(--bg-panel)); }
+      .status-legend { gap:8px 13px; margin:0; padding:10px 14px; border:0; border-top:1px solid var(--border); border-radius:0 0 12px 12px; font-size:9px; }
+      .legend-title { font-size:9px; letter-spacing:.5px; }
+      .status-dot { width:7px; height:7px; }
+      .status-draft { --status-color:#9aa7b8; }
+      .status-transmitting { --status-color:#a3e635; }
+      .status-transmitted { --status-color:#fb923c; }
+      .status-transmit-error { --status-color:#f87171; }
+      .status-complete { --status-color:#34d399; }
+      .status-on-queue { --status-color:#38bdf8; }
+      .transmittal-status { gap:5px; padding:3px 7px; font-size:9px; }
+      .claim-status { display:inline-flex; align-items:center; gap:5px; padding:3px 7px; color:var(--text-pri); background:var(--bg-dark); border:1px solid var(--border); border-radius:999px; white-space:nowrap; }
+      .claim-status .status-dot { width:6px; height:6px; }
+      .selection-checkbox { width:13px; height:13px; margin:0; accent-color:var(--accent2); vertical-align:middle; cursor:pointer; }
+      .selection-checkbox:disabled { cursor:not-allowed; opacity:.5; }
+      #claimsBody td:first-child { min-width:72px; white-space:nowrap; }
+      .claims-row-actions { display:inline-flex; align-items:center; gap:4px; margin-left:6px; }
+      .icon-btn { width:25px; min-height:25px; height:25px; border-radius:6px; }
+      .icon-btn svg { width:13px; height:13px; }
+      .cell-copy-btn { width:19px; min-height:19px; height:19px; }
+      .table-footer { display:flex; align-items:center; }
+      .table-footer .status-legend { flex:1; }
+      @media(max-width:950px) {
+        .lookup-toprow { align-items:flex-start; flex-direction:column; }
+        .date-warning { max-width:none; }
+        .lookup-fields { grid-template-columns:minmax(220px,1fr) repeat(2,minmax(120px,.5fr)) auto; }
+        .toolbar-batch-indicator { margin-right:2px; }
+        .page-toolbar { flex-wrap:wrap; }
+        .claims-sort { margin-left:auto; }
+      }
+      @media(max-width:700px) {
+        .workspace { padding:14px 12px 22px; }
+        .lookup-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .search-field { grid-column:1/-1; }
+        .lookup-fields > .field:nth-of-type(3),.lookup-fields > .field:nth-of-type(4) { min-width:0; }
+        .lookup-fields > button { width:100%; }
+        .page-toolbar { gap:4px; padding:8px; }
+        .toolbar-batch-indicator { order:0; }
+        .toolbar-group { padding:0 3px; }
+        .toolbar-group-actions { gap:3px; }
+        .claims-sort { width:100%; justify-content:flex-end; padding-top:4px; }
+        .status-legend { gap:8px 10px; }
+      }
+      @media(max-width:430px) {
+        .workspace { padding-right:8px; padding-left:8px; }
+        .lookup-card { padding:11px; }
+        .lookup-fields { gap:8px; }
+        .date-warning { font-size:9px; }
+        .toolbar-group { padding:0 2px; }
+        .toolbar-batch-indicator { padding:0 6px; font-size:8px; }
+      }
+      html[data-theme="light"] .mode-switch input:checked + span { color:#0f766e; }
+      html[data-theme="light"] .lookup-icon-button { color:#fff; background:#0f766e; }
+      html[data-theme="light"] .page-toolbar .solid-btn#finalizeAllButton,html[data-theme="light"] .page-toolbar .solid-btn#transmitAllButton { color:#fff; background:#0f766e; border-color:#0f766e; }
+      .field input::placeholder { color:var(--text-sec); opacity:.82; }
+      @media(prefers-reduced-motion:reduce) { .page-toolbar .solid-btn[data-tip]::after { transition:none; } }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <main class="workspace">
+         <div class="workspace-inner">
+          <p class="breadcrumb">Claims <span>/</span> Edit Claims</p>
+          <h1 class="page-title">Edit Claims</h1>
+          <p class="page-subtitle">Find claims in Beacon by transmittal number or patient name, then run batch actions on them.</p>
+          <section class="lookup-card" aria-label="Transmittal claims lookup">
+            <form id="lookupForm" class="lookup-form">
+              <div class="lookup-toprow">
+                <div class="mode-switch" role="group" aria-label="Search mode">
+                  <label><input type="radio" name="lookupMode" checked><span>Transmittal / Patient</span></label>
+                  <label><input type="radio" name="lookupMode"><span>Admission date range</span></label>
+                </div>
+                <div class="date-warning"><strong>ⓘ</strong> Date filtering can take 5–10 minutes or more. Use a transmittal number when you can.</div>
+              </div>
+              <div class="lookup-fields">
+                <div class="field search-field"><label for="transmittalInput">Transmittal number or patient name</label><div id="transmittalInput-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg><input id="transmittalInput" type="text" autocomplete="off" placeholder="Enter transmittals or a patient name"></div><span class="field-hint">Separate multiple transmittal numbers with spaces, or type a full or partial patient name.</span></div>
+                <div class="field"><label for="admissionFrom">Admission from</label><input id="admissionFrom" type="date" aria-label="Admission from"></div>
+                <div class="field"><label for="admissionTo">Admission to</label><input id="admissionTo" type="date" aria-label="Admission to"></div>
+                <button class="cyber-btn lookup-icon-button" id="lookupButton" type="submit" title="Search claims" aria-label="Search claims"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg>Search</button>
+              </div>
+              <p class="lookup-note">Date range is used only when the text field is empty.</p>
+            </form>
+          </section>
+          <section class="results-card" aria-label="Claims results">
+            <div class="page-toolbar" aria-label="Claim actions toolbar">
+              <span class="toolbar-batch-indicator"><span id="selectedCount">0</span>&nbsp;selected</span>
+              <section class="toolbar-group" aria-labelledby="toolbarWorkflowLabel"><h2 class="toolbar-group-label" id="toolbarWorkflowLabel">Finalize &amp; transmit</h2><div class="toolbar-group-actions">
+                <button class="solid-btn" id="finalizeAllButton" type="button" data-tip="Auto Finalize" aria-label="Auto Finalize" title="Auto Finalize" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.6 2.6L16.5 9"/></svg></button>
+                <button class="solid-btn" id="transmitAllButton" type="button" data-tip="Auto Transmit" aria-label="Auto Transmit" title="Auto Transmit" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+              </div></section>
+              <section class="toolbar-group" aria-labelledby="toolbarGenerateLabel"><h2 class="toolbar-group-label" id="toolbarGenerateLabel">Generate</h2><div class="toolbar-group-actions">
+                <button class="solid-btn" id="generateCf4AllButton" type="button" data-tip="Generate CF4" aria-label="Generate CF4" title="Generate CF4" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></svg></button>
+                <button class="solid-btn" id="generateSoaAllButton" type="button" data-tip="Generate SOA" aria-label="Generate SOA" title="Generate SOA" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5"/></svg></button>
+              </div></section>
+              <section class="toolbar-group" aria-labelledby="toolbarOtherLabel"><h2 class="toolbar-group-label" id="toolbarOtherLabel">Other actions</h2><div class="toolbar-group-actions">
+                <button class="solid-btn" id="copyTransmittalsButton" type="button" data-tip="Copy Transmittal" aria-label="Copy Transmittal" title="Copy Transmittal" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                <button class="solid-btn" id="changeArAllButton" type="button" data-tip="Update AR Staff Info" aria-label="Update AR Staff Info" title="Update AR Staff Info" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1M19 8v6M16 11h6"/></svg></button>
+              </div></section>
+              <section class="toolbar-group" aria-labelledby="toolbarRemoveLabel"><h2 class="toolbar-group-label" id="toolbarRemoveLabel">Remove data</h2><div class="toolbar-group-actions">
+                <button class="solid-btn danger-action" id="removeGeneratedSoaAllButton" type="button" data-tip="Remove Generated SOA" aria-label="Remove Generated SOA" title="Remove Generated SOA" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 15h7"/></svg></button>
+                <button class="solid-btn danger-action" id="removeSoaAllButton" type="button" data-tip="Remove SOA Charges" aria-label="Remove SOA Charges" title="Remove SOA Charges" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 8 8 8"/></svg></button>
+                <button class="solid-btn danger-action" id="deleteClaimsButton" type="button" data-tip="Delete Draft Claims" aria-label="Delete Draft Claims" title="Delete Draft Claims" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button>
+              </div></section>
+              <label class="claims-sort" for="claimsSort">Sort patients <select id="claimsSort" disabled><option value="">Default order</option><option value="surname-asc">Surname A–Z</option><option value="surname-desc">Surname Z–A</option></select></label>
+              <span class="toolbar-status" id="transmitAllStatus" aria-live="polite"></span>
+            </div>
+            <div class="summary" id="summary" hidden></div>
+            <div class="table-wrap">
+              <table aria-label="Claims in transmittal">
+                <thead><tr><th><input class="selection-checkbox" id="selectAllClaims" type="checkbox" aria-label="Select all claims" disabled></th><th>Transmittal</th><th>Claim series</th><th>Patient</th><th>Member</th><th>Admission</th><th>Discharge</th><th>Claim status</th><th>Transmittal status</th><th>Beacon message</th></tr></thead>
+                <tbody id="claimsBody"><tr><td class="message" colspan="10">Enter a transmittal number to view its claims.</td></tr></tbody>
+              </table>
+            </div>
+            <div class="table-footer">
+              <div class="status-legend" aria-label="Transmittal status legend">
+            <span class="legend-title">STATUS LEGEND</span>
+                <span class="legend-item status-draft"><i class="status-dot"></i>Draft</span>
+                <span class="legend-item status-transmitting"><i class="status-dot"></i>Transmitting</span>
+                <span class="legend-item status-transmitted"><i class="status-dot"></i>Transmitted</span>
+                <span class="legend-item status-transmit-error"><i class="status-dot"></i>Transmit error</span>
+                <span class="legend-item status-complete"><i class="status-dot"></i>Complete</span>
+                <span class="legend-item status-on-queue"><i class="status-dot"></i>On queue</span>
+              </div>
+            </div>
+          </section>
+         </div>
+      </main>
+    </div>
   <div class="editor-overlay" id="claimEditor" hidden>
     <section class="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
       <header class="editor-header"><div class="editor-heading"><span class="editor-eyebrow">CLAIM WORKSPACE</span><h2 id="editorTitle">Edit Draft Claim</h2><div class="editor-subtitle" id="editorSubtitle"></div></div><button class="cyber-btn editor-previous" id="editorPrevious" type="button">&#8592; PREVIOUS</button><button class="cyber-btn editor-next" id="editorNext" type="button">NEXT &#8594;</button><button class="cyber-btn editor-close" id="editorClose" type="button" aria-label="Close editor">CLOSE</button></header>

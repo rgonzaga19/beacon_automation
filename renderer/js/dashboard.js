@@ -349,7 +349,7 @@ const workspaceButtons = {
   uploadSoa: document.getElementById("btnUploadSoa"),
   uploadDocuments: document.getElementById("btnUploadDocuments"),
   cf4: document.getElementById("btnCf4"),
-  finalizeClaims: document.getElementById("btnFinalizeClaims"),
+  editClaims: document.getElementById("btnEditClaims"),
   soaExcelIndividual: document.getElementById("btnSoaIndividual"),
   soaExcelBatch: document.getElementById("btnSoaBatch"),
   autoRename: document.getElementById("btnAutoRename"),
@@ -364,7 +364,7 @@ const workspaceRoutes = {
   uploadSoa: "upload-soa.html",
   uploadDocuments: "upload-documents.html",
   cf4: "cf4.html",
-  finalizeClaims: "edit-claims.html",
+  editClaims: "edit-claims.html",
   soaExcel: "soa-excel.html",
   autoRename: "auto-rename.html",
   settings: "settings.html",
@@ -664,8 +664,8 @@ document.getElementById("btnUploadDocuments").addEventListener("click", () => {
 document.getElementById("btnCf4").addEventListener("click", () => {
   openWorkspace("cf4");
 });
-document.getElementById("btnFinalizeClaims").addEventListener("click", () => {
-  openWorkspace("finalizeClaims");
+document.getElementById("btnEditClaims").addEventListener("click", () => {
+  openWorkspace("editClaims");
 });
 document.getElementById("btnAutoRename").addEventListener("click", () => {
   openWorkspace("autoRename");
