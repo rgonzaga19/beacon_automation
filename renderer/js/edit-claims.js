@@ -914,7 +914,6 @@ async function runDeleteClaims() {
       });
     }
   });
-  button.textContent = "DELETING DRAFTS...";
   setToolbarLoading(button, true);
   try {
     for (let index = 0; index < rows.length; index += 1) {
@@ -985,7 +984,6 @@ async function runDeleteClaims() {
     );
   } finally {
     setToolbarLoading(button, false);
-    button.textContent = "DELETE DRAFT CLAIMS";
     unlockToolbar();
   }
 }
@@ -1067,7 +1065,6 @@ async function runGenerateCf4All() {
   document.getElementById("removeSoaAllButton").disabled = true;
   document.getElementById("removeGeneratedSoaAllButton").disabled = true;
   transmitAllButton.disabled = true;
-  button.textContent = "GENERATING CF4...";
   setToolbarLoading(button, true);
   try {
     for (let index = 0; index < rows.length; index += 1) {
@@ -1093,7 +1090,6 @@ async function runGenerateCf4All() {
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
-    button.textContent = "GENERATE CF4";
     document.getElementById("removeSoaAllButton").disabled = false;
     document.getElementById("removeGeneratedSoaAllButton").disabled = false;
     transmitAllButton.disabled = false;
@@ -1116,7 +1112,6 @@ async function runGenerateSoaAll() {
   document.getElementById("removeSoaAllButton").disabled = true;
   document.getElementById("removeGeneratedSoaAllButton").disabled = true;
   transmitAllButton.disabled = true;
-  button.textContent = "GENERATING SOA...";
   setToolbarLoading(button, true);
   try {
     for (let index = 0; index < rows.length; index += 1) {
@@ -1142,7 +1137,6 @@ async function runGenerateSoaAll() {
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
-    button.textContent = "GENERATE SOA";
     document.getElementById("removeSoaAllButton").disabled = false;
     document.getElementById("removeGeneratedSoaAllButton").disabled = false;
     transmitAllButton.disabled = false;
@@ -1230,7 +1224,6 @@ async function runRemoveGeneratedSoaAll() {
   let failed = 0;
   button.disabled = true;
   otherControls.forEach((control) => { control.disabled = true; });
-  button.textContent = "REMOVING GENERATED SOA...";
   setToolbarLoading(button, true);
   try {
     for (let index = 0; index < rows.length; index += 1) {
@@ -1255,7 +1248,6 @@ async function runRemoveGeneratedSoaAll() {
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
-    button.textContent = "REMOVE GENERATED SOA";
     otherControls.forEach((control) => { control.disabled = false; });
     unlockToolbar();
   }
@@ -1277,7 +1269,6 @@ async function runRemoveSoaAll() {
   cf4Button.disabled = true;
   document.getElementById("removeGeneratedSoaAllButton").disabled = true;
   transmitAllButton.disabled = true;
-  button.textContent = "REMOVING SOA...";
   setToolbarLoading(button, true);
   try {
     for (let index = 0; index < rows.length; index += 1) {
@@ -1302,7 +1293,6 @@ async function runRemoveSoaAll() {
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
-    button.textContent = "REMOVE SOA CHARGES";
     cf4Button.disabled = false;
     document.getElementById("removeGeneratedSoaAllButton").disabled = false;
     transmitAllButton.disabled = false;
@@ -1319,21 +1309,18 @@ async function runChangeArAll() {
 
   const button = document.getElementById("changeArAllButton");
   const unlockToolbar = lockClaimsToolbar(button);
-  button.textContent = "LOADING AR INFO...";
   setToolbarLoading(button, true);
   let saved;
   try {
     saved = await editorRequest("/api/cf2/account-receivable");
   } catch (error) {
     setToolbarLoading(button, false);
-    button.textContent = "UPDATE AR STAFF INFO";
     unlockToolbar();
     setTransmitAllStatus(error.message || "Could not load Account Receivable details.", true);
     return;
   }
   if (!saved.name && !saved.designation && !saved.number) {
     setToolbarLoading(button, false);
-    button.textContent = "UPDATE AR STAFF INFO";
     unlockToolbar();
     setTransmitAllStatus("Save Account Receivable details in CF2 first.", true);
     return;
@@ -1347,7 +1334,6 @@ async function runChangeArAll() {
     document.getElementById("removeGeneratedSoaAllButton"),
   ];
   controls.forEach((control) => { control.disabled = true; });
-  button.textContent = "CHANGING AR INFO...";
   setToolbarLoading(button, true);
   let updated = 0;
   let failed = 0;
@@ -1375,7 +1361,6 @@ async function runChangeArAll() {
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
-    button.textContent = "UPDATE AR STAFF INFO";
     controls.slice(1).forEach((control) => { control.disabled = false; });
     unlockToolbar();
   }
@@ -1425,7 +1410,6 @@ async function runTransmitAll() {
   document.getElementById("generateCf4AllButton").disabled = true;
   document.getElementById("removeSoaAllButton").disabled = true;
   document.getElementById("removeGeneratedSoaAllButton").disabled = true;
-  transmitAllButton.textContent = "TRANSMITTING...";
   setToolbarLoading(transmitAllButton, true);
   let transmitted = 0;
   let failed = 0;
@@ -1462,7 +1446,6 @@ async function runTransmitAll() {
     document.getElementById("generateCf4AllButton").disabled = false;
     document.getElementById("removeSoaAllButton").disabled = false;
     document.getElementById("removeGeneratedSoaAllButton").disabled = false;
-    transmitAllButton.textContent = "AUTO TRANSMIT";
     unlockToolbar();
   }
 }
@@ -1486,7 +1469,6 @@ async function runFinalizeAll() {
     document.getElementById("changeArAllButton"),
   ];
   controls.forEach((control) => { control.disabled = true; });
-  finalizeAllButton.textContent = "FINALIZING...";
   setToolbarLoading(finalizeAllButton, true);
   try {
     for (let index = 0; index < rows.length; index += 1) {
@@ -1516,7 +1498,6 @@ async function runFinalizeAll() {
   } finally {
     setToolbarLoading(finalizeAllButton, false);
     controls.forEach((control) => { control.disabled = false; });
-    finalizeAllButton.textContent = "AUTO FINALIZE";
     unlockToolbar();
   }
 }
