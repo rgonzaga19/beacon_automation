@@ -27,7 +27,6 @@
 .proof-rule { width:23px; height:1px; background:var(--accent); }
 
 .hero-product { position:relative; min-width:0; padding:18px 0 0 14px; animation:landing-rise .85s .16s both; }
-.hero-product::before { position:absolute; z-index:-1; inset:4% -4% 12% 1%; border:1px solid color-mix(in srgb,var(--accent) 11%,transparent); border-radius:20px; content:""; transform:rotate(2deg); }
 .product-window { position:relative; z-index:1; overflow:hidden; background:linear-gradient(145deg,rgba(20,33,52,.97),rgba(12,21,36,.99)); border:1px solid rgba(147,171,198,.19); border-radius:13px; box-shadow:0 36px 90px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.055) inset; }
 .product-topbar { display:flex; height:56px; align-items:center; gap:17px; padding:0 19px; background:rgba(255,255,255,.018); border-bottom:1px solid rgba(147,171,198,.12); }
 .product-brand { display:flex; align-items:center; gap:9px; color:#e7edf5; font-size:9px; font-weight:800; letter-spacing:1px; white-space:nowrap; }
