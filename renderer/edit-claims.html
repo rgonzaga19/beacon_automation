@@ -27,8 +27,8 @@
     .lookup-control-row > button { flex:none; }
     .lookup-icon-button { position:relative; display:grid; width:40px; height:38px; place-items:center; padding:0; }
     .lookup-icon-button svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-    .lookup-icon-button.is-loading svg { opacity:0; }
-    .lookup-icon-button.is-loading::after { position:absolute; width:17px; height:17px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; content:""; animation:lookup-spin .7s linear infinite; }
+    .lookup-icon-button.is-loading svg,.lookup-icon-button.is-loading .lookup-button-label { visibility:hidden; }
+    .lookup-icon-button.is-loading::after { position:absolute; top:50%; left:50%; box-sizing:border-box; width:17px; height:17px; margin:-8.5px 0 0 -8.5px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; content:""; animation:lookup-spin .7s linear infinite; }
     @keyframes lookup-spin { to { transform:rotate(360deg); } }
     @media(prefers-reduced-motion:reduce) { .lookup-icon-button.is-loading::after { animation:none; border-top-color:currentColor; } }
     .page-toolbar { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); align-items:stretch; gap:10px; margin:12px 0 16px; }
@@ -299,7 +299,7 @@
                 <div class="field search-field"><label for="transmittalInput">Transmittal number or patient name</label><div id="transmittalInput-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg><input id="transmittalInput" type="text" autocomplete="off" placeholder="Enter transmittals or a patient name"></div><span class="field-hint">Separate multiple transmittal numbers with spaces, or type a full or partial patient name.</span></div>
                 <div class="field"><label for="admissionFrom">Admission from</label><input id="admissionFrom" type="date" aria-label="Admission from"></div>
                 <div class="field"><label for="admissionTo">Admission to</label><input id="admissionTo" type="date" aria-label="Admission to"></div>
-                <button class="cyber-btn lookup-icon-button" id="lookupButton" type="submit" title="Search claims" aria-label="Search claims"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg>Search</button>
+                <button class="cyber-btn lookup-icon-button" id="lookupButton" type="submit" title="Search claims" aria-label="Search claims"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg><span class="lookup-button-label">Search</span></button>
               </div>
               <p class="lookup-note">Date range is used only when the text field is empty.</p>
             </form>
