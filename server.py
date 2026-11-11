@@ -40,6 +40,8 @@ from app.core.database import db
 import app.models  # noqa: F401 - imported so SQLAlchemy registers the tables
 from app.models import (
     AutomationRun,
+    BeaconClaimAnalyticsCache,
+    BeaconClaimAnalyticsSync,
     ClaimBillingSchedule,
     TeamChatMessage,
     UpgradeRequest,
@@ -86,8 +88,10 @@ UPLOAD_DIR = Path(
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__, static_folder=str(BASE_DIR / "renderer"), static_url_path="")
-_claim_analytics_cache = {}
-_claim_analytics_cache_lock = threading.Lock()
+_claim_analytics_progress = {}
+_claim_analytics_progress_lock = threading.Lock()
+_claim_analytics_jobs = {}
+_claim_analytics_jobs_lock = threading.Lock()
 app.config.from_object(AppConfig)
 app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("BEABOTS_MAX_UPLOAD_MB", "100")) * 1024 * 1024
 db.init_app(app)
@@ -565,6 +569,197 @@ def dashboard_metrics():
     })
 
 
+def _claim_analytics_progress_update(user_id, **values):
+    with _claim_analytics_progress_lock:
+        for entry in _claim_analytics_progress.values():
+            if entry.get("user_id") == user_id:
+                entry.update(values)
+
+
+def _sync_beacon_claim_analytics(user_id, beacon_settings, auth_key, date_from, date_to, force_refresh):
+    """Refresh compact per-claim fields in a background thread."""
+    transmittals_scanned = claims_scanned = failed_transmittals = 0
+    errors = []
+    failed_transmittal_ids = set()
+    try:
+        with app.app_context():
+            sync = db.session.get(BeaconClaimAnalyticsSync, user_id)
+            if sync is None:
+                sync = BeaconClaimAnalyticsSync(user_id=user_id)
+                db.session.add(sync)
+            retry_transmittal_ids = set(sync.failed_transmittal_ids or [])
+            sync.window_start, sync.window_end = date_from, date_to
+            sync.state, sync.last_attempt_at, sync.error_summary = "running", utc_now(), None
+            db.session.commit()
+            _claim_analytics_progress_update(user_id, current=0, total=0,
+                message="Loading the transmittal list from Beacon...", phase="transmittals", done=False)
+            with browser_session.use_auth_context(beacon_settings, key=auth_key):
+                browser_session.invalidate_auth_token()
+                transmittals = beacon_api.get_transmittals_in_range(date_from, date_to)
+                transmittals_scanned = len(transmittals)
+                _claim_analytics_progress_update(user_id, current=0, total=transmittals_scanned,
+                    message=f"Found {transmittals_scanned} transmittals. Refreshing claim details...", phase="claims")
+                for index, transmittal in enumerate(transmittals, start=1):
+                    transmittal_id = transmittal.get("id")
+                    transmittal_status = transmittal.get("transmittalStatusDescription")
+                    _claim_analytics_progress_update(user_id, current=index - 1, total=transmittals_scanned,
+                        message=f"Checking transmittal {index} of {transmittals_scanned}...", phase="claims")
+                    cached_transmittal_claims = BeaconClaimAnalyticsCache.query.filter_by(
+                        user_id=user_id, transmittal_id=str(transmittal_id)
+                    ).all() if transmittal_id is not None else []
+                    is_draft = str(transmittal_status or "").strip().casefold() == "draft"
+                    # Closed transmittals rarely change claim details. Reuse their
+                    # cached claims and refresh only the status exposed in Beacon's
+                    # transmittal list; manual Refresh still forces a complete scan.
+                    if cached_transmittal_claims and not is_draft and not force_refresh and str(transmittal_id) not in retry_transmittal_ids:
+                        for row in cached_transmittal_claims:
+                            row.transmittal_status = str(transmittal_status or "")[:80]
+                            row.updated_at = utc_now()
+                        if index % 10 == 0:
+                            db.session.commit()
+                        _claim_analytics_progress_update(user_id, current=index, total=transmittals_scanned,
+                            message=f"Reused cached claims for transmittal {index} of {transmittals_scanned}...", phase="claims")
+                        continue
+                    last_error = None
+                    claims = None
+                    auth_retried = False
+                    for attempt in range(3):
+                        try:
+                            if transmittal_id is None:
+                                raise ValueError("Beacon returned a transmittal without an ID.")
+                            claims = beacon_api.get_claims(transmittal_id, refresh=True)
+                            break
+                        except Exception as exc:
+                            last_error = exc
+                            if "(401)" in str(exc) and not auth_retried:
+                                auth_retried = True
+                                browser_session.invalidate_auth_token()
+                                continue
+                            transient = isinstance(exc, requests.RequestException) or any(
+                                code in str(exc) for code in ("(429)", "(500)", "(502)", "(503)", "(504)")
+                            )
+                            if transient and attempt < 2:
+                                time.sleep(0.5 * (attempt + 1))
+                                continue
+                            break
+                    if claims is None:
+                        failed_transmittals += 1
+                        if transmittal_id is not None:
+                            failed_transmittal_ids.add(str(transmittal_id))
+                        if len(errors) < 3:
+                            errors.append(str(last_error)[:150])
+                        logger.warning(f"Dashboard analytics skipped transmittal {transmittal_id}: {last_error}")
+                        _claim_analytics_progress_update(user_id, current=index, total=transmittals_scanned,
+                            message=f"Transmittal {index} of {transmittals_scanned} failed; continuing ({failed_transmittals} skipped)...", phase="claims")
+                        continue
+                    claims_scanned += len(claims)
+                    claim_ids = [str(c.get("id")) for c in claims if isinstance(c, dict) and c.get("id") is not None]
+                    existing = {}
+                    if claim_ids:
+                        existing = {row.claim_id: row for row in BeaconClaimAnalyticsCache.query.filter(
+                            BeaconClaimAnalyticsCache.user_id == user_id,
+                            BeaconClaimAnalyticsCache.claim_id.in_(claim_ids),
+                        ).all()}
+                    for claim in claims:
+                        if not isinstance(claim, dict) or claim.get("id") is None:
+                            continue
+                        claim_id = str(claim["id"])
+                        row = existing.get(claim_id)
+                        cf2 = claim.get("phiccF2") if isinstance(claim.get("phiccF2"), dict) else {}
+                        admission_value = cf2.get("admissionDateTime") or claim.get("admissionDateTime")
+                        admission = None
+                        if not admission_value and row is not None and row.admission_date is not None:
+                            admission = datetime.combine(row.admission_date, datetime.min.time())
+                        elif not admission_value:
+                            try:
+                                cf2 = cf2_api.get_cf2(claim_id) or {}
+                                admission_value = cf2.get("admissionDateTime")
+                            except Exception as exc:
+                                logger.warning(f"Dashboard analytics could not retrieve claim {claim_id} admission date: {exc}")
+                        if admission is None:
+                            try:
+                                admission = _beacon_local_datetime(admission_value)
+                            except (TypeError, ValueError):
+                                admission = None
+                        if row is None:
+                            row = BeaconClaimAnalyticsCache(user_id=user_id, claim_id=claim_id)
+                            db.session.add(row)
+                        row.transmittal_id = str(transmittal_id)
+                        row.admission_date = admission.date() if admission else None
+                        row.claim_status = str(claim.get("claimStatusDescription") or claim.get("status") or "")[:80]
+                        row.transmittal_status = str(transmittal_status or "")[:80]
+                        row.updated_at = utc_now()
+                    if index % 10 == 0:
+                        db.session.commit()
+                    _claim_analytics_progress_update(user_id, current=index, total=transmittals_scanned,
+                        message=f"Cached transmittal {index} of {transmittals_scanned} ({claims_scanned} claims checked; {failed_transmittals} skipped)...", phase="claims")
+                db.session.commit()
+            # Retain a 30-day buffer beyond the displayed 90-day analytics period.
+            db.session.query(BeaconClaimAnalyticsCache).filter(
+                BeaconClaimAnalyticsCache.user_id == user_id,
+                BeaconClaimAnalyticsCache.admission_date.isnot(None),
+                BeaconClaimAnalyticsCache.admission_date < date_from - timedelta(days=30),
+            ).delete(synchronize_session=False)
+            db.session.query(BeaconClaimAnalyticsCache).filter(
+                BeaconClaimAnalyticsCache.user_id == user_id,
+                BeaconClaimAnalyticsCache.admission_date.is_(None),
+                BeaconClaimAnalyticsCache.updated_at < utc_now() - timedelta(days=120),
+            ).delete(synchronize_session=False)
+            sync = db.session.get(BeaconClaimAnalyticsSync, user_id)
+            sync.transmittals_scanned, sync.claims_scanned = transmittals_scanned, claims_scanned
+            sync.failed_transmittals = failed_transmittals
+            sync.failed_transmittal_ids = sorted(failed_transmittal_ids)
+            sync.state = "partial" if failed_transmittals else "ready"
+            sync.error_summary = "; ".join(errors)[:500] or None
+            sync.last_completed_at = utc_now()
+            db.session.commit()
+            message = (f"Refresh finished with {failed_transmittals} failed transmittal(s); showing cached results."
+                       if failed_transmittals else f"Refresh complete: {claims_scanned} claims from {transmittals_scanned} transmittals.")
+            _claim_analytics_progress_update(user_id, done=True, error=bool(failed_transmittals),
+                current=transmittals_scanned, total=transmittals_scanned, message=message,
+                phase="partial" if failed_transmittals else "complete")
+    except Exception as exc:
+        logger.exception(f"Dashboard claim analytics refresh failed for user {user_id}: {exc}")
+        with app.app_context():
+            sync = db.session.get(BeaconClaimAnalyticsSync, user_id)
+            if sync is not None:
+                sync.state, sync.error_summary = "error", str(exc)[:500]
+                sync.transmittals_scanned, sync.claims_scanned = transmittals_scanned, claims_scanned
+                sync.failed_transmittals, sync.last_completed_at = failed_transmittals, utc_now()
+                sync.failed_transmittal_ids = sorted(failed_transmittal_ids)
+                db.session.commit()
+        _claim_analytics_progress_update(user_id, done=True, error=True,
+            message="Beacon refresh stopped; showing the latest cached analytics.", phase="error")
+    finally:
+        with _claim_analytics_jobs_lock:
+            _claim_analytics_jobs.pop(user_id, None)
+
+
+def _start_claim_analytics_refresh(user, date_from, date_to, force=False):
+    with _claim_analytics_jobs_lock:
+        if user.id in _claim_analytics_jobs:
+            return True
+        sync = db.session.get(BeaconClaimAnalyticsSync, user.id)
+        same_window = bool(sync and sync.window_start == date_from and sync.window_end == date_to)
+        attempted = sync.last_attempt_at if sync else None
+        if attempted and attempted.tzinfo is None:
+            attempted = attempted.replace(tzinfo=timezone.utc)
+        age = (utc_now() - attempted).total_seconds() if attempted else None
+        retry_after = (
+            0 if sync and sync.state == "running"
+            else 1800 if sync and sync.state in {"partial", "error"}
+            else 21600
+        )
+        if not force and same_window and age is not None and age < retry_after:
+            return False
+        beacon_settings, auth_key = _beacon_edit_settings(user)
+        _claim_analytics_jobs[user.id] = {"started_at": time.time()}
+        worker = threading.Thread(target=_sync_beacon_claim_analytics,
+            args=(user.id, beacon_settings, auth_key, date_from, date_to, force), daemon=True)
+        worker.start()
+        return True
+
+
 @app.route("/api/dashboard/claim-analytics", methods=["GET"])
 @login_required
 def dashboard_claim_analytics():
@@ -583,137 +778,100 @@ def dashboard_claim_analytics():
         return jsonify({"error": str(exc)}), 400
     user = current_user()
     try:
-        beacon_settings, auth_key = _beacon_edit_settings(user)
-        cache_key = (user.id, date_from.isoformat(), date_to.isoformat())
-        force_refresh = request.args.get("refresh") == "1"
-        with _claim_analytics_cache_lock:
-            now = time.time()
-            for key, entry in list(_claim_analytics_cache.items()):
-                if now - entry["cached_at"] > 300:
-                    _claim_analytics_cache.pop(key, None)
-            cached = _claim_analytics_cache.get(cache_key)
-
-        if not cached or force_refresh:
-            daily_counts = {}
-            missing_admission_dates = 0
-            transmittals_scanned = 0
-            claims_scanned = 0
-            with browser_session.use_auth_context(beacon_settings, key=auth_key):
-                browser_session.invalidate_auth_token()
-                transmittals = beacon_api.get_transmittals_in_range(date_from, date_to)
-                transmittals_scanned = len(transmittals)
-                seen_claims = set()
-                for transmittal in transmittals:
-                    transmittal_id = transmittal.get("id")
-                    if transmittal_id is None:
-                        logger.warning("Dashboard claim analytics skipped a transmittal without an ID.")
-                        continue
-                    transmittal_status = transmittal.get("transmittalStatusDescription")
-                    claims = beacon_api.get_claims(transmittal_id, refresh=True)
-                    claims_scanned += len(claims)
-                    for claim in claims:
-                        if not isinstance(claim, dict):
-                            continue
-                        claim_id = claim.get("id")
-                        if claim_id is not None:
-                            claim_key = str(claim_id)
-                            if claim_key in seen_claims:
-                                continue
-                            seen_claims.add(claim_key)
-
-                        cf2 = claim.get("phiccF2")
-                        cf2 = cf2 if isinstance(cf2, dict) else {}
-                        admission_value = cf2.get("admissionDateTime") or claim.get("admissionDateTime")
-                        if not admission_value and claim_id is not None:
-                            try:
-                                cf2 = cf2_api.get_cf2(claim_id) or {}
-                                admission_value = cf2.get("admissionDateTime")
-                            except Exception as exc:
-                                logger.warning(f"Dashboard analytics could not retrieve a claim admission date: {exc}")
-
-                        try:
-                            admission = _beacon_local_datetime(admission_value)
-                        except (TypeError, ValueError):
-                            admission = None
-                        if admission is None:
-                            missing_admission_dates += 1
-                            continue
-                        admission_day = admission.date()
-                        if not date_from <= admission_day <= date_to:
-                            continue
-                        category = classify_claim_status(
-                            claim.get("claimStatusDescription") or claim.get("status"),
-                            transmittal_status,
-                        )
-                        day_counts = daily_counts.setdefault(admission_day.isoformat(), {
-                            "draft": 0,
-                            "transmitted": 0,
-                            "other": 0,
-                        })
-                        day_counts[category] += 1
-
-            cached = {
-                "cached_at": time.time(),
-                "daily_counts": daily_counts,
-                "missing_admission_dates": missing_admission_dates,
-                "transmittals_scanned": transmittals_scanned,
-                "claims_scanned": claims_scanned,
-            }
-            with _claim_analytics_cache_lock:
-                _claim_analytics_cache[cache_key] = cached
-
+        running = user.id in _claim_analytics_jobs
+        sync = db.session.get(BeaconClaimAnalyticsSync, user.id)
+        rows = BeaconClaimAnalyticsCache.query.filter_by(user_id=user.id).all()
+        daily_counts, missing = {}, 0
+        for row in rows:
+            if row.admission_date is None:
+                missing += 1
+                continue
+            if not date_from <= row.admission_date <= date_to:
+                continue
+            category = classify_claim_status(row.claim_status, row.transmittal_status)
+            counts = daily_counts.setdefault(row.admission_date.isoformat(), {"draft": 0, "transmitted": 0, "other": 0})
+            counts[category] += 1
         schedules = {}
         cursor = date(date_from.year, date_from.month, 1)
         while cursor <= date_to:
-            month_key = cursor.strftime("%Y-%m")
-            schedule = db.session.get(ClaimBillingSchedule, month_key)
-            if schedule:
-                schedules[month_key] = schedule.weeks
-            elif month_key in {"2026-09", "2026-10", "2026-11"}:
-                schedules[month_key] = initial_billing_weeks(month_key)
-            else:
-                schedules[month_key] = default_billing_weeks(cursor)
-            if cursor.month == 12:
-                cursor = date(cursor.year + 1, 1, 1)
-            else:
-                cursor = date(cursor.year, cursor.month + 1, 1)
-
-        schedule = db.session.get(ClaimBillingSchedule, month_value)
-        if schedule:
-            schedule_source = "saved"
-            editor_weeks = schedule.weeks
+            key = cursor.strftime("%Y-%m")
+            saved = db.session.get(ClaimBillingSchedule, key)
+            schedules[key] = saved.weeks if saved else (initial_billing_weeks(key) if key in {"2026-09", "2026-10", "2026-11"} else default_billing_weeks(cursor))
+            cursor = date(cursor.year + (cursor.month == 12), 1 if cursor.month == 12 else cursor.month + 1, 1)
+        saved_schedule = db.session.get(ClaimBillingSchedule, month_value)
+        if saved_schedule:
+            schedule_source, editor_weeks = "saved", saved_schedule.weeks
         elif month_value in {"2026-09", "2026-10", "2026-11"}:
-            schedule_source = "sample"
-            editor_weeks = initial_billing_weeks(month_value)
+            schedule_source, editor_weeks = "sample", initial_billing_weeks(month_value)
         else:
-            schedule_source = "automatic"
-            editor_weeks = default_billing_weeks(month_start)
-
-        analytics = build_claim_analytics(
-            date_from,
-            date_to,
-            group,
-            [
-                (date.fromisoformat(day), counts)
-                for day, counts in cached["daily_counts"].items()
-            ],
-            schedules,
-            missing_admission_dates=cached["missing_admission_dates"],
-            filter_month=filter_month,
-        )
+            schedule_source, editor_weeks = "automatic", default_billing_weeks(month_start)
+        analytics = build_claim_analytics(date_from, date_to, group,
+            [(date.fromisoformat(day), counts) for day, counts in daily_counts.items()],
+            schedules, missing_admission_dates=missing, filter_month=filter_month)
+        completed_at = sync.last_completed_at if sync else None
+        if completed_at and completed_at.tzinfo is None:
+            completed_at = completed_at.replace(tzinfo=timezone.utc)
+        cache_age = max(0, int((utc_now() - completed_at).total_seconds())) if completed_at else None
         analytics.update({
-            "month": month_value,
-            "weeks": editor_weeks,
-            "estimated": schedule_source == "automatic",
+            "month": month_value, "weeks": editor_weeks, "estimated": schedule_source == "automatic",
             "schedule_source": schedule_source,
-            "transmittals_scanned": cached["transmittals_scanned"],
-            "claims_scanned": cached["claims_scanned"],
-            "cache_age_seconds": max(0, int(time.time() - cached["cached_at"])),
+            "transmittals_scanned": sync.transmittals_scanned if sync else 0,
+            "claims_scanned": sync.claims_scanned if sync else 0,
+            "cached_claims": len(rows),
+            "failed_transmittals": sync.failed_transmittals if sync else 0,
+            "cache_age_seconds": cache_age,
+            "sync_state": "running" if running else ("error" if sync and sync.state == "running" else (sync.state if sync else "empty")),
+            "sync_error": sync.error_summary if sync else None,
         })
         return jsonify(analytics)
     except Exception as exc:
-        logger.error(f"Dashboard claim analytics failed: {exc}")
+        logger.exception(f"Dashboard claim analytics failed: {exc}")
         return jsonify({"error": str(exc) or "Unable to load Beacon claim analytics."}), 502
+
+
+@app.route("/api/dashboard/claim-analytics/refresh", methods=["POST"])
+@login_required
+def start_dashboard_claim_analytics_refresh():
+    date_to = datetime.now(timezone(timedelta(hours=8))).date()
+    date_from = date_to - timedelta(days=89)
+    payload = request.get_json(silent=True) or {}
+    progress_id = str(payload.get("progress_id") or "").strip()
+    if not progress_id:
+        return jsonify({"error": "A refresh progress ID is required."}), 400
+    user = current_user()
+    with _claim_analytics_progress_lock:
+        now = time.time()
+        for key, entry in list(_claim_analytics_progress.items()):
+            if now - entry.get("started_at", now) > 3600:
+                _claim_analytics_progress.pop(key, None)
+        _claim_analytics_progress[progress_id] = {
+            "user_id": user.id, "started_at": now, "done": False,
+            "current": 0, "total": 0, "message": "Connecting to Beacon...", "phase": "starting",
+        }
+    try:
+        _start_claim_analytics_refresh(user, date_from, date_to, force=True)
+        return jsonify({"sync_state": "running", "progress_id": progress_id})
+    except Exception as exc:
+        logger.exception(f"Could not start dashboard claim analytics refresh: {exc}")
+        with _claim_analytics_progress_lock:
+            _claim_analytics_progress[progress_id].update({
+                "done": True, "error": True, "phase": "error",
+                "message": "Could not start a Beacon refresh. Check your Beacon settings and try again.",
+            })
+        return jsonify({"error": str(exc) or "Unable to start Beacon analytics refresh."}), 502
+
+
+@app.route("/api/dashboard/claim-analytics/progress/<progress_id>", methods=["GET"])
+@login_required
+def get_dashboard_claim_analytics_progress(progress_id):
+    with _claim_analytics_progress_lock:
+        progress = _claim_analytics_progress.get(progress_id)
+        if not progress or progress["user_id"] != current_user().id:
+            return jsonify({"error": "Analytics progress not found."}), 404
+        result = {key: value for key, value in progress.items() if key not in {"user_id", "started_at"}}
+    if current_user().id not in _claim_analytics_jobs and not result.get("done"):
+        result.update({"done": True, "current": 1, "total": 1, "message": "Analytics cache is ready.", "phase": "complete"})
+    return jsonify(result)
 
 
 @app.route("/api/dashboard/claim-billing-schedule", methods=["GET", "POST"])

@@ -95,6 +95,62 @@ function showModal(title, bodyText, { onOk } = {}) {
   });
 }
 
+function showConfirmModal(title, bodyText, {
+  confirmText = "Continue",
+  cancelText = "Cancel",
+  onConfirm,
+} = {}) {
+  const root = document.getElementById("modalRoot");
+  root.replaceChildren();
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const box = document.createElement("div");
+  box.className = "modal-box";
+  box.setAttribute("role", "dialog");
+  box.setAttribute("aria-modal", "true");
+  box.setAttribute("aria-labelledby", "confirmModalTitle");
+  box.setAttribute("aria-describedby", "confirmModalMessage");
+  const heading = document.createElement("h3");
+  heading.id = "confirmModalTitle";
+  heading.textContent = title;
+  const message = document.createElement("p");
+  message.id = "confirmModalMessage";
+  message.textContent = bodyText;
+  const actions = document.createElement("div");
+  actions.className = "modal-actions";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "cyber-btn";
+  cancel.textContent = cancelText;
+  const confirm = document.createElement("button");
+  confirm.type = "button";
+  confirm.className = "cyber-btn";
+  confirm.textContent = confirmText;
+  actions.append(cancel, confirm);
+  box.append(heading, message, actions);
+  overlay.append(box);
+  root.append(overlay);
+
+  const close = () => {
+    document.removeEventListener("keydown", onKeyDown);
+    root.replaceChildren();
+  };
+  const onKeyDown = (event) => {
+    if (event.key === "Escape") close();
+  };
+  cancel.addEventListener("click", close);
+  confirm.addEventListener("click", () => {
+    close();
+    if (onConfirm) onConfirm();
+  });
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  document.addEventListener("keydown", onKeyDown);
+  cancel.focus();
+}
+
 function showError(title, message, opts) {
   showModal(title, message, opts);
 }

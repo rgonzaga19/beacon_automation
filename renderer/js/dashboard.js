@@ -252,6 +252,7 @@ function showBillingWeeks(weeks, month, source) {
 
 function setClaimAnalyticsControlsDisabled(disabled) {
   document.getElementById("refreshClaimAnalytics").disabled = disabled;
+  document.getElementById("fetchClaimAnalyticsButton").disabled = disabled;
   document.getElementById("claimAnalyticsGroup").disabled = disabled;
   document.getElementById("claimAnalyticsFilterMonth").disabled = disabled;
   document.getElementById("billingScheduleMonth").disabled = disabled;
@@ -261,71 +262,199 @@ function setClaimAnalyticsControlsDisabled(disabled) {
 }
 
 let claimAnalyticsLoading = false;
-async function refreshClaimAnalytics(forceRefresh = false) {
-  if (claimAnalyticsLoading) return;
+let claimAnalyticsSyncing = false;
+let claimAnalyticsHasData = false;
+
+function renderClaimAnalytics(analytics, month, group, filterMonth) {
+  if (!Array.isArray(analytics.buckets) || !Array.isArray(analytics.weeks) || analytics.weeks.length < 1 || analytics.weeks.length > 6) {
+    throw new Error("The server returned an invalid analytics response. Restart the app server and reload the page.");
+  }
+  const filter = document.getElementById("claimAnalyticsFilterMonth");
+  const selectedFilter = filterMonth;
+  const months = [];
+  const cursor = new Date(`${analytics.date_from}T12:00:00`);
+  const last = new Date(`${analytics.date_to}T12:00:00`);
+  cursor.setDate(1);
+  while (cursor <= last) {
+    months.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  filter.innerHTML = '<option value="all">All last 90 days</option>' + months.map((value) => {
+    const label = new Intl.DateTimeFormat([], { month: "long", year: "numeric" }).format(new Date(`${value}-01T12:00:00`));
+    return `<option value="${escapeMetricText(value)}">${escapeMetricText(label)}</option>`;
+  }).join("");
+  filter.value = months.includes(selectedFilter) ? selectedFilter : "all";
+  showBillingWeeks(analytics.weeks, month, analytics.schedule_source || "automatic");
+  document.getElementById("claimAnalyticsBucketHeading").textContent = group === "month" ? "Month" : "Billing week";
+  document.getElementById("claimMetricDraft").textContent = String(Number(analytics.draft_claims) || 0);
+  document.getElementById("claimMetricTransmitted").textContent = String(Number(analytics.transmitted_claims) || 0);
+  document.getElementById("claimMetricOther").textContent = String(Number(analytics.other_claims) || 0);
+  document.getElementById("claimMetricTotal").textContent = String(Number(analytics.total_claims) || 0);
+  renderClaimAnalyticsChart(analytics.buckets || []);
+  const rows = [...(analytics.buckets || [])];
+  if (Number(analytics.unassigned?.total) > 0) rows.push(analytics.unassigned);
+  renderClaimAnalyticsTable(rows);
+
+  const missing = Number(analytics.missing_admission_dates) || 0;
+  const unassigned = Number(analytics.unassigned?.total) || 0;
+  const periodLabel = filterMonth === "all"
+    ? "Latest 90 days"
+    : new Intl.DateTimeFormat([], { month: "long", year: "numeric" }).format(new Date(`${filterMonth}-01T12:00:00`));
+  const notes = [`${periodLabel} | Counts are grouped by claim admission date.`];
+  if (unassigned) notes.push(`${unassigned} claim${unassigned === 1 ? "" : "s"} fall outside the configured ranges.`);
+  if (missing) notes.push(`${missing} candidate claim${missing === 1 ? "" : "s"} had no admission date, so could not be placed in the 90-day window.`);
+  notes.push(`Local cache contains ${Number(analytics.cached_claims) || 0} claims; the latest refresh checked ${Number(analytics.transmittals_scanned) || 0} transmittals and fetched ${Number(analytics.claims_scanned) || 0} claim records.`);
+  if (Number(analytics.failed_transmittals) > 0) notes.push(`${Number(analytics.failed_transmittals)} transmittal(s) failed; these results may be incomplete.`);
+  if (analytics.sync_state === "error") notes.push("Beacon refresh failed; showing the latest cached data. Use Refresh to try again.");
+  if (analytics.cache_age_seconds != null && Number.isFinite(Number(analytics.cache_age_seconds))) {
+    const ageMinutes = Math.floor(Number(analytics.cache_age_seconds) / 60);
+    notes.push(`Local data last refreshed ${ageMinutes < 1 ? "less than a minute" : `${ageMinutes} minute${ageMinutes === 1 ? "" : "s"}`} ago.`);
+  }
+  document.getElementById("claimAnalyticsCacheStatus").textContent = notes.join(" ");
+}
+
+function setClaimAnalyticsView(hasData) {
+  claimAnalyticsHasData = hasData;
+  document.getElementById("claimAnalyticsControls").hidden = !hasData;
+  document.getElementById("claimAnalyticsResults").hidden = !hasData;
+  document.getElementById("claimAnalyticsFetchPrompt").hidden = hasData || claimAnalyticsSyncing;
+  document.getElementById("refreshClaimAnalytics").hidden = !hasData;
+  document.getElementById("editBillingRangesButton").hidden = !hasData || !signedInIsAdmin;
+  document.getElementById("billingScheduleEditor").hidden = !hasData || !signedInIsAdmin;
+  document.getElementById("billingScheduleMonthControl").hidden = !signedInIsAdmin;
+}
+
+async function refreshClaimAnalytics() {
+  if (claimAnalyticsLoading || claimAnalyticsSyncing) return;
   claimAnalyticsLoading = true;
-  const month = document.getElementById("billingScheduleMonth").value;
-  const group = document.getElementById("claimAnalyticsGroup").value;
-  const filterMonth = document.getElementById("claimAnalyticsFilterMonth").value || "all";
-  const status = document.getElementById("claimAnalyticsStatus");
   setClaimAnalyticsControlsDisabled(true);
-  status.textContent = "Loading Beacon claims…";
   try {
+    const month = document.getElementById("billingScheduleMonth").value;
+    const group = document.getElementById("claimAnalyticsGroup").value;
+    const filterMonth = document.getElementById("claimAnalyticsFilterMonth").value || "all";
     const params = new URLSearchParams({ month, group, filter_month: filterMonth });
-    if (forceRefresh) params.set("refresh", "1");
     const analytics = await fetchJSON(`/api/dashboard/claim-analytics?${params}`);
     if (analytics.error) throw new Error(analytics.error);
-    if (!Array.isArray(analytics.buckets) || !Array.isArray(analytics.weeks) || analytics.weeks.length < 1 || analytics.weeks.length > 6) {
-      throw new Error("The server returned an invalid analytics response. Restart the app server and reload the page.");
+    const hasData = analytics.sync_state === "ready"
+      || analytics.sync_state === "partial"
+      || Number(analytics.cached_claims) > 0;
+    setClaimAnalyticsView(hasData);
+    if (hasData) {
+      renderClaimAnalytics(analytics, month, group, filterMonth);
+      if (analytics.sync_state === "running") {
+        document.getElementById("claimAnalyticsRefreshBanner").hidden = false;
+        document.getElementById("claimAnalyticsRefreshBanner").textContent = "A Beacon refresh is active in another dashboard tab. Your cached analytics remain available here.";
+      } else {
+        document.getElementById("claimAnalyticsRefreshBanner").hidden = true;
+      }
+    } else {
+      document.getElementById("claimAnalyticsRefreshBanner").hidden = true;
+      document.getElementById("claimAnalyticsFetchPromptMessage").textContent = analytics.sync_state === "error"
+        ? "The previous Beacon refresh did not finish. Start a new fetch when you are ready; it may take several minutes."
+        : "Choose when to download transmittal and claim details for the latest 90 days. The first fetch may take several minutes.";
     }
-    const filter = document.getElementById("claimAnalyticsFilterMonth");
-    const selectedFilter = filterMonth;
-    const months = [];
-    const cursor = new Date(`${analytics.date_from}T12:00:00`);
-    const last = new Date(`${analytics.date_to}T12:00:00`);
-    cursor.setDate(1);
-    while (cursor <= last) {
-      months.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
-      cursor.setMonth(cursor.getMonth() + 1);
-    }
-    filter.innerHTML = '<option value="all">All last 90 days</option>' + months.map((value) => {
-      const label = new Intl.DateTimeFormat([], { month: "long", year: "numeric" }).format(new Date(`${value}-01T12:00:00`));
-      return `<option value="${value}">${escapeMetricText(label)}</option>`;
-    }).join("");
-    filter.value = months.includes(selectedFilter) ? selectedFilter : "all";
-    showBillingWeeks(analytics.weeks, month, analytics.schedule_source || "automatic");
-    document.getElementById("claimAnalyticsBucketHeading").textContent = group === "month" ? "Month" : "Billing week";
-    document.getElementById("claimMetricDraft").textContent = String(Number(analytics.draft_claims) || 0);
-    document.getElementById("claimMetricTransmitted").textContent = String(Number(analytics.transmitted_claims) || 0);
-    document.getElementById("claimMetricOther").textContent = String(Number(analytics.other_claims) || 0);
-    document.getElementById("claimMetricTotal").textContent = String(Number(analytics.total_claims) || 0);
-    renderClaimAnalyticsChart(analytics.buckets || []);
-    const rows = [...(analytics.buckets || [])];
-    if (Number(analytics.unassigned?.total) > 0) rows.push(analytics.unassigned);
-    renderClaimAnalyticsTable(rows);
-    const missing = Number(analytics.missing_admission_dates) || 0;
-    const unassigned = Number(analytics.unassigned?.total) || 0;
-    const periodLabel = filterMonth === "all"
-      ? "Latest 90 days"
-      : new Intl.DateTimeFormat([], { month: "long", year: "numeric" }).format(new Date(`${filterMonth}-01T12:00:00`));
-    const notes = [`${periodLabel} · Counts are grouped by claim admission date.`];
-    if (unassigned) notes.push(`${unassigned} claim${unassigned === 1 ? "" : "s"} fall outside the configured ranges.`);
-    if (missing) notes.push(`${missing} candidate claim${missing === 1 ? "" : "s"} had no admission date, so could not be placed in the 90-day window.`);
-    notes.push(`Beacon checked ${Number(analytics.transmittals_scanned) || 0} transmittals and ${Number(analytics.claims_scanned) || 0} claims for admission dates from ${analytics.date_from} through ${analytics.date_to}.`);
-    status.textContent = notes.join(" ");
   } catch (error) {
-    const message = error && error.message ? error.message : "Unable to load Beacon claim analytics.";
-    status.textContent = `Claim analytics could not be loaded: ${message}`;
-    document.getElementById("billingScheduleStatus").textContent = message;
-    document.getElementById("claimAnalyticsTableBody").innerHTML = `<tr><td class="analytics-empty" colspan="5">${escapeMetricText(message)}</td></tr>`;
+    const message = error && error.message ? error.message : "Unable to load cached claim analytics.";
+    document.getElementById("claimAnalyticsFetchPromptMessage").textContent = `Local analytics could not be loaded: ${message}`;
+    setClaimAnalyticsView(false);
   } finally {
     claimAnalyticsLoading = false;
     setClaimAnalyticsControlsDisabled(false);
   }
 }
 
+function setAnalyticsDownloadProgress(progress) {
+  const track = document.getElementById("analyticsDownloadTrack");
+  const fill = document.getElementById("analyticsDownloadFill");
+  const percent = document.getElementById("analyticsProgressPercent");
+  const counts = document.getElementById("analyticsProgressCounts");
+  const status = document.getElementById("claimAnalyticsStatus");
+  const title = document.getElementById("claimAnalyticsLoadingTitle");
+  if (progress.message) status.textContent = progress.message;
+  if (Number(progress.total) > 0) {
+    const current = Math.min(Number(progress.current) || 0, Number(progress.total));
+    const value = Math.round((current / Number(progress.total)) * 100);
+    track.classList.remove("is-indeterminate");
+    track.setAttribute("aria-valuenow", String(value));
+    fill.style.width = `${value}%`;
+    percent.textContent = `${value}%`;
+    counts.textContent = `Transmittal ${current.toLocaleString()} of ${Number(progress.total).toLocaleString()}`;
+  } else {
+    track.classList.add("is-indeterminate");
+    track.removeAttribute("aria-valuenow");
+    fill.style.width = "34%";
+    percent.textContent = "...";
+    counts.textContent = "Connecting to Beacon and loading the transmittal list";
+  }
+  title.textContent = progress.phase === "transmittals"
+    ? "Loading Beacon transmittals"
+    : progress.phase === "claims"
+      ? "Fetching claim details"
+      : progress.phase === "error"
+        ? "Refresh stopped"
+        : "Refreshing Beacon analytics";
+}
+
+async function startClaimAnalyticsRefresh() {
+  if (claimAnalyticsLoading || claimAnalyticsSyncing) return;
+  claimAnalyticsLoading = true;
+  claimAnalyticsSyncing = true;
+  const progressId = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const loadingPanel = document.getElementById("claimAnalyticsLoadingPanel");
+  const fetchPrompt = document.getElementById("claimAnalyticsFetchPrompt");
+  const status = document.getElementById("claimAnalyticsStatus");
+  loadingPanel.hidden = false;
+  fetchPrompt.hidden = true;
+  document.getElementById("claimAnalyticsResults").hidden = !claimAnalyticsHasData;
+  setAnalyticsDownloadProgress({ phase: "starting", current: 0, total: 0, message: "Connecting to Beacon..." });
+  setClaimAnalyticsControlsDisabled(true);
+  try {
+    const result = await fetchJSON("/api/dashboard/claim-analytics/refresh", {
+      method: "POST",
+      body: JSON.stringify({ progress_id: progressId }),
+    });
+    if (result.error) throw new Error(result.error);
+    claimAnalyticsLoading = false;
+    while (claimAnalyticsSyncing) {
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      const progress = await fetchJSON(`/api/dashboard/claim-analytics/progress/${encodeURIComponent(progressId)}`);
+      setAnalyticsDownloadProgress(progress);
+      if (!progress.done) continue;
+      claimAnalyticsSyncing = false;
+      break;
+    }
+    loadingPanel.hidden = true;
+    claimAnalyticsLoading = false;
+    setClaimAnalyticsControlsDisabled(false);
+    await refreshClaimAnalytics();
+  } catch (error) {
+    claimAnalyticsLoading = false;
+    claimAnalyticsSyncing = false;
+    loadingPanel.hidden = true;
+    setClaimAnalyticsControlsDisabled(false);
+    const message = error && error.message ? error.message : "Unable to start Beacon analytics refresh.";
+    if (claimAnalyticsHasData) {
+      const banner = document.getElementById("claimAnalyticsRefreshBanner");
+      banner.hidden = false;
+      banner.textContent = `Beacon refresh could not be completed: ${message}`;
+    } else {
+      fetchPrompt.hidden = false;
+      document.getElementById("claimAnalyticsFetchPromptMessage").textContent = `Beacon fetch could not be completed: ${message}`;
+    }
+    status.textContent = message;
+  }
+}
+
+function confirmClaimAnalyticsRefresh() {
+  showConfirmModal(
+    "Fetch Beacon claims analytics",
+    "This will fetch transmittal and claim data from Beacon for the latest 90 days and refresh the local analytics cache. It may take several minutes. You can keep using the dashboard while it runs.",
+    { confirmText: "Fetch from Beacon", cancelText: "Cancel", onConfirm: startClaimAnalyticsRefresh },
+  );
+}
+
 async function saveClaimBillingSchedule() {
-  if (claimAnalyticsLoading) return;
+  if (claimAnalyticsLoading || claimAnalyticsSyncing) return;
   const month = document.getElementById("billingScheduleMonth").value;
   const status = document.getElementById("billingScheduleStatus");
   let saved = false;
@@ -343,19 +472,26 @@ async function saveClaimBillingSchedule() {
     }
     showBillingWeeks(result.weeks, month, "saved");
     status.textContent = "Billing periods saved for the workspace.";
+    document.getElementById("billingScheduleModal").close();
     saved = true;
   } catch (error) {
     const message = error && error.message ? error.message : "Unable to save billing periods.";
     status.textContent = `Billing periods could not be saved: ${message}`;
   } finally {
     claimAnalyticsLoading = false;
-    setClaimAnalyticsControlsDisabled(false);
+    setClaimAnalyticsControlsDisabled(claimAnalyticsSyncing);
   }
   if (saved) refreshClaimAnalytics();
 }
 
 document.getElementById("billingScheduleMonth").value = currentPhilippineMonth();
-document.getElementById("refreshClaimAnalytics").addEventListener("click", () => refreshClaimAnalytics(true));
+const billingScheduleModal = document.getElementById("billingScheduleModal");
+document.getElementById("editBillingRangesButton").addEventListener("click", () => {
+  if (!billingScheduleModal.open) billingScheduleModal.showModal();
+});
+document.getElementById("closeBillingScheduleModal").addEventListener("click", () => billingScheduleModal.close());
+document.getElementById("fetchClaimAnalyticsButton").addEventListener("click", confirmClaimAnalyticsRefresh);
+document.getElementById("refreshClaimAnalytics").addEventListener("click", confirmClaimAnalyticsRefresh);
 document.getElementById("claimAnalyticsGroup").addEventListener("change", () => refreshClaimAnalytics());
 document.getElementById("claimAnalyticsFilterMonth").addEventListener("change", () => refreshClaimAnalytics());
 document.getElementById("billingScheduleMonth").addEventListener("change", () => refreshClaimAnalytics());
@@ -547,7 +683,6 @@ function playDashboardEntrance() {
 window.beabots?.onDashboardEnter(playDashboardEntrance);
 
 const workspaceButtons = {
-  dashboard: document.getElementById("btnDashboard"),
   cf2: document.getElementById("btnCf2"),
   runAll: document.getElementById("btnRunAll"),
   uploadSoa: document.getElementById("btnUploadSoa"),
@@ -658,10 +793,6 @@ document.getElementById("siteHome").addEventListener("click", () => {
   setTopNavigation("siteHome");
   showWorkspaceHome();
 });
-document.getElementById("btnDashboard").addEventListener("click", () => {
-  setTopNavigation("siteHome");
-  showWorkspaceHome();
-});
 document.getElementById("siteBrand").addEventListener("click", (event) => {
   event.preventDefault();
   document.getElementById("siteHome").click();
@@ -759,8 +890,9 @@ async function loadSignedInProfile() {
     }
     const user = result.user || {};
     signedInIsAdmin = Boolean(user.is_admin);
-    document.getElementById("billingScheduleEditor").hidden = !signedInIsAdmin;
+    document.getElementById("billingScheduleEditor").hidden = !signedInIsAdmin || !claimAnalyticsHasData;
     document.getElementById("billingScheduleMonthControl").hidden = !signedInIsAdmin;
+    document.getElementById("editBillingRangesButton").hidden = !signedInIsAdmin || !claimAnalyticsHasData;
     chatReadStateKey = `beabots-chat-read:v1:${user.id}`;
     await refreshChatUnread();
     document.getElementById("siteUsers").hidden = !signedInIsAdmin;

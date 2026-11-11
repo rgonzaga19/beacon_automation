@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import Index
+from sqlalchemy import Index, UniqueConstraint
 
 from app.core.database import db
 
@@ -76,6 +76,44 @@ class ClaimBillingSchedule(db.Model):
         default=utc_now,
         onupdate=utc_now,
     )
+
+
+class BeaconClaimAnalyticsCache(db.Model):
+    """Small, refreshable snapshot of Beacon fields used by dashboard analytics."""
+
+    __tablename__ = "beacon_claim_analytics_cache"
+    __table_args__ = (
+        UniqueConstraint("user_id", "claim_id", name="uq_beacon_claim_analytics_user_claim"),
+        Index("ix_beacon_claim_analytics_user_admission", "user_id", "admission_date"),
+        Index("ix_beacon_claim_analytics_user_transmittal", "user_id", "transmittal_id"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    claim_id = db.Column(db.String(80), nullable=False)
+    transmittal_id = db.Column(db.String(80), nullable=False)
+    admission_date = db.Column(db.Date, nullable=True)
+    claim_status = db.Column(db.String(80), nullable=True)
+    transmittal_status = db.Column(db.String(80), nullable=True)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class BeaconClaimAnalyticsSync(db.Model):
+    """Refresh state for a user's compact Beacon analytics cache."""
+
+    __tablename__ = "beacon_claim_analytics_sync"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    window_start = db.Column(db.Date, nullable=True)
+    window_end = db.Column(db.Date, nullable=True)
+    state = db.Column(db.String(20), nullable=False, default="idle")
+    last_attempt_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    last_completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    transmittals_scanned = db.Column(db.Integer, nullable=False, default=0)
+    claims_scanned = db.Column(db.Integer, nullable=False, default=0)
+    failed_transmittals = db.Column(db.Integer, nullable=False, default=0)
+    failed_transmittal_ids = db.Column(db.JSON, nullable=False, default=list)
+    error_summary = db.Column(db.String(500), nullable=True)
 
 
 class UpgradeRequest(db.Model):

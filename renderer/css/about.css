@@ -17,7 +17,7 @@ html[data-theme="light"] .about-page { --ink-accent: #08766f; }
 .about-window { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; background: var(--bg-dark); }
 
 /* ---------- Header (shared look, page-specific tweaks) ---------- */
-.about-site-header { z-index: 5; display: flex; flex: 0 0 72px; align-items: center; gap: 24px; padding: 0 clamp(20px,4vw,56px); background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+.about-site-header { z-index: 5; display: flex; flex: 0 0 64px; align-items: center; gap: 24px; padding: 0 clamp(20px,4vw,56px); background: var(--bg-panel); border-bottom: 1px solid var(--border); }
 .about-brand { display: flex; align-items: center; gap: 10px; color: var(--text-pri); font-size: 14px; font-weight: 850; letter-spacing: .5px; text-decoration: none; white-space: nowrap; }
 .about-brand img { width: 30px; height: 30px; object-fit: contain; }
 .about-nav { display: flex; align-items: center; gap: 4px; margin-left: auto; }

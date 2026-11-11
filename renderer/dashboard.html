@@ -9,7 +9,7 @@
 <style>
   .dashboard-layout { position:relative; flex:1; display:flex; min-width:0; min-height:0; }
   .mobile-menu-trigger { display:none; width:40px; min-width:40px; height:40px; min-height:40px; align-items:center; justify-content:center; padding:0; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font-size:18px; line-height:1; cursor:pointer; }
-  .site-header { height:72px; flex:0 0 72px; display:flex; align-items:center; gap:34px; padding:0 clamp(20px,4vw,56px); background:var(--bg-panel); border-bottom:1px solid var(--border); }
+  .site-header { height:64px; flex:0 0 64px; display:flex; align-items:center; gap:34px; padding:0 clamp(20px,4vw,56px); background:var(--bg-panel); border-bottom:1px solid var(--border); }
   .site-header.agreement-blocked { opacity:.55; }
   .site-brand { display:flex; align-items:center; gap:10px; color:var(--text-pri); font-weight:800; letter-spacing:.7px; text-decoration:none; }
   .site-brand img { width:30px; height:30px; object-fit:contain; }
@@ -45,21 +45,24 @@
   .account-chat-unread { width:8px; height:8px; flex:0 0 8px; background:#dc3545; border-radius:50%; }
   .account-chat-unread[hidden] { display:none; }
   .dashboard-layout:not(.claims-mode) .sidebar-column { display:none; }
-  .sidebar-column { width:240px; flex:0 0 240px; display:flex; flex-direction:column; min-height:0; background:var(--bg-panel); border-right:1px solid var(--border); transition:width 180ms ease,flex-basis 180ms ease; }
+  .sidebar-column { width:224px; flex:0 0 224px; display:flex; flex-direction:column; min-height:0; background:var(--bg-panel); border-right:1px solid var(--border); transition:width 180ms ease,flex-basis 180ms ease; }
   .sidebar-column.collapsed { width:68px; flex-basis:68px; }
-  .sidebar-topbar { height:56px; flex:0 0 56px; display:flex; align-items:center; justify-content:center; padding:6px; overflow:hidden; }
+  .sidebar-topbar { height:48px; flex:0 0 48px; display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:8px; padding:0 12px 0 16px; overflow:hidden; background:linear-gradient(100deg,color-mix(in srgb,var(--accent) 9%,var(--bg-panel)),var(--bg-panel) 78%); }
+  .sidebar-topbar-title { position:relative; min-width:0; overflow:hidden; padding-left:12px; color:var(--text-pri); font-size:12px; font-weight:800; letter-spacing:.01em; text-overflow:ellipsis; white-space:nowrap; }
+  .sidebar-topbar-title::before { position:absolute; top:50%; left:0; width:4px; height:16px; content:""; background:var(--accent); border-radius:999px; transform:translateY(-50%); box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent); }
   .content-column { position:relative; flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; }
-  .menu-toggle { width:44px; height:44px; flex:0 0 44px; display:flex; align-items:center; justify-content:center; padding:0 13px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:var(--radius-md); cursor:pointer; transition:color 140ms ease,background 140ms ease,border-color 140ms ease; }
+  .menu-toggle { width:32px; height:32px; flex:0 0 32px; display:flex; align-items:center; justify-content:center; padding:0; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:var(--radius-md); cursor:pointer; transition:color 140ms ease,background 140ms ease,border-color 140ms ease; }
   .menu-toggle:hover { color:var(--text-pri); background:var(--accent-soft); border-color:var(--border); }
   .menu-toggle .side-icon { width:20px; min-width:20px; height:20px; display:grid; place-items:center; color:var(--accent); font-size:17px; line-height:1; }
-  .sidebar { flex:1; display:flex; flex-direction:column; min-height:0; padding:14px 10px; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; background:var(--bg-panel); }
+  .sidebar { flex:1; display:flex; flex-direction:column; min-height:0; padding:8px 10px 14px; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; background:var(--bg-panel); }
   .menu-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-md); }
   .sidebar-nav { flex:0 0 auto; display:flex; flex-direction:column; gap:7px; }
   .sidebar-group { display:flex; flex-direction:column; gap:4px; }
   .sidebar-group-toggle { justify-content:flex-start; }
-  .sidebar-group-toggle .group-chevron { margin-left:auto; color:var(--text-sec); font-size:12px; transition:transform 140ms ease; }
-  .sidebar-group-toggle[aria-expanded="true"] .group-chevron { transform:rotate(90deg); }
-  .sidebar-subnav { display:flex; flex-direction:column; gap:6px; padding:8px; margin-left:0; background:color-mix(in srgb,var(--bg-card) 92%,var(--bg-panel)); border:1px solid var(--border); border-radius:var(--radius-md); }
+  .sidebar-group-toggle .group-chevron { margin-left:auto; width:16px; color:var(--text-sec); font-size:16px; line-height:1; text-align:center; }
+  .sidebar-group-toggle .group-chevron::before { content:"+"; }
+  .sidebar-group-toggle[aria-expanded="true"] .group-chevron::before { content:"−"; }
+  .sidebar-subnav { display:flex; flex-direction:column; gap:6px; padding:8px 18px; margin:0 -10px; background:color-mix(in srgb,var(--bg-card) 92%,var(--bg-panel)); border:1px solid var(--border); border-right:0; border-left:0; border-radius:0; }
   .sidebar-subnav[hidden] { display:none; }
   .sidebar-subnav .side-link { height:38px; padding-left:12px; font-size:10px; background:transparent; border-color:transparent; }
   .sidebar-subnav .side-link:hover { background:var(--accent-soft); border-color:var(--border); }
@@ -67,8 +70,10 @@
   .sidebar-subnav .side-icon svg { width:17px; height:17px; overflow:visible; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
   .sidebar-column.collapsed .sidebar-group-toggle .group-chevron { display:none; }
   .sidebar-column.collapsed .sidebar-subnav { display:none; }
+  .sidebar-column.collapsed .sidebar-topbar { justify-content:center; padding:0; }
+  .sidebar-column.collapsed .sidebar-topbar-title { display:none; }
   @media(min-width:761px) {
-    .sidebar-subnav { margin-left:0; padding:8px; border-left:1px solid var(--border); }
+    .sidebar-subnav { margin-right:-10px; margin-left:-10px; padding:8px 18px; border-right:0; border-left:0; }
     .sidebar-subnav .side-link { padding-left:14px; }
   }
   .sidebar-footer { margin-top:auto; padding:15px 2px 4px; }
@@ -201,14 +206,26 @@
   .dashboard-columns[data-layout="operations"] .operations-column .metrics-charts { grid-template-columns:minmax(0,1.45fr) minmax(250px,.8fr); }
   .analytics-heading { align-items:center; }
   .analytics-controls { display:flex; align-items:center; gap:8px; }
+  .analytics-controls[hidden],.claim-analytics-fetch-prompt[hidden],.claim-analytics-loading[hidden],.claim-analytics-results[hidden] { display:none; }
   .billing-schedule-month-control { display:inline-flex; align-items:center; gap:8px; }
   .analytics-controls label { color:var(--text-sec); font-size:10px; font-weight:700; }
   .analytics-controls input,.analytics-controls select { min-height:34px; padding:6px 9px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:600 10px var(--font-ui); }
   .analytics-controls input:focus-visible,.analytics-controls select:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .analytics-controls button:disabled,.analytics-controls input:disabled,.analytics-controls select:disabled { opacity:.65; cursor:wait; }
   .billing-schedule-editor { margin:2px 0 16px; padding:13px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
+  .billing-schedule-modal { width:min(760px,calc(100vw - 28px)); max-width:none; max-height:calc(100vh - 28px); padding:0; overflow:auto; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg); }
+  .billing-schedule-modal::backdrop { background:rgba(3,8,18,.72); backdrop-filter:blur(3px); }
+  .billing-schedule-modal[open] { margin:auto; }
+  .billing-schedule-modal .billing-schedule-editor { margin:0; padding:20px; background:transparent; border:0; }
   .billing-schedule-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:5px; }
+  .billing-schedule-heading-main { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
   .billing-schedule-heading h3 { margin:0; color:var(--text-pri); font-size:12px; }
+  .billing-schedule-month-control { display:inline-flex; align-items:center; gap:8px; }
+  .billing-schedule-month-control label { color:var(--text-sec); font-size:10px; font-weight:700; }
+  .billing-schedule-month-control input { min-height:34px; padding:6px 9px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:600 10px var(--font-ui); }
+  .billing-schedule-modal-close { width:34px; min-width:34px; padding:6px !important; font-size:16px !important; line-height:1; }
+  .billing-schedule-modal-close svg,.analytics-settings-icon svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; vertical-align:middle; }
+  .analytics-settings-icon { width:36px; min-width:36px; padding:6px !important; }
   .billing-schedule-badge { padding:4px 8px; color:var(--accent); background:var(--accent-soft); border-radius:999px; font-size:9px; font-weight:800; text-transform:uppercase; }
   .billing-schedule-help { margin:0 0 10px !important; color:var(--text-sec) !important; font-size:10px !important; }
   .billing-schedule-table-wrap { overflow-x:auto; }
@@ -251,6 +268,24 @@
   .claim-analytics-table td { color:var(--text-pri); }
   .claim-analytics-table tbody tr:last-child td { border-bottom:0; }
   .claim-analytics-table .analytics-empty { padding:18px; color:var(--text-sec); text-align:center; }
+  .claim-analytics-status { min-height:15px; margin:10px 0 0 !important; color:var(--text-sec) !important; font-size:10px !important; }
+  .claim-analytics-fetch-prompt,.claim-analytics-loading { margin:14px 0 4px; padding:36px 20px; text-align:center; background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 9%,var(--bg-card)),var(--bg-card) 56%); border:1px solid color-mix(in srgb,var(--accent) 22%,var(--border)); border-radius:var(--radius-lg); }
+  .claim-fetch-icon { display:grid; width:52px; height:52px; place-items:center; margin:0 auto 14px; color:var(--accent); background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 30%,transparent); border-radius:17px; }
+  .claim-fetch-icon svg { width:25px; height:25px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .claim-analytics-fetch-prompt h3,.claim-analytics-loading h3 { margin:0 0 7px; color:var(--text-pri); font-size:15px; }
+  .claim-analytics-fetch-prompt p,.claim-analytics-loading p { max-width:560px; margin:0 auto 17px; color:var(--text-sec); font-size:11px; line-height:1.6; }
+  .home-card .claim-analytics-fetch-prompt p,.home-card .claim-analytics-loading p { width:min(560px,100%); margin:0 auto 17px; text-align:center; }
+  .claim-fetch-button { min-height:38px; padding:8px 16px; color:var(--bg-dark); background:var(--accent); border:0; border-radius:999px; font:750 11px var(--font-ui); cursor:pointer; box-shadow:0 5px 18px color-mix(in srgb,var(--accent) 22%,transparent); }
+  .claim-fetch-button:hover { filter:brightness(1.06); transform:translateY(-1px); }
+  .claim-fetch-button:disabled { opacity:.6; cursor:wait; }
+  .analytics-download-track { position:relative; width:min(520px,100%); height:76px; margin:0 auto 19px; overflow:hidden; background:color-mix(in srgb,var(--border) 55%,var(--bg-dark)); border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border)); border-radius:999px; box-shadow:inset 0 3px 12px rgba(0,0,0,.2); }
+  .analytics-download-fill { position:absolute; inset:0 auto 0 0; width:0; background:linear-gradient(100deg,#13b8ae,#30dfc5 58%,#7cf5dc); border-radius:inherit; transition:width .45s cubic-bezier(.2,.75,.3,1); box-shadow:0 0 24px color-mix(in srgb,var(--accent) 45%,transparent); }
+  .analytics-download-track.is-indeterminate .analytics-download-fill { width:34%; animation:analytics-download-sweep 1.7s ease-in-out infinite alternate; }
+  @keyframes analytics-download-sweep { from { transform:translateX(-12%); } to { transform:translateX(205%); } }
+  .analytics-download-content { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:12px; color:#06242b; font-size:17px; font-weight:850; text-shadow:0 1px rgba(255,255,255,.18); }
+  .analytics-download-content svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .analytics-progress-counts { display:block; margin-top:8px; color:var(--text-sec); font-size:10px; }
+  .analytics-refresh-banner { margin:10px 0 14px !important; font-size:10px !important; }
   .claim-analytics-status { min-height:15px; margin:10px 0 0 !important; color:var(--text-sec) !important; font-size:10px !important; }
   .metrics-refresh:disabled { opacity:.6; cursor:wait; }
   .home-primary-stack,.home-aside-stack { display:grid; align-content:start; gap:16px; min-width:0; }
@@ -355,7 +390,7 @@
     .dashboard-layout.claims-mode .sidebar-column.collapsed { width:min(90vw,320px); flex-basis:min(90vw,320px); }
     .sidebar-nav .side-link { height:auto; min-height:44px; padding-top:8px; padding-bottom:8px; white-space:normal; }
     .sidebar-nav .side-link .side-label { min-width:0; line-height:1.25; }
-    .sidebar-subnav { margin-left:0; padding:8px; background:color-mix(in srgb,var(--bg-card) 92%,var(--bg-panel)); border-left:1px solid var(--border); }
+    .sidebar-subnav { margin-right:-10px; margin-left:-10px; padding:8px 18px; background:color-mix(in srgb,var(--bg-card) 92%,var(--bg-panel)); border-right:0; border-left:0; }
     .sidebar-subnav .side-link { padding-left:14px; background:transparent; }
     .sidebar-column .sidebar-topbar { display:none; }
     .sidebar-backdrop:not([hidden]) { position:absolute; z-index:20; inset:0; display:block; width:100%; height:100%; padding:0; background:rgba(0,0,0,.48); border:0; }
@@ -402,30 +437,31 @@
     <div class="dashboard-layout">
       <div class="sidebar-column" id="dashboardSidebar">
         <div class="sidebar-topbar">
+          <span class="sidebar-topbar-title">Tools &amp; Navigation</span>
           <button class="menu-toggle" id="btnSidebarToggle" type="button" title="Collapse sidebar" aria-label="Collapse sidebar" aria-controls="dashboardSidebar" aria-expanded="true"><span class="side-icon" aria-hidden="true">&lsaquo;</span></button>
-        </div>        <aside class="sidebar" aria-label="Main navigation">
+        </div>
+        <aside class="sidebar" aria-label="Main navigation">
           <nav class="sidebar-nav">
-            <button class="side-link" id="btnDashboard" type="button" title="Dashboard"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 9.25 10 3.5l7 5.75v7.25h-5v-4.75H8v4.75H3z"/></svg></span><span class="side-label">Dashboard</span></button>
             <section class="sidebar-group">
-              <button class="side-link sidebar-group-toggle" type="button" data-sidebar-group="soa" aria-expanded="false" aria-controls="soaSubnav" title="SOA Excel"><span class="side-icon" aria-hidden="true">▦</span><span class="side-label">SOA Excel</span><span class="group-chevron" aria-hidden="true">›</span></button>
+              <button class="side-link sidebar-group-toggle" type="button" data-sidebar-group="soa" aria-expanded="false" aria-controls="soaSubnav" title="SOA Excel"><span class="side-icon" aria-hidden="true">▦</span><span class="side-label">SOA Excel</span><span class="group-chevron" aria-hidden="true"></span></button>
               <div class="sidebar-subnav" id="soaSubnav" hidden>
                 <button class="side-link" id="btnSoaIndividual" type="button" title="Individual"><span class="side-icon" aria-hidden="true">&#9679;</span><span class="side-label">Individual</span></button>
                 <button class="side-link" id="btnSoaBatch" type="button" title="Batch Generate"><span class="side-icon" aria-hidden="true">&#8801;</span><span class="side-label">Batch Generate</span></button>
               </div>
             </section>
             <section class="sidebar-group">
-              <button class="side-link sidebar-group-toggle" type="button" data-sidebar-group="automation" aria-expanded="false" aria-controls="automationSubnav" title="Automation"><span class="side-icon" aria-hidden="true">⟳</span><span class="side-label">Automation</span><span class="group-chevron" aria-hidden="true">›</span></button>
+              <button class="side-link sidebar-group-toggle" type="button" data-sidebar-group="automation" aria-expanded="false" aria-controls="automationSubnav" title="Automation"><span class="side-icon" aria-hidden="true">⟳</span><span class="side-label">Automation</span><span class="group-chevron" aria-hidden="true"></span></button>
               <div class="sidebar-subnav" id="automationSubnav" hidden>
                 <button class="side-link" id="btnCf2" type="button" title="Claim Form 2"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M5 2.75h6l4 4v10.5H5z"/><path d="M11 2.75v4h4M7.5 10h5M7.5 13h5"/></svg></span><span class="side-label">Claim Form 2</span></button>
                 <button class="side-link" id="btnUploadSoa" type="button" title="Upload SOA"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 12V3.5M6.5 7 10 3.5 13.5 7M4 11.5v4.75h12v-4.75"/></svg></span><span class="side-label">Upload SOA</span></button>
                 <button class="side-link" id="btnCf4" type="button" title="Claim Form 4"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M5 2.75h6l4 4v10.5H5z"/><path d="M11 2.75v4h4M7.25 10.25l1.5 1.5 2.75-2.75M7.5 14.25h5"/></svg></span><span class="side-label">Claim Form 4</span></button>
-                <button class="side-link" id="btnUploadDocuments" type="button" title="Upload PhilHealth docs"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6.5 5.5h8v11h-8zM4 14.5h-1v-12h8v2"/><path d="M8.5 9h4M8.5 12h4"/></svg></span><span class="side-label">Upload PhilHealth docs</span></button>
+                <button class="side-link" id="btnUploadDocuments" type="button" title="Upload documents"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6.5 5.5h8v11h-8zM4 14.5h-1v-12h8v2"/><path d="M8.5 9h4M8.5 12h4"/></svg></span><span class="side-label">Upload documents</span></button>
               </div>
             </section>
             <button class="side-link" id="btnEditClaims" type="button" title="Edit Claims"><span class="side-icon" aria-hidden="true">&#10003;</span><span class="side-label">Edit Claims</span></button>
             <button class="side-link" id="btnRunAll" type="button" title="Run the full CF2, SOA, and CF4 workflow"><span class="side-icon" aria-hidden="true">&#9654;</span><span class="side-label">Run Full Workflow</span></button>
             <section class="sidebar-group">
-              <button class="side-link sidebar-group-toggle" type="button" data-sidebar-group="tools" aria-expanded="false" aria-controls="toolsSubnav" title="Other Tools"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M12.8 3.1a4.1 4.1 0 0 0-5.2 5.2L3 12.9a2.2 2.2 0 0 0 3.1 3.1l4.6-4.6a4.1 4.1 0 0 0 5.2-5.2l-2.5 2.5-2.6-2.6z"/><path d="m4.9 14.1.9.9"/></svg></span><span class="side-label">Other Tools</span><span class="group-chevron" aria-hidden="true">›</span></button>
+              <button class="side-link sidebar-group-toggle" type="button" data-sidebar-group="tools" aria-expanded="false" aria-controls="toolsSubnav" title="Other Tools"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M12.8 3.1a4.1 4.1 0 0 0-5.2 5.2L3 12.9a2.2 2.2 0 0 0 3.1 3.1l4.6-4.6a4.1 4.1 0 0 0 5.2-5.2l-2.5 2.5-2.6-2.6z"/><path d="m4.9 14.1.9.9"/></svg></span><span class="side-label">Other Tools</span><span class="group-chevron" aria-hidden="true"></span></button>
               <div class="sidebar-subnav" id="toolsSubnav" hidden>
                 <button class="side-link" id="btnAutoRename" type="button" title="PDF Auto Rename"><span class="side-icon" aria-hidden="true">&#9998;</span><span class="side-label">PDF Auto Rename</span></button>
                 <a class="side-link external-link" href="https://rgonzaga19.github.io/pdfsplitter/" target="_blank" rel="noopener noreferrer" title="PDF Splitter"><span class="side-icon" aria-hidden="true">&#9986;</span><span class="side-label">PDF Splitter</span><span class="external-link-indicator" aria-hidden="true">&#8599;</span></a>
@@ -461,20 +497,30 @@
                 <div class="home-card claims-analytics-card">
                   <div class="home-card-heading analytics-heading">
                     <div><h2>Beacon claims analytics</h2><p>Draft and transmitted claims admitted during the latest 90 days.</p></div>
-                    <div class="analytics-controls">
+                    <div class="analytics-controls" id="claimAnalyticsControls" hidden>
                       <label for="claimAnalyticsGroup">Group</label>
                       <select id="claimAnalyticsGroup"><option value="month">Month</option><option value="week">Billing week</option></select>
                       <label for="claimAnalyticsFilterMonth">Filter</label>
                       <select id="claimAnalyticsFilterMonth"><option value="all">All last 90 days</option></select>
-                      <span class="billing-schedule-month-control" id="billingScheduleMonthControl">
-                        <label for="billingScheduleMonth">Edit ranges for</label>
-                        <input id="billingScheduleMonth" type="month">
-                      </span>
                       <button class="metrics-refresh" id="refreshClaimAnalytics" type="button">Refresh</button>
+                      <button class="metrics-refresh analytics-settings-icon" id="editBillingRangesButton" type="button" aria-label="Edit billing week date ranges" title="Edit billing week date ranges" hidden>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="m19.4 15 .1.1a1.7 1.7 0 0 1-2.4 2.4l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a1.7 1.7 0 0 1-3.4 0v-.2a1.7 1.7 0 0 0-2.9-1.2l-.1.1a1.7 1.7 0 1 1-2.4-2.4l.1-.1A1.7 1.7 0 0 0 4.2 12H4a1.7 1.7 0 0 1 0-3.4h.2a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a1.7 1.7 0 1 1 2.4-2.4l.1.1A1.7 1.7 0 0 0 10.7 2H11a1.7 1.7 0 0 1 3.4 0v.2a1.7 1.7 0 0 0 2.9 1.2l.1-.1a1.7 1.7 0 1 1 2.4 2.4l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a1.7 1.7 0 0 1 0 3.4h-.2a1.7 1.7 0 0 0-1.2 2.9Z"></path></svg>
+                      </button>
                     </div>
                   </div>
-                  <section class="billing-schedule-editor" id="billingScheduleEditor" aria-labelledby="billingScheduleTitle" hidden>
-                    <div class="billing-schedule-heading"><h3 id="billingScheduleTitle">Billing week date ranges</h3><span class="billing-schedule-badge" id="billingScheduleBadge">Estimated</span></div>
+                  <dialog class="billing-schedule-modal" id="billingScheduleModal" aria-labelledby="billingScheduleTitle">
+                    <section class="billing-schedule-editor" id="billingScheduleEditor" aria-labelledby="billingScheduleTitle" hidden>
+                    <div class="billing-schedule-heading">
+                      <div class="billing-schedule-heading-main">
+                        <h3 id="billingScheduleTitle">Billing week date ranges</h3>
+                        <span class="billing-schedule-badge" id="billingScheduleBadge">Estimated</span>
+                        <span class="billing-schedule-month-control" id="billingScheduleMonthControl">
+                          <label for="billingScheduleMonth">Edit ranges for</label>
+                          <input id="billingScheduleMonth" type="month">
+                        </span>
+                      </div>
+                      <button class="metrics-refresh billing-schedule-modal-close" id="closeBillingScheduleModal" type="button" aria-label="Close billing ranges" title="Close">×</button>
+                    </div>
                     <p class="billing-schedule-help">Automatic periods run Monday through Saturday. Edit dates or add/remove ranges; gaps remain unassigned.</p>
                     <div class="billing-schedule-table-wrap">
                       <table class="billing-schedule-table" aria-label="Editable billing week date ranges">
@@ -483,7 +529,25 @@
                       </table>
                     </div>
                     <div class="billing-schedule-actions"><span id="billingScheduleStatus" role="status">Loading billing periods…</span><div><button id="addBillingWeek" type="button">Add range</button> <button id="saveBillingSchedule" type="button">Save billing periods</button></div></div>
-                  </section>
+                    </section>
+                  </dialog>
+                  <div class="claim-analytics-fetch-prompt" id="claimAnalyticsFetchPrompt" hidden>
+                    <span class="claim-fetch-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M4 19v2h16v-2"></path></svg></span>
+                    <h3>Fetch your Beacon claim analytics</h3>
+                    <p id="claimAnalyticsFetchPromptMessage">Choose when to download transmittal and claim details for the latest 90 days. The first fetch may take several minutes.</p>
+                    <button class="claim-fetch-button" id="fetchClaimAnalyticsButton" type="button">Fetch Beacon data</button>
+                  </div>
+                  <div class="claim-analytics-loading" id="claimAnalyticsLoadingPanel" aria-live="polite" hidden>
+                    <div class="analytics-download-track is-indeterminate" id="analyticsDownloadTrack" role="progressbar" aria-label="Beacon claims download progress" aria-valuemin="0" aria-valuemax="100">
+                      <div class="analytics-download-fill" id="analyticsDownloadFill"></div>
+                      <div class="analytics-download-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M4 19v2h16v-2"></path></svg><strong id="analyticsProgressPercent">…</strong></div>
+                    </div>
+                    <h3 id="claimAnalyticsLoadingTitle">Connecting to Beacon</h3>
+                    <p id="claimAnalyticsStatus" role="status">Preparing your analytics refresh…</p>
+                    <span class="analytics-progress-counts" id="analyticsProgressCounts"></span>
+                  </div>
+                  <div class="claim-analytics-results" id="claimAnalyticsResults" hidden>
+                  <p class="claim-analytics-status analytics-refresh-banner" id="claimAnalyticsRefreshBanner" hidden></p>
                   <div class="claim-metric-grid" aria-live="polite">
                     <article class="claim-metric"><span>Draft claims</span><strong id="claimMetricDraft">—</strong></article>
                     <article class="claim-metric"><span>Transmitted claims</span><strong id="claimMetricTransmitted">—</strong></article>
@@ -502,7 +566,8 @@
                       <tbody id="claimAnalyticsTableBody"><tr><td colspan="5" class="analytics-empty">Loading Beacon claims…</td></tr></tbody>
                     </table>
                   </div>
-                  <p class="claim-analytics-status" id="claimAnalyticsStatus" role="status" aria-live="polite">Loading Beacon claims…</p>
+                  <p class="claim-analytics-status" id="claimAnalyticsCacheStatus" role="status" aria-live="polite"></p>
+                  </div>
                 </div>
               </section>
               <section class="dashboard-column operations-column" id="operationsColumn" aria-label="Operations overview">
