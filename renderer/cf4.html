@@ -200,6 +200,28 @@
     flex: 1;
     overflow: hidden;
   }
+  #userGuide { overflow-y: auto; align-items: center; justify-content: center; padding: 28px 24px; }
+  .guide-wrap { width: min(100%, 960px); margin: auto; }
+  .guide-hero { position: relative; overflow: hidden; margin-bottom: 18px; padding: 22px 26px; background: linear-gradient(115deg, color-mix(in srgb, var(--accent) 17%, var(--bg-panel)), var(--bg-panel) 65%); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 16px; }
+  .guide-hero::after { content: "✦"; position: absolute; top: -30px; right: 24px; color: color-mix(in srgb, var(--accent) 24%, transparent); font-size: 120px; line-height: 1; }
+  .guide-kicker { display: block; margin-bottom: 6px; color: var(--accent); font-size: 9px; font-weight: 850; letter-spacing: 1.6px; text-transform: uppercase; }
+  .guide-hero h1 { position: relative; z-index: 1; margin: 0 0 6px; color: var(--text-pri); font-size: 21px; }
+  .guide-intro { position: relative; z-index: 1; max-width: 600px; margin: 0; color: var(--text-sec); font-size: 12px; }
+  .guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+  .guide-card { position: relative; min-height: 145px; padding: 19px 19px 17px 62px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 13px; box-shadow: 0 7px 20px color-mix(in srgb, #000 12%, transparent); transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+  .guide-card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); box-shadow: 0 12px 26px color-mix(in srgb, #000 20%, transparent); }
+  .guide-card::before { position: absolute; top: 17px; left: 17px; display: grid; width: 31px; height: 31px; place-items: center; color: var(--bg-dark); background: var(--accent); border-radius: 10px; font-size: 11px; font-weight: 900; box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 28%, transparent); }
+  .guide-card:nth-child(1)::before { content: "01"; }
+  .guide-card:nth-child(2)::before { content: "02"; }
+  .guide-card:nth-child(3)::before { content: "03"; }
+  .guide-card:nth-child(4)::before { content: "✓"; }
+  .guide-card h2 { margin: 0 0 9px; color: var(--text-pri); font-size: 13px; }
+  .guide-card p, .guide-card li { color: var(--text-sec); font-size: 11px; line-height: 1.65; }
+  .guide-card p { margin: 0; }
+  .guide-card ol, .guide-card ul { display: grid; gap: 5px; margin: 0; padding-left: 16px; }
+  .guide-card strong { color: var(--text-pri); }
+  .guide-card:last-child { background: linear-gradient(115deg, color-mix(in srgb, var(--accent) 10%, var(--bg-panel)), var(--bg-panel)); border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
+  @media (max-width: 700px) { .guide-grid { grid-template-columns: 1fr; } #userGuide { align-items: flex-start; padding: 16px; } .guide-card { min-height: 0; } .guide-hero { padding: 19px; } }
 
   /* Automation section specific styles */
   #automation .form-body {
@@ -504,6 +526,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="automation">▶ Automation</button>
       <button class="tab-btn" data-tab="settings">⚙ Settings</button>
+      <button class="tab-btn" data-tab="userGuide">User Guide</button>
     </div>
 
     <!-- AUTOMATION TAB -->
@@ -591,6 +614,48 @@
       <div class="push-right">
         <button class="cyber-btn" id="btnCancel">Cancel</button>
         <button class="solid-btn" id="btnSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- USER GUIDE TAB -->
+  <div id="userGuide" class="tab-content">
+    <div class="guide-wrap">
+      <header class="guide-hero">
+        <span class="guide-kicker">CF4 workflow · Quick guide</span>
+        <h1>From transmittal to verified claim</h1>
+        <p class="guide-intro">A simple walkthrough for running automation, setting CF4 defaults, and checking the result in Beacon.</p>
+      </header>
+      <div class="guide-grid">
+      <section class="guide-card">
+        <h2>Run CF4 automation</h2>
+        <ol>
+          <li>In <strong>Automation</strong>, enter one Beacon transmittal number per line. Blank lines are ignored.</li>
+          <li>Choose <strong>Include Auto Encode CF4</strong> if you want Beabots to fill CF4 fields using your saved defaults.</li>
+          <li>Select <strong>START AUTOMATION</strong> and let the workflow finish. Keep the app open while it runs.</li>
+          <li>Review the <strong>Summary Report</strong> for each transmittal and the <strong>Automation Log</strong> for processing details or errors.</li>
+        </ol>
+      </section>
+      <section class="guide-card">
+        <h2>Configure CF4 defaults</h2>
+        <ol>
+          <li>Open <strong>Settings</strong> to edit the text and selections used when Auto Encode CF4 is enabled.</li>
+          <li>Set admission details, pertinent symptoms, general survey, physical examination findings, and course in the ward to match your workflow.</li>
+          <li>Select <strong>Save</strong> to keep your changes. Use <strong>Reset to Defaults</strong> to restore the original values.</li>
+        </ol>
+      </section>
+      <section class="guide-card">
+        <h2>Before you start</h2>
+        <ul>
+          <li>Sign in to Beacon and make sure the transmittal numbers are correct.</li>
+          <li>Review your saved defaults before enabling Auto Encode CF4.</li>
+          <li>Run a manageable set of transmittals and check the report before continuing with more.</li>
+        </ul>
+      </section>
+      <section class="guide-card">
+        <h2>Review in Beacon</h2>
+        <p>Automation results can require attention. Open the related claim in Beacon and verify the patient, transmittal, CF4 content, and any D.M. mapping before submitting. Correct missing or inaccurate information in Beacon.</p>
+      </section>
       </div>
     </div>
   </div>

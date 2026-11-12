@@ -159,13 +159,6 @@ function renderClaims() {
       }
       renderClaims();
     }));
-    row.querySelector('input[type="date"]').addEventListener("click", (event) => {
-      try {
-        event.currentTarget.showPicker?.();
-      } catch (error) {
-        event.currentTarget.focus();
-      }
-    });
   });
 
   document.getElementById("applyDateToAll").disabled = !claimState[0]?.renderDate;

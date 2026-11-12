@@ -146,7 +146,7 @@
     padding-left: 3px;
   }
   .soa-guide-list li::marker { color: var(--accent); font-weight: 800; }
-  .soa-guide-list li:nth-child(9) {
+  .soa-guide-list li:nth-child(10) {
     color: var(--error);
     font-weight: 800;
   }
@@ -440,15 +440,16 @@
           <h3 id="userGuideTitle">SOA File Naming Guide <button class="guide-modal-close" id="closeUserGuide" type="button" aria-label="Close user guide">&times;</button></h3>
           <div class="soa-guide" aria-label="SOA file naming guide">
       <ol class="soa-guide-list">
-        <li>Create the patient SOA</li>
-        <li>Name the file with the surname first, followed by the patient's first name: <strong>ABAO ALLEN</strong></li>
-        <li>A surname-only filename is accepted when it identifies one patient: <strong>ABAO</strong></li>
+        <li>First, create the patient SOA in SOA EXCEL GENERATOR</li>
+        <li>Name the file with the surname, <strong>GONZAGA</strong> or followed by the patient's first name: <strong>GONZAGA ROMEL</strong></li>
+        <li>A surname-only filename is accepted when it identifies one patient: <strong>GONZAGA</strong></li>
         <li>For two-word surnames, keep one space between the surname words: <strong>DEL ROSARIO JUAN</strong></li>
         <li>For matching surnames, an initial can distinguish patients when the initials differ: <strong>ABAO A</strong> or <strong>ABAO B</strong></li>
         <li>If patients share both surname and first initial, use the full first name: <strong>ABAO ARWIN</strong> and <strong>ABAO ALLEN</strong></li>
         <li>Add a treatment date or day to help distinguish matching surnames: <strong>ABAO AUG 13-15</strong> or <strong>ABAO 15</strong></li>
         <li>Do not include suffixes such as <strong>Jr.</strong>, <strong>Sr.</strong>, <strong>II</strong>, or <strong>III</strong></li>
-        <li>Upload accuracy depends on the SOA Excel filename</li>
+        <li>Locate and upload the files here. then input the transmittal numbers</li>
+        <li>The accuracy of your upload relies on the SOA Excel filename. Beabots use this filename to match each uploaded file with its corresponding transmittal number (derived from Beacon CF2 data).</li>
       </ol>
           </div>
         </section>
