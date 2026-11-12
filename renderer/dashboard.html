@@ -30,6 +30,7 @@
   .site-account { position:relative; }
   .account-trigger { display:flex; align-items:center; gap:9px; padding:7px 11px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:999px; cursor:pointer; }
   .account-avatar { display:grid; width:28px; height:28px; place-items:center; color:var(--bg-dark); background:var(--accent); border-radius:50%; font-size:12px; font-weight:800; }
+  .account-avatar img { display:block; width:100%; height:100%; border-radius:inherit; object-fit:cover; }
   .account-avatar-wrap { position:relative; display:inline-flex; }
   .chat-unread-indicator { position:absolute; top:-4px; right:-6px; display:grid; min-width:16px; height:16px; padding:0 3px; place-items:center; color:#fff; background:#dc3545; border:2px solid var(--bg-card); border-radius:999px; font:700 9px/1 var(--font-ui); }
   .chat-unread-indicator[hidden] { display:none; }
@@ -408,10 +409,9 @@
         <button id="siteHome" type="button">Home</button><button id="siteClaims" type="button">Claims</button><button id="siteAbout" type="button">About</button><button id="siteContact" type="button">Contact</button>
       </nav>
       <div class="site-account">
-        <button class="account-trigger" id="accountTrigger" type="button" aria-expanded="false"><span class="account-avatar-wrap"><span class="account-avatar" id="accountAvatar">B</span><span class="chat-unread-indicator" id="chatUnreadIndicator" hidden></span></span><span id="accountName">Account</span><span aria-hidden="true">⌄</span></button>
+        <button class="account-trigger" id="accountTrigger" type="button" aria-expanded="false"><span class="account-avatar-wrap"><span class="account-avatar" id="accountAvatar"><img src="assets/avatar/avatar-penguin.svg" alt=""></span><span class="chat-unread-indicator" id="chatUnreadIndicator" hidden></span></span><span id="accountName">Account</span><span aria-hidden="true">⌄</span></button>
         <div class="account-menu" id="accountMenu" hidden>
           <div class="account-menu-group" aria-label="Account settings">
-            <button id="editProfileButton" type="button">Profile</button>
             <button id="accountSettings" type="button">Settings</button>
             <button id="siteUsers" type="button" hidden>User Management</button>
           </div>

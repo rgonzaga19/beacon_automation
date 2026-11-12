@@ -12,6 +12,14 @@ const attachmentThumbnail = document.getElementById("attachmentThumbnail");
 const attachmentName = document.getElementById("attachmentName");
 const removeAttachment = document.getElementById("removeAttachment");
 const messageApi = "/api/team/messages";
+const chatAvatars = {
+  "avatar-bunny": "avatar-bunny.svg",
+  "avatar-cat": "avatar-cat.svg",
+  "avatar-dog": "avatar-dog.svg",
+  "avatar-fox": "avatar-fox.svg",
+  "avatar-panda": "avatar-panda.svg",
+  "avatar-penguin": "avatar-penguin.svg",
+};
 let newestMessageId = 0;
 let hasLoadedHistory = false;
 let polling = false;
@@ -34,12 +42,16 @@ function appendMessage(message, currentUserId) {
   item.className = `message${currentUserId === message.sender_id ? " own" : ""}`;
   const meta = document.createElement("div");
   meta.className = "message-meta";
+  const avatar = document.createElement("img");
+  avatar.className = "message-avatar";
+  avatar.src = `assets/avatar/${chatAvatars[message.sender_avatar] || chatAvatars["avatar-penguin"]}`;
+  avatar.alt = "";
   const sender = document.createElement("strong");
   sender.textContent = message.sender_name || "Team member";
   const time = document.createElement("time");
   time.dateTime = message.created_at || "";
   time.textContent = messageTime(message.created_at);
-  meta.append(sender, time);
+  meta.append(avatar, sender, time);
   item.append(meta);
   if (message.body) {
     const body = document.createElement("div");

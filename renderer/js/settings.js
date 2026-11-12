@@ -7,8 +7,9 @@ const validateBeaconBtn = document.getElementById("validateBeaconBtn");
 const saveBtn = document.getElementById("saveBtn");
 const saveStatus = document.getElementById("saveStatus");
 const profileForm = document.getElementById("profileForm");
-const profileNameInput = document.getElementById("profileNameInput");
 const displayNameInput = document.getElementById("displayNameInput");
+const avatarButtons = [...document.querySelectorAll(".avatar-choice")];
+let selectedAvatar = "avatar-penguin";
 const profileStatus = document.getElementById("profileStatus");
 const profileSaveButton = profileForm.querySelector('[type="submit"]');
 const upgradeAccountButton = document.getElementById("upgradeAccountButton");
@@ -24,6 +25,15 @@ function selectChoice(buttons, attribute, value) {
     button.setAttribute("aria-pressed", String(selected));
   });
 }
+
+function selectAvatar(value) {
+  selectedAvatar = avatarButtons.some((button) => button.dataset.avatar === value) ? value : "avatar-penguin";
+  avatarButtons.forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.avatar === selectedAvatar));
+  });
+}
+
+avatarButtons.forEach((button) => button.addEventListener("click", () => selectAvatar(button.dataset.avatar)));
 
 themeButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -66,8 +76,8 @@ async function loadProfile() {
       throw new Error("Your session has expired. Sign in again to edit your profile.");
     }
     const user = result.user;
-    profileNameInput.value = user.profile_name || "";
-    displayNameInput.value = user.display_name || "";
+    displayNameInput.value = user.display_name || user.profile_name || "";
+    selectAvatar(user.avatar || "avatar-penguin");
     if (user.is_admin || user.role === "subscriber") {
       upgradeAccountButton.hidden = true;
     } else if (user.upgrade_request_status === "pending") {
@@ -134,13 +144,13 @@ profileForm.addEventListener("submit", async (event) => {
     const result = await fetchJSON("/api/auth/profile", {
       method: "PATCH",
       body: JSON.stringify({
-        profile_name: profileNameInput.value,
         display_name: displayNameInput.value,
+        avatar: selectedAvatar,
       }),
     });
     if (!result.user) throw new Error(result.error || "Could not save your profile.");
-    profileNameInput.value = result.user.profile_name || "";
     displayNameInput.value = result.user.display_name || "";
+    selectAvatar(result.user.avatar || "avatar-penguin");
     profileStatus.textContent = "Profile saved.";
     profileStatus.className = "profile-status success";
     window.parent.postMessage({ type: "settings-profile-updated", user: result.user }, location.origin);
@@ -158,9 +168,7 @@ upgradeAccountButton.addEventListener("click", () => {
 
 window.addEventListener("message", (event) => {
   if (event.origin !== location.origin) return;
-  if (event.data?.type === "settings-focus-profile") {
-    profileNameInput.focus({ preventScroll: true });
-  } else if (event.data?.type === "settings-upgrade-request-pending") {
+  if (event.data?.type === "settings-upgrade-request-pending") {
     upgradeAccountButton.textContent = "Request pending";
     upgradeAccountButton.disabled = true;
   }

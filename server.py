@@ -447,6 +447,11 @@ def init_database():
             db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} VARCHAR(120)"))
             db.session.commit()
             columns.add("profile_name")
+        if "avatar" not in columns:
+            table = db.engine.dialect.identifier_preparer.quote("users")
+            column = db.engine.dialect.identifier_preparer.quote("avatar")
+            db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} VARCHAR(32) NOT NULL DEFAULT 'avatar-penguin'"))
+            db.session.commit()
         if "role" not in columns:
             table = db.engine.dialect.identifier_preparer.quote("users")
             column = db.engine.dialect.identifier_preparer.quote("role")
@@ -513,11 +518,13 @@ def current_user():
 
 def user_payload(user):
     upgrade_request = UpgradeRequest.query.filter_by(user_id=user.id).first()
+    name = user.display_name or user.profile_name or ""
     return {
         "id": user.id,
         "email": user.email,
-        "profile_name": user.profile_name,
-        "display_name": user.display_name,
+        "profile_name": name,
+        "display_name": name,
+        "avatar": user.avatar or "avatar-penguin",
         "is_admin": user.is_admin,
         "role": user.role or ("admin" if user.is_admin else "member"),
         "upgrade_request_status": upgrade_request.status if upgrade_request else None,
@@ -1259,8 +1266,14 @@ def team_list_messages():
         messages = query.order_by(TeamChatMessage.id.desc()).limit(100).all()
         messages.reverse()
     user = current_user()
+    sender_ids = {message.sender_id for message in messages if message.sender_id is not None}
+    sender_avatars = {
+        user_id: avatar or "avatar-penguin"
+        for user_id, avatar in db.session.query(User.id, User.avatar).filter(User.id.in_(sender_ids)).all()
+    } if sender_ids else {}
     return jsonify({"current_user_id": user.id, "messages": [{
         "id": message.id, "sender_id": message.sender_id, "sender_name": message.sender_name,
+        "sender_avatar": sender_avatars.get(message.sender_id, "avatar-penguin"),
         "body": message.body, "has_image": bool(message.image_mime),
         "created_at": message.created_at.isoformat() if message.created_at else None,
     } for message in messages]})
@@ -1306,6 +1319,7 @@ def team_send_message():
     db.session.commit()
     return jsonify({
         "id": message.id, "sender_id": message.sender_id, "sender_name": message.sender_name,
+        "sender_avatar": user.avatar or "avatar-penguin",
         "body": message.body, "has_image": bool(message.image_mime),
         "created_at": message.created_at.isoformat() if message.created_at else None,
     }), 201
@@ -1358,8 +1372,9 @@ def admin_list_users():
         "users": [{
             "id": user.id,
             "email": user.email,
-            "profile_name": user.profile_name or "",
-            "display_name": user.display_name or "",
+            "profile_name": user.display_name or user.profile_name or "",
+            "display_name": user.display_name or user.profile_name or "",
+            "avatar": user.avatar or "avatar-penguin",
             "is_active": bool(user.is_active),
             "is_admin": bool(user.is_admin),
             "role": user.role or ("admin" if user.is_admin else "member"),
@@ -1493,6 +1508,7 @@ def auth_register():
     user = User(
         email=email,
         password_hash=generate_password_hash(password),
+        profile_name=display_name,
         display_name=display_name,
         role="member",
     )
@@ -1534,12 +1550,19 @@ def auth_logout():
 def auth_update_profile():
     user = current_user()
     data = request.get_json(force=True)
-    profile_name = str(data.get("profile_name", "")).strip()
-    display_name = str(data.get("display_name", "")).strip()
-    if len(profile_name) > 120 or len(display_name) > 120:
+    display_name = str(data.get("display_name", data.get("profile_name", ""))).strip()
+    avatar = str(data.get("avatar", user.avatar or "avatar-penguin")).strip().lower()
+    allowed_avatars = {
+        "avatar-bunny", "avatar-cat", "avatar-dog",
+        "avatar-fox", "avatar-panda", "avatar-penguin",
+    }
+    if len(display_name) > 120:
         return jsonify({"error": "Names must be 120 characters or fewer."}), 400
-    user.profile_name = profile_name or None
+    if avatar not in allowed_avatars:
+        return jsonify({"error": "Choose one of the available profile avatars."}), 400
+    user.profile_name = display_name or None
     user.display_name = display_name or None
+    user.avatar = avatar
     db.session.commit()
     return jsonify({"user": user_payload(user)})
 

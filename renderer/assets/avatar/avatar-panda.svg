@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<circle cx="256" cy="256" r="256" fill="#D7F2D0"/>
+<circle cx="150" cy="160" r="48" fill="#2B2B2B"/><circle cx="362" cy="160" r="48" fill="#2B2B2B"/>
+<circle cx="256" cy="282" r="145" fill="#FFFFFF"/>
+<ellipse cx="200" cy="268" rx="34" ry="46" fill="#2B2B2B" transform="rotate(25 200 268)"/>
+<ellipse cx="312" cy="268" rx="34" ry="46" fill="#2B2B2B" transform="rotate(-25 312 268)"/>
+<circle cx="204" cy="266" r="12" fill="#fff"/><circle cx="308" cy="266" r="12" fill="#fff"/>
+<circle cx="207" cy="263" r="5" fill="#2B2B2B"/><circle cx="305" cy="263" r="5" fill="#2B2B2B"/>
+<ellipse cx="256" cy="318" rx="20" ry="14" fill="#2B2B2B"/>
+<path d="M256 332 v10 M256 342 q-18 18 -36 4 M256 342 q18 18 36 4" stroke="#2B2B2B" stroke-width="5" fill="none" stroke-linecap="round"/>
+<circle cx="170" cy="332" r="16" fill="#F7A1A1" opacity=".55"/><circle cx="342" cy="332" r="16" fill="#F7A1A1" opacity=".55"/>
+</svg>

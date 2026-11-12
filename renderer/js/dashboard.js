@@ -860,16 +860,6 @@ document.addEventListener("keydown", (event) => {
 });
 // Clicks inside a workspace iframe do not bubble here, but they blur this window.
 window.addEventListener("blur", closeAccountMenu);
-document.getElementById("editProfileButton").addEventListener("click", () => {
-  closeAccountMenu();
-  openWorkspace("settings");
-  const frame = workspaceFrames.settings;
-  const focusProfile = () => frame.contentWindow?.postMessage({ type: "settings-focus-profile" }, location.origin);
-  if (frame.getAttribute("src") === workspaceRoutes.settings
-      && frame.contentDocument?.readyState === "complete"
-      && frame.contentWindow.location.pathname.endsWith("/settings.html")) focusProfile();
-  else frame.addEventListener("load", focusProfile, { once: true });
-});
 document.getElementById("accountSettings").addEventListener("click", () => {
   closeAccountMenu();
   openWorkspace("settings");
@@ -920,9 +910,22 @@ async function loadSignedInProfile() {
 
 function updateDashboardProfile(user) {
   const displayName = user.display_name || user.profile_name || user.email || "Account";
+  const avatars = {
+    "avatar-bunny": "avatar-bunny.svg",
+    "avatar-cat": "avatar-cat.svg",
+    "avatar-dog": "avatar-dog.svg",
+    "avatar-fox": "avatar-fox.svg",
+    "avatar-panda": "avatar-panda.svg",
+    "avatar-penguin": "avatar-penguin.svg",
+  };
+  const avatarNode = document.getElementById("accountAvatar");
+  const avatarImage = document.createElement("img");
+  avatarImage.src = `assets/avatar/${avatars[user.avatar] || avatars["avatar-penguin"]}`;
+  avatarImage.alt = "";
   document.getElementById("accountName").textContent = displayName;
-  document.getElementById("accountAvatar").textContent = (displayName.trim()[0] || "B").toUpperCase();
-  document.getElementById("homeGreeting").textContent = `Welcome${user.display_name ? `, ${user.display_name}` : " to Beabots"}`;
+  avatarNode.replaceChildren(avatarImage);
+  avatarNode.setAttribute("aria-label", `${displayName} avatar`);
+  document.getElementById("homeGreeting").textContent = `Welcome${user.display_name || user.profile_name ? `, ${displayName}` : " to Beabots"}`;
   document.getElementById("upgradeAccountName").textContent = displayName;
   document.getElementById("upgradeAccountEmail").textContent = user.email || "";
 }

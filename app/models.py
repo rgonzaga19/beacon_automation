@@ -17,6 +17,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     profile_name = db.Column(db.String(120), nullable=True)
     display_name = db.Column(db.String(120), nullable=True)
+    avatar = db.Column(db.String(32), nullable=False, default="avatar-penguin")
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
     role = db.Column(db.String(20), nullable=False, default="member")
