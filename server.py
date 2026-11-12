@@ -576,6 +576,14 @@ def _claim_analytics_progress_update(user_id, **values):
                 entry.update(values)
 
 
+def _clear_claim_analytics_cache(user_id):
+    """Discard analytics tied to the user's previous Beacon credentials."""
+    db.session.query(BeaconClaimAnalyticsCache).filter_by(user_id=user_id).delete(synchronize_session=False)
+    sync = db.session.get(BeaconClaimAnalyticsSync, user_id)
+    if sync is not None:
+        db.session.delete(sync)
+
+
 def _sync_beacon_claim_analytics(user_id, beacon_settings, auth_key, date_from, date_to, force_refresh):
     """Refresh compact per-claim fields in a background thread."""
     transmittals_scanned = claims_scanned = failed_transmittals = 0
@@ -600,6 +608,13 @@ def _sync_beacon_claim_analytics(user_id, beacon_settings, auth_key, date_from, 
                 _claim_analytics_progress_update(user_id, current=0, total=transmittals_scanned,
                     message=f"Found {transmittals_scanned} transmittals. Refreshing claim details...", phase="claims")
                 for index, transmittal in enumerate(transmittals, start=1):
+                    # Settings may have changed while this background refresh was
+                    # running. Never let the previous account repopulate its cache.
+                    active_settings = db.session.get(UserSetting, user_id)
+                    active_beacon_settings = decrypt_user_settings(active_settings) if active_settings else {}
+                    active_auth_key = browser_session.auth_context_key(active_beacon_settings, user_key=f"user:{user_id}")
+                    if active_auth_key != auth_key:
+                        raise RuntimeError("Beacon account changed during analytics refresh.")
                     transmittal_id = transmittal.get("id")
                     transmittal_status = transmittal.get("transmittalStatusDescription")
                     _claim_analytics_progress_update(user_id, current=index - 1, total=transmittals_scanned,
@@ -1596,6 +1611,7 @@ def post_settings():
             settings.beacon_user_id = None
             settings.beacon_validated_at = None
             browser_session.invalidate_auth_token(old_auth_key)
+            _clear_claim_analytics_cache(user.id)
 
         db.session.commit()
         return jsonify(user_settings_payload(settings))
@@ -1611,6 +1627,7 @@ def app_version_route():
 def beacon_validate():
     user = current_user()
     settings = get_or_create_user_settings(user)
+    previous_beacon_user_id = settings.beacon_user_id or ""
     data = request.get_json(silent=True) or {}
 
     username = str(data.get("username") or settings.beacon_username or "").strip()
@@ -1632,6 +1649,10 @@ def beacon_validate():
     }
     auth_key = browser_session.auth_context_key(
         validation_settings,
+        user_key=f"user:{user.id}",
+    )
+    previous_auth_key = browser_session.auth_context_key(
+        decrypt_user_settings(settings),
         user_key=f"user:{user.id}",
     )
     with browser_session.use_auth_context(validation_settings, key=auth_key):
@@ -1673,6 +1694,8 @@ def beacon_validate():
         beacon_user_id = current_user_info.get("id")
     settings.beacon_user_id = str(beacon_user_id or settings.beacon_user_id or "")
     settings.beacon_validated_at = utc_now()
+    if auth_key != previous_auth_key or str(beacon_user_id or "") != previous_beacon_user_id:
+        _clear_claim_analytics_cache(user.id)
     db.session.commit()
     return jsonify({
         "valid": True,

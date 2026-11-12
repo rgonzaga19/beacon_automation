@@ -939,6 +939,10 @@ window.addEventListener("message", (event) => {
     updateDashboardProfile(event.data.user);
     return;
   }
+  if (event.data?.type === "settings-beacon-updated") {
+    refreshClaimAnalytics();
+    return;
+  }
   if (event.data?.type === "settings-upgrade-request") {
     upgradeRequestFrame = event.source;
     document.getElementById("upgradeRequestMessage").value = "";

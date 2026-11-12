@@ -116,6 +116,7 @@ saveBtn.addEventListener("click", async () => {
     saveStatus.className = "save-status success";
     beaconPasswordInput.value = settings.password || "";
     renderBeaconStatus(settings);
+    window.parent.postMessage({ type: "settings-beacon-updated" }, location.origin);
   } catch (error) {
     saveStatus.textContent = "Unable to save settings.";
     saveStatus.className = "save-status error";
@@ -195,6 +196,7 @@ validateBeaconBtn.addEventListener("click", async () => {
       beacon_validated_at: result.beacon_validated_at,
     });
     beaconPasswordInput.value = "********";
+    window.parent.postMessage({ type: "settings-beacon-updated" }, location.origin);
   } catch (error) {
     saveStatus.textContent = error.message || "Unable to validate Beacon credentials.";
     saveStatus.className = "save-status error";
