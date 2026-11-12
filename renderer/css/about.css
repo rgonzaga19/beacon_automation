@@ -126,7 +126,8 @@ html[data-theme="light"] .about-page { --ink-accent: #08766f; }
 /* ---------- Agreement dialog ---------- */
 .agreement-dialog { width: min(920px, calc(100vw - 32px)); max-width: none; max-height: min(88dvh, 900px); padding: 0 26px 20px; overflow: hidden; color: var(--text-pri); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-md); }
 .agreement-dialog::backdrop { background: rgba(3,8,14,.76); backdrop-filter: blur(4px); }
-.agreement-dialog-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 24px 0 18px; background: var(--bg-dark); border-bottom: 1px solid var(--border); }
+.agreement-dialog-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 24px 0 18px; background: transparent; border-bottom: 0; }
+.agreement-dialog-header::after { position:absolute; right:24px; bottom:0; left:24px; height:1px; background:color-mix(in srgb,var(--border) 55%,transparent); content:""; pointer-events:none; }
 .agreement-dialog-header h1 { margin: 8px 0 5px; font: 650 clamp(20px,3vw,26px)/1.2 var(--font-ui); letter-spacing: -.02em; }
 .agreement-dialog-header p { margin: 0; color: var(--text-sec); font-size: 12px; }
 .agreement-close { width: 34px; height: 34px; flex: 0 0 34px; color: var(--text-sec); background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; font-size: 22px; cursor: pointer; }

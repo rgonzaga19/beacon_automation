@@ -433,3 +433,9 @@ textarea:focus, input:focus {
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* ---------- Subtle border treatment ---------- */
+/* Keep page and component outlines consistent and visually light. */
+body :not(input):not(select):not(textarea):not(button):not(.side-link.external-link) {
+  border-color: color-mix(in srgb, var(--border) 55%, transparent) !important;
+}

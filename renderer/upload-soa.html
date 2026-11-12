@@ -23,12 +23,14 @@
   .icon-flat svg { stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 
   .page-header {
+    position: relative;
     display: flex;
     align-items: center;
     padding: 14px var(--gap-3) 12px var(--gap-3);
-    border-bottom: 1px solid var(--border);
-    background:var(--bg-base);
+    border-bottom: 0;
+    background:transparent;
   }
+  .page-header::after { position:absolute; right:var(--gap-3); bottom:0; left:var(--gap-3); height:1px; background:color-mix(in srgb,var(--border) 55%,transparent); content:""; pointer-events:none; }
   .page-header { justify-content: space-between; gap: 16px; }
   .guide-button {
     flex: none;
@@ -64,8 +66,8 @@
   .folder-section {
     margin: 10px var(--gap-3) 0;
     padding: 8px 12px;
-    background:var(--bg-panel);
-    border:1px solid var(--border);
+    background:transparent;
+    border:0;
     border-radius:var(--radius-lg);
   }
   .folder-section .section-label {

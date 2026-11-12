@@ -9,7 +9,8 @@
   <style>
     body { min-height:100vh; }
     .page { display:flex; flex-direction:column; height:100vh; min-height:0; }
-    .header { padding:14px 24px 12px; border-bottom:1px solid var(--border); background:var(--bg-base); }
+    .header { position:relative; padding:14px 24px 12px; border-bottom:0; background:transparent; }
+    .header::after { position:absolute; right:24px; bottom:0; left:24px; height:1px; background:color-mix(in srgb,var(--border) 55%,transparent); content:""; pointer-events:none; }
     .header h1 { margin:0; color:var(--text-pri); font-size:18px; letter-spacing:-.2px; }
     .header p { margin:4px 0 0; color:var(--text-sec); font-size:11px; }
     main { flex:1; min-height:0; overflow:auto; padding:18px 24px; }
@@ -74,7 +75,8 @@
     .editor-overlay { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:20px; background:rgba(2,7,15,.78); backdrop-filter:blur(4px); }
     .editor-overlay[hidden] { display:none; }
     .editor-dialog { display:flex; flex-direction:column; width:min(1040px,100%); max-height:min(92vh,940px); overflow:hidden; background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:0 24px 80px rgba(0,0,0,.5); }
-    .editor-header { display:flex; align-items:center; gap:14px; padding:19px 24px; border-bottom:1px solid var(--border); background:var(--bg-panel); }
+    .editor-header { position:relative; display:flex; align-items:center; gap:14px; padding:19px 24px; border-bottom:0; background:transparent; }
+    .editor-header::after { position:absolute; right:24px; bottom:0; left:24px; height:1px; background:color-mix(in srgb,var(--border) 55%,transparent); content:""; pointer-events:none; }
     .editor-heading { min-width:0; }
     .editor-eyebrow { display:block; margin-bottom:3px; color:var(--accent); font-size:9px; font-weight:800; letter-spacing:1px; }
     .editor-header h2 { margin:0; color:var(--text-pri); font-size:16px; }

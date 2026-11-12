@@ -11,7 +11,8 @@
   html,body { width:100%; height:auto; min-height:100%; overflow-x:hidden; overflow-y:auto; }
   body { min-height:100vh; color:var(--text-pri); background:var(--bg-dark); -webkit-text-size-adjust:100%; }
   .page { width:100%; max-width:1120px; margin:0 auto; padding:clamp(16px,3.2vw,38px); }
-  .page-header { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:0 0 18px; padding:14px 0 12px; border-bottom:1px solid var(--border); }
+  .page-header { position:relative; display:flex; align-items:center; justify-content:space-between; gap:18px; margin:0 0 18px; padding:14px 0 12px; border-bottom:0; }
+  .page-header::after { position:absolute; right:18px; bottom:0; left:18px; height:1px; background:color-mix(in srgb,var(--border) 55%,transparent); content:""; pointer-events:none; }
   .eyebrow { display:none; }
   h1 { margin:0 0 4px; font-size:18px; letter-spacing:-.2px; }
   .page-header p,.help { max-width:700px; margin:0; color:var(--text-sec); font-size:11px; line-height:1.5; }
