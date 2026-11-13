@@ -147,7 +147,16 @@
       <article class="agreement-card"><span class="section-kicker">04 / DISCLAIMER</span><h2>Use at your own risk</h2><p>The workspace and its outputs are provided as workflow tools, without a guarantee that they will be uninterrupted, error-free, current, or suitable for a particular claim. To the extent permitted by applicable law, Beabots and its developer disclaim responsibility for losses or consequences arising from incorrect, incomplete, outdated, or misinterpreted user input or output, or from a user's decision to rely on, approve, or transmit a claim without adequate human review.</p><p>You use the tools and decide whether to rely on or submit their output at your own risk. Nothing on this page excludes or limits a right or liability that cannot legally be excluded or limited. If a term here conflicts with applicable law, that term applies only to the extent the law permits.</p></article>
       <article class="agreement-card"><span class="section-kicker">05 / ACKNOWLEDGMENT</span><h2>Your responsibility</h2><p>By continuing to use Beabots, you confirm that you have read this notice, have authority to use the information you submit, and understand that human review is required both before and after transmission. Stop using the workspace if you cannot meet these responsibilities.</p></article>
     </div>
-    <div class="agreement-dialog-footer"><span id="agreementStatus" role="status" aria-live="polite"></span><button class="agreement-acknowledge" id="agreementAcknowledge" type="button">I understand, continue</button></div>
+    <div class="agreement-dialog-footer">
+      <fieldset class="agreement-choice" id="agreementChoice" aria-label="Agreement decision" hidden>
+        <legend>Do you agree to these terms?</legend>
+        <label><input type="radio" name="agreementDecision" value="agree"> I agree</label>
+        <label><input type="radio" name="agreementDecision" value="disagree"> I disagree</label>
+      </fieldset>
+      <span id="agreementStatus" role="status" aria-live="polite"></span>
+      <button class="agreement-decline" id="agreementDecline" type="button" hidden>Decline and sign out</button>
+      <button class="agreement-acknowledge" id="agreementAcknowledge" type="button" disabled>Accept and continue</button>
+    </div>
   </dialog>
   <script src="js/common.js"></script>
   <script src="js/about.js"></script>

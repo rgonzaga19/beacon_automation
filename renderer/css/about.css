@@ -139,11 +139,19 @@ html[data-theme="light"] .about-page { --ink-accent: #08766f; }
 .agreement-notice { border-left: 3px solid var(--warning); }
 .agreement-card strong { color: var(--text-pri); }
 .agreement-acknowledge { margin-left: auto; padding: 10px 14px; color: var(--bg-dark); background: var(--accent); border: 0; border-radius: 7px; font: 700 11px var(--font-ui); cursor: pointer; }
+.agreement-decline { padding: 10px 14px; color: var(--text-pri); background: transparent; border: 1px solid var(--border); border-radius: 7px; font: 700 11px var(--font-ui); cursor: pointer; }
+.agreement-decline[hidden] { display: none; }
 .agreement-acknowledge:hover { filter: brightness(.95); }
+.agreement-decline:hover { background: var(--bg-panel); }
 .agreement-dialog .agreement-sections { max-height: calc(min(88dvh, 900px) - 190px); overflow: auto; padding: 18px 5px 18px 0; }
 .agreement-dialog-footer { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0 0; background: var(--bg-dark); border-top: 1px solid var(--border); }
+.agreement-choice { display: flex; align-items: center; gap: 14px; margin: 0; padding: 0; border: 0; }
+.agreement-choice[hidden] { display: none; }
+.agreement-choice legend { float: left; margin-right: 14px; color: var(--text-sec); font-size: 12px; }
+.agreement-choice label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-pri); font-size: 12px; cursor: pointer; }
+.agreement-choice input { accent-color: var(--accent); }
 .agreement-dialog-footer [role="status"] { color: var(--text-sec); font-size: 12px; }
-.agreement-required .agreement-dialog-footer { justify-content: flex-end; }
+.agreement-required .agreement-dialog-footer { justify-content: space-between; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 960px) {
@@ -173,6 +181,8 @@ html[data-theme="light"] .about-page { --ink-accent: #08766f; }
   .agreement-card { padding: 18px; }
   .agreement-dialog { padding-right: 16px; padding-left: 16px; }
   .agreement-dialog .agreement-sections { max-height: calc(88dvh - 190px); }
+  .agreement-dialog-footer { flex-wrap: wrap; }
+  .agreement-choice { flex-wrap: wrap; gap: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .about-content { scroll-behavior: auto; }

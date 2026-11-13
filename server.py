@@ -98,6 +98,15 @@ db.init_app(app)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
+
+@app.after_request
+def revalidate_renderer_assets(response):
+    # Renderer pages and scripts should be revalidated after each deployment,
+    # so browsers do not keep running an older UI from their local cache.
+    if response.mimetype in {"text/html", "text/css", "text/javascript", "application/javascript"}:
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return response
+
 # In-memory fallback state for parsed workbook data and active automation runs.
 _state = {
     "selected_file": None,
