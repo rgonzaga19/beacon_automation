@@ -895,7 +895,7 @@ async function loadSignedInProfile() {
     }
     const pendingAgreementEmail = sessionStorage.getItem("beabots-agreement-pending");
     const pendingAgreementKey = pendingAgreementEmail && `beabots-agreement-ack:${encodeURIComponent(pendingAgreementEmail)}`;
-    if (pendingAgreementEmail && localStorage.getItem(pendingAgreementKey) !== "v1") {
+    if (pendingAgreementEmail && localStorage.getItem(pendingAgreementKey) !== "v2") {
       setTopNavigation("siteAbout");
       openAboutAgreement({ required: true });
     } else if (pendingAgreementEmail) {

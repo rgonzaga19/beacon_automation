@@ -135,7 +135,7 @@ agreementAcknowledge?.addEventListener("click", async () => {
     const result = await response.json();
     const email = pendingEmail || result.user?.email;
     if (result.authenticated && email) {
-      localStorage.setItem(`beabots-agreement-ack:${encodeURIComponent(email)}`, "v1");
+      localStorage.setItem(`beabots-agreement-ack:${encodeURIComponent(email)}`, "v2");
       sessionStorage.removeItem("beabots-agreement-pending");
     } else if (agreementRequired) {
       throw new Error("Sign in to acknowledge this notice.");

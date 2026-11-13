@@ -161,7 +161,7 @@ loginForm.addEventListener("submit", async (event) => {
     if (result.error) throw new Error(result.error);
 
     const agreementKey = `beabots-agreement-ack:${encodeURIComponent(email)}`;
-    if (localStorage.getItem(agreementKey) !== "v1") {
+    if (localStorage.getItem(agreementKey) !== "v2") {
       sessionStorage.setItem("beabots-agreement-pending", email);
     } else {
       sessionStorage.removeItem("beabots-agreement-pending");
