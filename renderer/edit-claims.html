@@ -101,6 +101,7 @@
     .editor-field input,.editor-field select { width:100%; min-height:37px; padding:7px 10px; color:var(--text-pri); background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-sm); font:11px var(--font-ui); }
     .editor-field input:focus,.editor-field select:focus { border-color:var(--accent); outline:2px solid var(--accent-soft); }
     .editor-field textarea { width:100%; min-height:150px; padding:8px 10px; resize:vertical; color:var(--text-pri); background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-sm); font:11px/1.5 var(--font-ui); user-select:text; }
+    #editHistoryOfPresentIllness,#editPertinentPastMedicalHistory { box-sizing:border-box; min-height:0; height:calc(2 * 1.5em + 16px + 2px); }
     .editor-field textarea:focus { border-color:var(--accent); outline:2px solid var(--accent-soft); }
     .editor-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-top:14px; }
     .editor-actions .cyber-btn { min-height:34px; padding:0 12px; font-size:10px; }
@@ -171,17 +172,11 @@
       .page-subtitle { margin:3px 0 14px; color:var(--text-sec); font-size:11px; }
       .lookup-card,.results-card { min-width:0; overflow:visible; background:var(--bg-panel); border:1px solid color-mix(in srgb,var(--border) 75%,transparent); border-radius:12px; box-shadow:var(--shadow-sm); }
       .lookup-card { padding:14px 16px 12px; }
-      .lookup-form { display:grid; gap:11px; }
-      .lookup-toprow { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-      .mode-switch { display:inline-flex; gap:3px; padding:3px; background:var(--bg-dark); border:1px solid var(--border); border-radius:9px; }
-      .mode-switch label { display:inline-flex; min-height:27px; align-items:center; padding:0 11px; color:var(--text-sec); border-radius:6px; cursor:pointer; font-size:10px; font-weight:700; white-space:nowrap; }
-      .mode-switch input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
-      .mode-switch input:checked + span { color:var(--accent); }
-      .mode-switch label:has(input:checked) { background:var(--bg-panel); box-shadow:0 1px 3px rgba(0,0,0,.2); }
-      .mode-switch label:focus-within { outline:2px solid var(--accent); outline-offset:2px; }
-      .date-warning { max-width:490px; padding:5px 10px; color:#fbbf24; background:color-mix(in srgb,#fbbf24 10%,transparent); border:1px solid color-mix(in srgb,#fbbf24 36%,transparent); border-radius:7px; font-size:9px; line-height:1.45; }
+      .lookup-form { display:grid; gap:5px; }
+      .date-warning { grid-column:1/-1; padding:5px 10px; color:#fbbf24; background:color-mix(in srgb,#fbbf24 10%,transparent); border:1px solid color-mix(in srgb,#fbbf24 36%,transparent); border-radius:7px; font-size:9px; line-height:1.45; }
       html[data-theme="light"] .date-warning { color:#92400e; background:#fffbeb; border-color:#fcd34d; }
-      .lookup-fields { display:grid; grid-template-columns:minmax(230px,1fr) minmax(120px,140px) minmax(120px,140px) auto; align-items:start; gap:9px; }
+      .lookup-fields { display:grid; grid-template-columns:minmax(230px,1fr) minmax(280px,auto) auto; align-items:start; gap:9px; }
+      .date-filter-group { display:grid; grid-template-columns:repeat(2,minmax(120px,1fr)); gap:8px; }
       .field label { margin-bottom:4px; font-size:9px; }
       .field input { height:35px; padding:0 10px; font-size:10px; }
       .field-hint { margin-top:4px; font-size:9px; line-height:1.35; }
@@ -211,7 +206,7 @@
       .page-toolbar .solid-btn.danger-action { color:var(--error); background:var(--bg-dark); border-color:color-mix(in srgb,var(--error) 55%,var(--border)); }
       .page-toolbar .solid-btn:disabled { opacity:.4; cursor:not-allowed; }
       button:focus-visible,.rail-link:focus-visible,.topnav a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-      .page-toolbar .solid-btn:focus-visible,.lookup-icon-button:focus-visible,.mode-switch input:focus-visible + span { outline:2px solid var(--accent); outline-offset:2px; }
+      .page-toolbar .solid-btn:focus-visible,.lookup-icon-button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
       .page-toolbar .solid-btn[data-tip]::after { position:absolute; top:calc(100% + 7px); left:50%; z-index:30; width:max-content; max-width:240px; padding:6px 9px; color:#172033; background:#f8fafc; border:1px solid #d5deea; border-radius:6px; box-shadow:0 5px 16px rgba(0,0,0,.24); content:attr(data-tip); font:600 10px/1.35 var(--font-ui); opacity:0; pointer-events:none; transform:translate(-50%,-3px); transition:opacity .12s ease,transform .12s ease; white-space:normal; }
       .page-toolbar .solid-btn[data-tip]:hover::after,.page-toolbar .solid-btn[data-tip]:focus-visible::after { opacity:1; transform:translate(-50%,0); }
       .toolbar-status { position:absolute; top:100%; left:12px; z-index:4; width:max-content; max-width:calc(100% - 24px); min-height:0; padding:5px 8px; background:var(--bg-dark); border-radius:6px; font-size:10px; }
@@ -247,9 +242,7 @@
       .table-footer { display:flex; align-items:center; }
       .table-footer .status-legend { flex:1; }
       @media(max-width:950px) {
-        .lookup-toprow { align-items:flex-start; flex-direction:column; }
-        .date-warning { max-width:none; }
-        .lookup-fields { grid-template-columns:minmax(220px,1fr) repeat(2,minmax(120px,.5fr)) auto; }
+        .lookup-fields { grid-template-columns:minmax(220px,1fr) minmax(260px,1fr) auto; }
         .toolbar-batch-indicator { margin-right:2px; }
         .page-toolbar { flex-wrap:wrap; }
         .claims-sort { margin-left:auto; }
@@ -258,7 +251,7 @@
         .workspace { padding:14px 12px 22px; }
         .lookup-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
         .search-field { grid-column:1/-1; }
-        .lookup-fields > .field:nth-of-type(3),.lookup-fields > .field:nth-of-type(4) { min-width:0; }
+        .date-filter-group { grid-column:1/-1; grid-template-columns:repeat(2,minmax(0,1fr)); }
         .lookup-fields > button { width:100%; align-self:stretch; margin-top:0; }
         .page-toolbar { gap:4px; padding:8px; }
         .toolbar-batch-indicator { order:0; }
@@ -275,7 +268,6 @@
         .toolbar-group { padding:0 2px; }
         .toolbar-batch-indicator { padding:0 6px; font-size:8px; }
       }
-      html[data-theme="light"] .mode-switch input:checked + span { color:#0f766e; }
       html[data-theme="light"] .lookup-icon-button { color:#fff; background:#0f766e; }
       html[data-theme="light"] .page-toolbar .solid-btn#finalizeAllButton,html[data-theme="light"] .page-toolbar .solid-btn#transmitAllButton { color:#fff; background:#0f766e; border-color:#0f766e; }
       .field input::placeholder { color:var(--text-sec); opacity:.82; }
@@ -290,17 +282,13 @@
           <p class="page-subtitle">Find claims in Beacon by transmittal number or patient name, then run batch actions on them.</p>
           <section class="lookup-card" aria-label="Transmittal claims lookup">
             <form id="lookupForm" class="lookup-form">
-              <div class="lookup-toprow">
-                <div class="mode-switch" role="group" aria-label="Search mode">
-                  <label><input type="radio" name="lookupMode" checked><span>Transmittal / Patient</span></label>
-                  <label><input type="radio" name="lookupMode"><span>Admission date range</span></label>
-                </div>
-                <div class="date-warning"><strong>ⓘ</strong> Date filtering can take 5–10 minutes or more. Use a transmittal number when you can.</div>
-              </div>
               <div class="lookup-fields">
                 <div class="field search-field"><label for="transmittalInput">Transmittal number or patient name</label><div id="transmittalInput-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg><input id="transmittalInput" type="text" autocomplete="off" placeholder="Enter transmittals or a patient name"></div><span class="field-hint">Separate multiple transmittal numbers with spaces, or type a full or partial patient name.</span></div>
-                <div class="field"><label for="admissionFrom">Admission from</label><input id="admissionFrom" type="date" aria-label="Admission from"></div>
-                <div class="field"><label for="admissionTo">Admission to</label><input id="admissionTo" type="date" aria-label="Admission to"></div>
+                <div class="date-filter-group">
+                  <div class="field"><label for="admissionFrom">Admission from</label><input id="admissionFrom" type="date" aria-label="Admission from"></div>
+                  <div class="field"><label for="admissionTo">Admission to</label><input id="admissionTo" type="date" aria-label="Admission to"></div>
+                  <div class="date-warning"><strong>ⓘ</strong> Date filtering can take 5–10 minutes or more. Use a transmittal number when you can.</div>
+                </div>
                 <button class="cyber-btn lookup-icon-button" id="lookupButton" type="submit" title="Search claims" aria-label="Search claims"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg><span class="lookup-button-label">Search</span></button>
               </div>
               <p class="lookup-note">Date range is used only when the text field is empty.</p>
@@ -414,13 +402,13 @@
         </section>
         <section class="editor-section" data-editor-section="hpi">
           <h3>History of Present Illness</h3>
-          <div class="editor-field"><label for="editHistoryOfPresentIllness">History of Present Illness</label><textarea id="editHistoryOfPresentIllness" rows="6"></textarea></div>
+          <div class="editor-field"><label for="editHistoryOfPresentIllness">History of Present Illness</label><textarea id="editHistoryOfPresentIllness" rows="2"></textarea></div>
           <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="hpi">SAVE HPI</button></div>
           <div class="editor-message" id="hpiEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="pmh">
           <h3>Pertinent Past Medical History</h3>
-          <div class="editor-field"><label for="editPertinentPastMedicalHistory">Pertinent Past Medical History</label><textarea id="editPertinentPastMedicalHistory" rows="6"></textarea></div>
+          <div class="editor-field"><label for="editPertinentPastMedicalHistory">Pertinent Past Medical History</label><textarea id="editPertinentPastMedicalHistory" rows="2"></textarea></div>
           <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="pmh">SAVE HISTORY</button></div>
           <div class="editor-message" id="pmhEditorMessage" aria-live="polite"></div>
         </section>
