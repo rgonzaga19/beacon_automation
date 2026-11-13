@@ -74,22 +74,29 @@
     .transmittal-status { padding:4px 8px; color:var(--text-pri); border:1px solid color-mix(in srgb, var(--status-color,#909398) 45%, transparent); border-radius:999px; background:color-mix(in srgb, var(--status-color,#909398) 10%, transparent); }
     .editor-overlay { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:20px; background:rgba(2,7,15,.78); backdrop-filter:blur(4px); }
     .editor-overlay[hidden] { display:none; }
-    .editor-dialog { display:flex; flex-direction:column; width:min(1040px,100%); max-height:min(92vh,940px); overflow:hidden; background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:0 24px 80px rgba(0,0,0,.5); }
+    .editor-dialog { display:flex; flex-direction:column; width:min(1040px,100%); height:min(700px,92vh); min-height:420px; overflow:hidden; background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:0 24px 80px rgba(0,0,0,.5); }
     .editor-header { position:relative; display:flex; align-items:center; gap:14px; padding:19px 24px; border-bottom:0; background:transparent; }
-    .editor-header::after { position:absolute; right:24px; bottom:0; left:24px; height:1px; background:color-mix(in srgb,var(--border) 55%,transparent); content:""; pointer-events:none; }
+    .editor-header::after { display:none; }
     .editor-heading { min-width:0; }
     .editor-eyebrow { display:block; margin-bottom:3px; color:var(--accent); font-size:9px; font-weight:800; letter-spacing:1px; }
     .editor-header h2 { margin:0; color:var(--text-pri); font-size:16px; }
     .editor-subtitle { margin-top:5px; color:var(--text-sec); font-size:11px; overflow-wrap:anywhere; }
-    .editor-close { margin-left:auto; min-height:34px; padding:0 12px; flex:none; }
-    .editor-next { min-height:34px; padding:0 12px; flex:none; }
+    .editor-close { display:grid; width:36px; min-width:36px; height:36px; min-height:36px; place-items:center; margin-left:auto; padding:0; flex:none; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; }
+    .editor-close:hover { color:var(--text-pri); border-color:var(--accent); background:var(--accent-soft); }
+    .editor-close svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; }
+    .editor-claim-navigation { position:absolute; top:50%; left:50%; display:flex; align-items:center; gap:8px; transform:translate(-50%,-50%); }
+    .editor-next,.editor-previous { display:grid; width:42px; min-width:42px; height:42px; min-height:42px; place-items:center; padding:0; flex:none; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:9px; }
+    .editor-next:hover:not(:disabled),.editor-previous:hover:not(:disabled) { color:var(--accent); background:var(--accent-soft); border-color:var(--accent); }
+    .editor-next svg,.editor-previous svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
     .editor-next:disabled,.editor-previous:disabled { opacity:.45; cursor:not-allowed; }
-    .editor-previous { min-height:34px; padding:0 12px; flex:none; }
-    .editor-tabs { display:flex; flex:none; gap:6px; padding:10px 18px; overflow-x:auto; border-bottom:1px solid var(--border); background:var(--bg-base); }
-    .editor-tab { display:inline-flex; align-items:center; flex:none; gap:7px; min-height:32px; padding:0 12px; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:999px; font:700 10px var(--font-ui); white-space:nowrap; cursor:pointer; transition:color .12s ease, background .12s ease, border-color .12s ease; }
-    .editor-tab:hover { color:var(--text-pri); border-color:var(--accent); }
-    .editor-tab.active { color:var(--text-pri); background:var(--accent-soft); border-color:var(--accent); }
-    .editor-content { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:12px; overflow:auto; padding:18px; }
+    .editor-workspace { display:flex; flex:1; min-height:0; overflow:hidden; border-top:1px solid var(--border); }
+    .editor-tabs { display:flex; flex:0 0 220px; flex-direction:column; gap:4px; padding:18px 12px; overflow-y:auto; border-right:1px solid var(--border); background:color-mix(in srgb,var(--bg-panel) 58%,var(--bg-dark)); }
+    .editor-nav-group { display:contents; }
+    .editor-tab { display:flex; width:100%; min-height:38px; align-items:center; gap:10px; padding:8px 10px; color:var(--text-sec); background:transparent; border:1px solid transparent; border-radius:8px; font:600 10px/1.35 var(--font-ui); text-align:left; cursor:pointer; transition:color .12s ease, background .12s ease, border-color .12s ease; }
+    .editor-tab svg { width:16px; height:16px; flex:0 0 16px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+    .editor-tab:hover { color:var(--text-pri); background:var(--bg-panel); border-color:var(--border); }
+    .editor-tab.active { color:var(--accent); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 70%,transparent); }
+    .editor-content { display:grid; flex:1; min-width:0; grid-template-columns:minmax(0,1fr); align-content:start; gap:12px; overflow:auto; padding:24px 28px; }
     .editor-content[data-view] { grid-template-columns:minmax(0,1fr); }
     .editor-section { min-width:0; padding:16px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--bg-panel); }
     .editor-section[hidden] { display:none; }
@@ -121,7 +128,7 @@
     .editor-doc-list li { overflow-wrap:anywhere; }
     .editor-note { margin:10px 0 0; color:var(--text-sec); font-size:10px; line-height:1.5; }
     .editor-warning { margin:10px 0 14px; padding:10px 12px; border:1px solid color-mix(in srgb,#f0ad4e 55%,transparent); border-radius:var(--radius-sm); background:color-mix(in srgb,#f0ad4e 10%,transparent); color:#f0c477; font-size:11px; line-height:1.5; }
-    @media(max-width:700px) { .editor-overlay { padding:10px; } .editor-content { grid-template-columns:1fr; padding:12px; } .editor-dialog { max-height:96vh; } .editor-header { flex-wrap:wrap; gap:8px; padding:15px; } .editor-heading { flex:1 0 100%; } .editor-next { margin-left:auto; } .editor-close { margin-left:0; } }
+    @media(max-width:700px) { .editor-overlay { padding:10px; } .editor-content { padding:16px; } .editor-tabs { flex-basis:176px; padding:14px 8px; } .editor-tab { padding:7px 8px; font-size:9px; } .editor-dialog { height:96vh; min-height:0; } .editor-header { flex-wrap:wrap; gap:8px; padding:15px; } .editor-heading { flex:1 0 100%; } .editor-claim-navigation { position:static; margin-left:auto; transform:none; } .editor-close { margin-left:0; } }
     @media(max-width:420px) { .editor-grid { grid-template-columns:1fr; gap:9px; } .editor-section { padding:13px; } }
     @media(max-width:620px) { .course-ward-row { grid-template-columns:1fr; } .course-ward-remove { width:100%; } }
     .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
@@ -341,17 +348,24 @@
     </div>
   <div class="editor-overlay" id="claimEditor" hidden>
     <section class="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
-      <header class="editor-header"><div class="editor-heading"><span class="editor-eyebrow">CLAIM WORKSPACE</span><h2 id="editorTitle">Edit Draft Claim</h2><div class="editor-subtitle" id="editorSubtitle"></div></div><button class="cyber-btn editor-previous" id="editorPrevious" type="button">&#8592; PREVIOUS</button><button class="cyber-btn editor-next" id="editorNext" type="button">NEXT &#8594;</button><button class="cyber-btn editor-close" id="editorClose" type="button" aria-label="Close editor">CLOSE</button></header>
-      <nav class="editor-tabs" id="editorTabs" role="tablist" aria-label="Claim actions">
-        <button class="editor-tab" type="button" role="tab" data-editor-view="cf4" aria-selected="false">Add vitals</button>
-        <button class="editor-tab" type="button" role="tab" data-editor-view="doctor" aria-selected="false">Change doctor</button>
-        <button class="editor-tab" type="button" role="tab" data-editor-view="cf2" aria-selected="false">Change time</button>
-        <button class="editor-tab" type="button" role="tab" data-editor-view="receivable" aria-selected="false">Account receivable</button>
-        <button class="editor-tab" type="button" role="tab" data-editor-view="soa" aria-selected="false">Generate/Remove SOA Charges</button>
-        <button class="editor-tab" type="button" role="tab" data-editor-view="history" aria-selected="false">HPI &amp; Pertinent Past Medical History</button>
-        <button class="editor-tab" type="button" role="tab" data-editor-view="course" aria-selected="false">Update Course in the Ward</button>
-      </nav>
-      <div class="editor-content">
+      <header class="editor-header"><div class="editor-heading"><span class="editor-eyebrow">CLAIM WORKSPACE</span><h2 id="editorTitle">Edit Draft Claim</h2><div class="editor-subtitle" id="editorSubtitle"></div></div><div class="editor-claim-navigation"><button class="cyber-btn editor-previous" id="editorPrevious" type="button" aria-label="Previous claim" title="Previous claim"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><button class="cyber-btn editor-next" id="editorNext" type="button" aria-label="Next claim" title="Next claim"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div><button class="cyber-btn editor-close" id="editorClose" type="button" aria-label="Close editor" title="Close editor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+      <div class="editor-workspace">
+        <nav class="editor-tabs" id="editorTabs" role="tablist" aria-label="Claim actions">
+          <div class="editor-nav-group">
+            <button class="editor-tab" type="button" role="tab" data-editor-view="cf2" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Change admission and discharge</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="doctor" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20v-1a7 7 0 0 1 14 0v1"/></svg><span>Doctor and sign date</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="receivable" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg><span>Account receivable</span></button>
+          </div>
+          <div class="editor-nav-group">
+            <button class="editor-tab" type="button" role="tab" data-editor-view="cf4" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Vitals (CF4)</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="history" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7"/></svg><span>HPI and medical history</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="course" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Course in the ward</span></button>
+          </div>
+          <div class="editor-nav-group">
+            <button class="editor-tab" type="button" role="tab" data-editor-view="soa" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18l-3-2-4 2-4-2-3 2zM8 8h8M8 12h8M8 16h5"/></svg><span>SOA charges</span></button>
+          </div>
+        </nav>
+        <div class="editor-content">
         <section class="editor-section" data-editor-section="cf2">
           <h3>CF2 Admission and Discharge</h3>
           <p class="editor-warning"><strong>Reminder:</strong> If you change the admission or discharge date here, you may also need to update the treatment session date(s) manually in Beacon. This app does not change session dates.</p>
@@ -424,6 +438,7 @@
           <div class="editor-actions"><button class="cyber-btn danger" id="removeSoaButton" type="button">REMOVE SOA CHARGES</button><button class="cyber-btn" id="generateSoaButton" type="button">GENERATE SOA</button></div>
           <div class="editor-message" id="soaEditorMessage" aria-live="polite"></div>
         </section>
+        </div>
       </div>
     </section>
   </div>

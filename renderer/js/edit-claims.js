@@ -15,6 +15,8 @@ const finalizeAllButton = document.getElementById("finalizeAllButton");
 let activeEditClaim = null;
 let courseInWardRowIndex = 0;
 let editorDirty = false;
+let editorLoading = false;
+let editorLoaded = false;
 
 function patientSurname(name) {
   const normalized = String(name || "").trim().replace(/\s+/g, " ");
@@ -414,6 +416,9 @@ function applyEditorView(view) {
 }
 
 async function openClaimEditor(transmittalId, claimId, view = "cf2") {
+  if (editorLoading) return;
+  editorLoading = true;
+  editorLoaded = false;
   activeEditClaim = { transmittalId, claimId, view };
   editorDirty = false;
   updateEditorNextButton();
@@ -468,8 +473,12 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
 
     document.getElementById("editorSoaSummary").textContent =
       `MED rows: ${data.soa_counts.med} | XLSO rows: ${data.soa_counts.xlso} | Payment receipts: ${data.soa_counts.payments}`;
+    editorLoaded = true;
   } catch (error) {
     editorSubtitle.textContent = error.message || "Unable to load this draft claim.";
+  } finally {
+    editorLoading = false;
+    updateEditorNextButton();
   }
 }
 
@@ -495,13 +504,15 @@ function updateEditorNextButton() {
   const previousButton = document.getElementById("editorPrevious");
   const nextClaim = getNextEditableClaimButton();
   const previousClaim = getPreviousEditableClaimButton();
-  nextButton.disabled = !nextClaim;
-  nextButton.title = nextClaim ? "Open the next draft claim in the table" : "No more draft claims in the table";
-  previousButton.disabled = !previousClaim;
-  previousButton.title = previousClaim ? "Open the previous draft claim in the table" : "No previous draft claims in the table";
+  const navigationUnavailable = editorLoading || !editorLoaded;
+  nextButton.disabled = navigationUnavailable || !nextClaim;
+  nextButton.title = navigationUnavailable ? "Wait for the claim to finish loading" : nextClaim ? "Open the next draft claim in the table" : "No more draft claims in the table";
+  previousButton.disabled = navigationUnavailable || !previousClaim;
+  previousButton.title = navigationUnavailable ? "Wait for the claim to finish loading" : previousClaim ? "Open the previous draft claim in the table" : "No previous draft claims in the table";
 }
 
 function navigateClaim(direction) {
+  if (editorLoading || !editorLoaded) return;
   const targetButton = direction > 0 ? getNextEditableClaimButton() : getPreviousEditableClaimButton();
   if (!targetButton) return;
   if (editorDirty && !window.confirm("You have unsaved changes. Move to another claim and discard them?")) return;
