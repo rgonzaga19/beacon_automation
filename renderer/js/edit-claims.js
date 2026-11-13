@@ -1551,18 +1551,18 @@ finalizeAllButton.addEventListener("click", () => {
 
 document.getElementById("copyTransmittalsButton").addEventListener("click", async () => {
   const numbers = [];
-  claimsBody.querySelectorAll("tr[data-claim-row]").forEach((row) => {
+  claimsBody.querySelectorAll("tr[data-claim-row].selected").forEach((row) => {
     const value = row.dataset.transmittalNumber;
     if (!value || numbers.includes(value)) return;
-    if (String(row.dataset.transmittalStatus || "").trim().toUpperCase() === "DRAFT") numbers.push(value);
+    numbers.push(value);
   });
   if (!numbers.length) {
-    setTransmitAllStatus("No DRAFT transmittals to copy. Run a lookup first.", true);
+    setTransmitAllStatus("No transmittals to copy. Run a lookup first.", true);
     return;
   }
   const copied = await copyTextToClipboard(numbers.join("\n"));
   setTransmitAllStatus(copied
-    ? `Copied ${numbers.length} DRAFT transmittal number${numbers.length === 1 ? "" : "s"}.`
+    ? `Copied ${numbers.length} transmittal number${numbers.length === 1 ? "" : "s"}.`
     : "Copy failed. Your browser blocked clipboard access.", !copied);
 });
 
