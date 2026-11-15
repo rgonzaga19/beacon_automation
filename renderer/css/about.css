@@ -17,14 +17,12 @@ html[data-theme="light"] .about-page { --ink-accent: #08766f; }
 .about-window { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; background: var(--bg-dark); }
 
 /* ---------- Header (shared look, page-specific tweaks) ---------- */
-.about-site-header { z-index: 5; display: flex; flex: 0 0 64px; align-items: center; gap: 24px; padding: 0 clamp(20px,4vw,56px); background: var(--bg-panel); border-bottom: 1px solid var(--border); }
-.about-brand { display: flex; align-items: center; gap: 10px; color: var(--text-pri); font-size: 14px; font-weight: 850; letter-spacing: .5px; text-decoration: none; white-space: nowrap; }
-.about-brand img { width: 30px; height: 30px; object-fit: contain; }
-.about-nav { display: flex; align-items: center; gap: 4px; margin-left: auto; }
-.about-nav a { padding: 10px 13px; color: var(--text-sec); border-radius: var(--radius-md); font-size: 13px; font-weight: 650; text-decoration: none; transition: color .15s ease, background .15s ease; }
-.about-nav a:hover, .about-nav a.active { color: var(--text-pri); background: var(--accent-soft); }
-.about-site-header .login-link { color: var(--bg-dark); background: var(--accent); border-color: var(--accent); }
-.about-site-header .login-link:hover { background: var(--accent2); border-color: var(--accent2); }
+.about-site-header { z-index: 5; display: flex; flex: 0 0 58px; align-items: center; padding: 0 clamp(18px,4vw,50px); background: var(--bg-dark); border: 0; }
+.about-back-link { display: inline-flex; min-height: 44px; align-items: center; gap: 9px; color: var(--text-sec); font-size: 12px; font-weight: 700; text-decoration: none; transition: color .16s ease; }
+.about-back-link span { color: var(--accent); font-size: 16px; line-height: 1; transition: transform .16s ease; }
+.about-back-link:hover { color: var(--text-pri); }
+.about-back-link:hover span { transform: translateX(-3px); }
+.about-back-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
 
 /* ---------- Page grid: index rail + content column ---------- */
 .about-content {
@@ -163,10 +161,7 @@ html[data-theme="light"] .about-page { --ink-accent: #08766f; }
   .spec-tools { grid-column: 2; }
 }
 @media (max-width: 680px) {
-  .about-site-header { flex-wrap: wrap; gap: 6px; min-height: 94px; padding: 8px 14px 0; }
-  .about-brand { min-height: 40px; margin-right: auto; }
-  .about-nav { order: 3; width: 100%; height: 40px; justify-content: center; gap: 2px; margin: 0; }
-  .about-nav a { padding: 8px 12px; font-size: 12px; }
+  .about-site-header { min-height: 54px; padding: 4px 16px 0; }
   .about-content { --about-gutter: 16px; padding: 24px var(--about-gutter) 40px; }
   .pipeline-steps { grid-template-columns: 1fr; }
   .pipeline-steps li + li { border-top: 1px solid var(--border); border-left: 0; }
@@ -186,5 +181,5 @@ html[data-theme="light"] .about-page { --ink-accent: #08766f; }
 }
 @media (prefers-reduced-motion: reduce) {
   .about-content { scroll-behavior: auto; }
-  .about-nav a, .about-rail a, .contact-card, .spec-row, .intro-action, .external-mark { transition: none; }
+  .about-back-link, .about-back-link span, .about-rail a, .contact-card, .spec-row, .intro-action, .external-mark { transition: none; }
 }

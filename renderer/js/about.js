@@ -2,30 +2,6 @@ if (window.parent && window.parent !== window) {
   document.body.classList.add("embedded-page");
 }
 
-function syncAboutNavigation() {
-  const current = window.location.hash.slice(1) || "about";
-  document.querySelectorAll(".about-nav a[data-section]").forEach((link) => {
-    const active = link.dataset.section === current;
-    link.classList.toggle("active", active);
-    if (active) link.setAttribute("aria-current", "location");
-    else link.removeAttribute("aria-current");
-  });
-}
-
-window.addEventListener("hashchange", syncAboutNavigation);
-syncAboutNavigation();
-
-fetch("/api/auth/me")
-  .then((response) => response.json())
-  .then((data) => {
-    if (!data.authenticated) return;
-    const accountLink = document.getElementById("accountLink");
-    if (!accountLink) return;
-    accountLink.textContent = "Open workspace";
-    accountLink.href = "/dashboard.html";
-  })
-  .catch(() => {});
-
 const agreementDialog = document.getElementById("agreementDialog");
 const agreementClose = document.getElementById("agreementClose");
 const agreementAcknowledge = document.getElementById("agreementAcknowledge");

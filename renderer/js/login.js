@@ -177,4 +177,4 @@ loginForm.addEventListener("submit", async (event) => {
   }
 });
 
-setAuthMode("login");
+setAuthMode(new URLSearchParams(window.location.search).get("mode") === "register" ? "register" : "login");
