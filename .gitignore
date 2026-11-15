@@ -46,8 +46,6 @@ node_modules/
 /python-build/
 /release/
 /Output/
-# Empty npm lockfile generated locally; this project has no package.json.
-/package-lock.json
 
 ###############################################################################
 # Operating System

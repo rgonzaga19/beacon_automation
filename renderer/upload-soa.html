@@ -21,6 +21,7 @@
 
   .icon-flat { display:inline-flex; align-items:center; justify-content:center; flex:none; line-height:0; }
   .icon-flat svg { stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .automate-btn-icon { display:block; width:16px; height:16px; flex:none; }
 
   .page-header {
     position: relative;
@@ -33,19 +34,23 @@
   .page-header::after { position:absolute; right:var(--gap-3); bottom:0; left:var(--gap-3); height:1px; background:color-mix(in srgb,var(--border) 55%,transparent); content:""; pointer-events:none; }
   .page-header { justify-content: space-between; gap: 16px; }
   .guide-button {
-    flex: none;
-    padding: 4px 0;
-    color: var(--accent);
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    font: 600 12px/1.4 var(--font-ui);
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    display:inline-flex;
+    flex:none;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:8px 13px;
+    color:var(--text-pri);
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:var(--radius-md);
+    font:600 11px/1.4 var(--font-ui);
+    margin-left:auto;
     cursor: pointer;
   }
-  .guide-button:hover { color: var(--text-pri); background: transparent; }
-  .guide-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .guide-button:hover { color:var(--accent); background:var(--accent-soft); border-color:var(--accent); }
+  .guide-button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .guide-button-icon { display:block; width:16px; height:16px; flex:none; }
   .page-header .title-block { line-height: 1.3; }
   .page-header .title {
     font-family: var(--font-ui);
@@ -65,7 +70,7 @@
   /* ---------- SOA folder ---------- */
   .folder-section {
     margin: 10px var(--gap-3) 0;
-    padding: 8px 12px;
+    padding: 8px 0;
     background:transparent;
     border:0;
     border-radius:var(--radius-lg);
@@ -87,7 +92,8 @@
     gap: 8px;
   }
   .folder-input-wrapper {
-    flex: 1;
+    flex: 0 1 420px;
+    min-width: 0;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -107,7 +113,7 @@
     font-size: 11.5px;
   }
   #soaFolderInput::placeholder { color: var(--text-sec); }
-  #browseBtn { flex: none; min-height:36px; padding:7px 12px; display: inline-flex; align-items: center; gap: 8px; }
+  #browseBtn { flex: none; min-height:36px; padding:7px 12px; display: inline-flex; align-items: center; gap: 8px; border:0; }
 
   /* ---------- File-naming guide modal ---------- */
   .soa-guide {
@@ -221,6 +227,10 @@
   .automation-actions #automateBtn {
     flex: 1;
     margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
   #clearBtn {
     width: 100%;
@@ -398,7 +408,9 @@
   }
   @media (max-width: 620px) {
     .section-row { flex-direction:column; }
+    .folder-input-wrapper { flex:initial; width:100%; }
     #browseBtn { width:100%; }
+    .guide-button { width:100%; margin-left:0; }
   }
 </style>
 </head>
@@ -417,7 +429,6 @@
         <div class="title">Upload SOA with discounts &amp; generate</div>
         <div class="subtitle">Upload SOA, apply discounts, validate, and generate the eSOA for each transmittal.</div>
       </div>
-      <button class="cyber-btn guide-button" id="userGuideBtn" type="button" aria-haspopup="dialog" aria-controls="userGuideModal">USER GUIDE</button>
     </div>
 
     <div class="folder-section">
@@ -431,9 +442,10 @@
           <input type="text" id="soaFolderInput" readonly placeholder="No SOA Excel files selected" aria-describedby="soaSelectionHint" />
         </div>
         <button class="cyber-btn" id="browseBtn" aria-describedby="soaSelectionHint">
-          <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+          <span class="icon-flat"><i class="upload-files-icon" data-lucide="upload" data-icon-size="16" aria-hidden="true"></i></span>
           BROWSE
         </button>
+        <button class="guide-button" id="userGuideBtn" type="button" aria-haspopup="dialog" aria-controls="userGuideModal"><i class="guide-button-icon" data-lucide="circle-help" data-icon-size="16" aria-hidden="true"></i>USER GUIDE</button>
       </div>
     </div>
 
@@ -468,7 +480,7 @@
         </div>
         <div class="automation-actions">
           <button class="solid-btn" id="automateBtn">
-            <span class="icon-flat"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 4.5v15l13-7.5z"/></svg></span>
+            <i class="automate-btn-icon" data-lucide="upload" data-icon-size="16" aria-hidden="true"></i>
             <span id="automateBtnLabel">AUTOMATE UPLOAD</span>
           </button>
           <button class="cyber-btn" id="clearBtn" type="button">Clear</button>
@@ -491,6 +503,9 @@
 
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script src="js/common.js"></script>
+  <script src="vendor/lucide/lucide.min.js"></script>
+  <script src="js/icons.js"></script>
+  <script>BeabotsIcons.hydrate();</script>
   <script src="js/upload-soa.js"></script>
   <script>
     (() => {

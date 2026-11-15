@@ -45,6 +45,7 @@ const notificationMenu = document.getElementById("workspaceNotificationMenu");
 const accountTrigger = document.getElementById("workspaceAccountTrigger");
 const accountMenu = document.getElementById("workspaceAccountMenu");
 let isAdmin = false;
+BeabotsIcons.hydrate();
 
 function closeNotificationMenu() {
   notificationMenu.hidden = true;
@@ -60,6 +61,8 @@ function setGroupOpen(trigger, open) {
   const subnav = document.getElementById(trigger.getAttribute("aria-controls"));
   trigger.setAttribute("aria-expanded", String(open));
   if (subnav) subnav.hidden = !open;
+  const chevron = trigger.querySelector(".workspace-group-chevron");
+  if (chevron) BeabotsIcons.replace(chevron, open ? "minus" : "plus", { size:16, className:"workspace-group-chevron" });
 }
 
 function closeGroups(except = null) {
@@ -73,6 +76,7 @@ function closeMobileMenu() {
   backdrop.hidden = true;
   mobileToggle.setAttribute("aria-expanded", "false");
   mobileToggle.setAttribute("aria-label", "Open workspace menu");
+  BeabotsIcons.replace(mobileToggle.querySelector(".workspace-mobile-icon"), "menu", { size:16, className:"workspace-header-icon workspace-mobile-icon" });
 }
 
 function openMobileMenu() {
@@ -81,6 +85,7 @@ function openMobileMenu() {
   backdrop.hidden = false;
   mobileToggle.setAttribute("aria-expanded", "true");
   mobileToggle.setAttribute("aria-label", "Close workspace menu");
+  BeabotsIcons.replace(mobileToggle.querySelector(".workspace-mobile-icon"), "x", { size:16, className:"workspace-header-icon workspace-mobile-icon" });
 }
 
 function setActiveNavigation(key, tab = "individual", aboutSection = "about") {
@@ -240,7 +245,7 @@ sidebarCollapse.addEventListener("click", () => {
   sidebarCollapse.setAttribute("aria-label", label);
   sidebarCollapse.setAttribute("title", label);
   sidebarCollapse.setAttribute("aria-expanded", String(!collapsed));
-  sidebarCollapse.querySelector("span").textContent = collapsed ? "›" : "‹";
+  BeabotsIcons.replace(sidebarCollapse.querySelector(".workspace-sidebar-collapse-icon"), collapsed ? "chevron-right" : "chevron-left", { size:16, className:"workspace-sidebar-collapse-icon" });
 });
 mobileToggle.addEventListener("click", () => {
   if (sidebar.classList.contains("mobile-open")) closeMobileMenu();

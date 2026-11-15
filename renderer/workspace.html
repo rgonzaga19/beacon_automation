@@ -16,71 +16,71 @@
     <div class="workspace-body">
       <aside class="workspace-sidebar" id="workspaceSidebar" aria-label="Workspace navigation">
         <div class="workspace-sidebar-brand"><a class="workspace-brand" href="/workspace.html" aria-label="Beabots dashboard"><img src="assets/bot.ico" alt=""><span><strong>BEABOTS</strong><small>BEACON AUTOMATION</small></span></a></div>
-        <div class="workspace-sidebar-top"><span>WORKSPACE</span><button id="workspaceSidebarCollapse" type="button" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><span aria-hidden="true">‹</span></button></div>
+        <div class="workspace-sidebar-top"><span>WORKSPACE</span><button id="workspaceSidebarCollapse" type="button" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><i class="workspace-sidebar-collapse-icon" data-lucide="chevron-left" data-icon-size="16" aria-hidden="true"></i></button></div>
         <nav class="workspace-nav">
-          <button class="workspace-nav-link" type="button" data-workspace="dashboard" title="Dashboard"><span class="workspace-nav-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m2.5 9 7.5-6 7.5 6v7.2a1 1 0 0 1-1 1h-4.3v-5.1H7.8v5.1H3.5a1 1 0 0 1-1-1z"/></svg></span><span>Dashboard</span></button>
+          <button class="workspace-nav-link" type="button" data-workspace="dashboard" title="Dashboard"><i class="workspace-nav-icon" data-lucide="house" data-icon-size="20" aria-hidden="true"></i><span>Dashboard</span></button>
           <section class="workspace-nav-group">
-            <button class="workspace-nav-link workspace-group-trigger" type="button" data-nav-group="soa" data-collapsed-workspace="soaExcel" data-collapsed-soa-tab="individual" aria-expanded="false" aria-controls="workspaceSoaSubnav" title="SOA Generator"><span class="workspace-nav-icon" aria-hidden="true">▦</span><span>SOA Generator</span><span class="workspace-group-chevron" aria-hidden="true">+</span></button>
+            <button class="workspace-nav-link workspace-group-trigger" type="button" data-nav-group="soa" data-collapsed-workspace="soaExcel" data-collapsed-soa-tab="individual" aria-expanded="false" aria-controls="workspaceSoaSubnav" title="SOA Generator"><i class="workspace-nav-icon" data-lucide="file-spreadsheet" data-icon-size="20" aria-hidden="true"></i><span>SOA Generator</span><i class="workspace-group-chevron" data-lucide="plus" data-icon-size="16" aria-hidden="true"></i></button>
             <div class="workspace-subnav" id="workspaceSoaSubnav" hidden>
-              <button class="workspace-nav-link" type="button" data-workspace="soaExcel" data-soa-tab="individual"><span class="workspace-nav-icon" aria-hidden="true">●</span><span>Individual</span></button>
-              <button class="workspace-nav-link" type="button" data-workspace="soaExcel" data-soa-tab="batch"><span class="workspace-nav-icon" aria-hidden="true">☷</span><span>Batch Generate</span></button>
+              <button class="workspace-nav-link" type="button" data-workspace="soaExcel" data-soa-tab="individual"><i class="workspace-nav-icon" data-lucide="user-round" data-icon-size="20" aria-hidden="true"></i><span>Individual</span></button>
+              <button class="workspace-nav-link" type="button" data-workspace="soaExcel" data-soa-tab="batch"><i class="workspace-nav-icon" data-lucide="layers" data-icon-size="20" aria-hidden="true"></i><span>Batch Generate</span></button>
             </div>
           </section>
           <section class="workspace-nav-group">
-            <button class="workspace-nav-link workspace-group-trigger" type="button" data-nav-group="automation" data-collapsed-workspace="cf2" aria-expanded="false" aria-controls="workspaceAutomationSubnav" title="Automation"><span class="workspace-nav-icon" aria-hidden="true">⟳</span><span>Automation</span><span class="workspace-group-chevron" aria-hidden="true">+</span></button>
+            <button class="workspace-nav-link workspace-group-trigger" type="button" data-nav-group="automation" data-collapsed-workspace="cf2" aria-expanded="false" aria-controls="workspaceAutomationSubnav" title="Automation"><i class="workspace-nav-icon" data-lucide="workflow" data-icon-size="20" aria-hidden="true"></i><span>Automation</span><i class="workspace-group-chevron" data-lucide="plus" data-icon-size="16" aria-hidden="true"></i></button>
             <div class="workspace-subnav" id="workspaceAutomationSubnav" hidden>
-              <button class="workspace-nav-link" type="button" data-workspace="cf2"><span class="workspace-nav-icon" aria-hidden="true">Ⅱ</span><span>Claim Form 2</span></button>
-              <button class="workspace-nav-link" type="button" data-workspace="uploadSoa"><span class="workspace-nav-icon" aria-hidden="true">↑</span><span>Upload SOA</span></button>
-              <button class="workspace-nav-link" type="button" data-workspace="cf4"><span class="workspace-nav-icon" aria-hidden="true">Ⅳ</span><span>Claim Form 4</span></button>
-              <button class="workspace-nav-link" type="button" data-workspace="uploadDocuments"><span class="workspace-nav-icon" aria-hidden="true">▤</span><span>Upload Documents</span></button>
+              <button class="workspace-nav-link" type="button" data-workspace="cf2"><i class="workspace-nav-icon" data-lucide="file-text" data-icon-size="20" aria-hidden="true"></i><span>Claim Form 2</span></button>
+              <button class="workspace-nav-link" type="button" data-workspace="uploadSoa"><i class="workspace-nav-icon" data-lucide="upload" data-icon-size="20" aria-hidden="true"></i><span>Upload SOA</span></button>
+              <button class="workspace-nav-link" type="button" data-workspace="cf4"><i class="workspace-nav-icon" data-lucide="file-check-2" data-icon-size="20" aria-hidden="true"></i><span>Claim Form 4</span></button>
+              <button class="workspace-nav-link" type="button" data-workspace="uploadDocuments"><i class="workspace-nav-icon" data-lucide="files" data-icon-size="20" aria-hidden="true"></i><span>Upload Documents</span></button>
             </div>
           </section>
-          <button class="workspace-nav-link" type="button" data-workspace="editClaims" title="Edit claims"><span class="workspace-nav-icon" aria-hidden="true">✓</span><span>Edit Claims</span></button>
-          <button class="workspace-nav-link" type="button" data-workspace="runAll" title="Run full workflow"><span class="workspace-nav-icon" aria-hidden="true">▶</span><span>Run Full Workflow</span></button>
+          <button class="workspace-nav-link" type="button" data-workspace="editClaims" title="Edit claims"><i class="workspace-nav-icon" data-lucide="file-pen-line" data-icon-size="20" aria-hidden="true"></i><span>Edit Claims</span></button>
+          <button class="workspace-nav-link" type="button" data-workspace="runAll" title="Run full workflow"><i class="workspace-nav-icon" data-lucide="play" data-icon-size="20" aria-hidden="true"></i><span>Run Full Workflow</span></button>
           <section class="workspace-nav-group">
-            <button class="workspace-nav-link workspace-group-trigger" type="button" data-nav-group="tools" data-collapsed-workspace="autoRename" aria-expanded="false" aria-controls="workspaceToolsSubnav" title="Other tools"><span class="workspace-nav-icon" aria-hidden="true">⚒</span><span>Other Tools</span><span class="workspace-group-chevron" aria-hidden="true">+</span></button>
+            <button class="workspace-nav-link workspace-group-trigger" type="button" data-nav-group="tools" data-collapsed-workspace="autoRename" aria-expanded="false" aria-controls="workspaceToolsSubnav" title="Other tools"><i class="workspace-nav-icon" data-lucide="wrench" data-icon-size="20" aria-hidden="true"></i><span>Other Tools</span><i class="workspace-group-chevron" data-lucide="plus" data-icon-size="16" aria-hidden="true"></i></button>
             <div class="workspace-subnav" id="workspaceToolsSubnav" hidden>
-              <button class="workspace-nav-link" type="button" data-workspace="autoRename"><span class="workspace-nav-icon" aria-hidden="true">✎</span><span>PDF Auto Rename</span></button>
-              <a class="workspace-nav-link external-link" href="https://rgonzaga19.github.io/pdfsplitter/" target="_blank" rel="noopener noreferrer"><span class="workspace-nav-icon" aria-hidden="true">✂</span><span>PDF Splitter ↗</span></a>
-              <a class="workspace-nav-link external-link" href="https://rgonzaga19.github.io/pdfeditor/" target="_blank" rel="noopener noreferrer"><span class="workspace-nav-icon" aria-hidden="true">▧</span><span>PDF Editor ↗</span></a>
-              <a class="workspace-nav-link external-link" href="https://rgonzaga19.github.io/nephro_dtrgenerator/" target="_blank" rel="noopener noreferrer"><span class="workspace-nav-icon" aria-hidden="true">▤</span><span>DTR Generator ↗</span></a>
+              <button class="workspace-nav-link" type="button" data-workspace="autoRename"><i class="workspace-nav-icon" data-lucide="file-text" data-icon-size="20" aria-hidden="true"></i><span>PDF Auto Rename</span></button>
+              <a class="workspace-nav-link external-link" href="https://rgonzaga19.github.io/pdfsplitter/" target="_blank" rel="noopener noreferrer"><i class="workspace-nav-icon" data-lucide="scissors" data-icon-size="20" aria-hidden="true"></i><span>PDF Splitter</span><i class="workspace-external-icon" data-lucide="arrow-up-right" data-icon-size="16" aria-hidden="true"></i></a>
+              <a class="workspace-nav-link external-link" href="https://rgonzaga19.github.io/pdfeditor/" target="_blank" rel="noopener noreferrer"><i class="workspace-nav-icon" data-lucide="file-pen-line" data-icon-size="20" aria-hidden="true"></i><span>PDF Editor</span><i class="workspace-external-icon" data-lucide="arrow-up-right" data-icon-size="16" aria-hidden="true"></i></a>
+              <a class="workspace-nav-link external-link" href="https://rgonzaga19.github.io/nephro_dtrgenerator/" target="_blank" rel="noopener noreferrer"><i class="workspace-nav-icon" data-lucide="calendar-days" data-icon-size="20" aria-hidden="true"></i><span>DTR Generator</span><i class="workspace-external-icon" data-lucide="arrow-up-right" data-icon-size="16" aria-hidden="true"></i></a>
             </div>
           </section>
-          <button class="workspace-nav-link" type="button" data-workspace="teamCollab" title="Team chat"><span class="workspace-nav-icon" aria-hidden="true">▤</span><span>Team Chat</span></button>
-          <button class="workspace-nav-link" type="button" data-workspace="settings" title="Settings"><span class="workspace-nav-icon" aria-hidden="true">⚙</span><span>Settings</span></button>
-          <button class="workspace-nav-link" id="workspaceUsersLink" type="button" data-workspace="users" title="User management" hidden><span class="workspace-nav-icon" aria-hidden="true">♙</span><span>User Management</span></button>
+          <button class="workspace-nav-link" type="button" data-workspace="teamCollab" title="Team chat"><i class="workspace-nav-icon" data-lucide="messages-square" data-icon-size="20" aria-hidden="true"></i><span>Team Chat</span></button>
+          <button class="workspace-nav-link" type="button" data-workspace="settings" title="Settings"><i class="workspace-nav-icon" data-lucide="settings" data-icon-size="20" aria-hidden="true"></i><span>Settings</span></button>
+          <button class="workspace-nav-link" id="workspaceUsersLink" type="button" data-workspace="users" title="User management" hidden><i class="workspace-nav-icon" data-lucide="users-round" data-icon-size="20" aria-hidden="true"></i><span>User Management</span></button>
         </nav>
         <div class="workspace-sidebar-footer">
-          <button class="workspace-nav-link" type="button" data-workspace="about" data-about-section="about" title="About Beabots"><span class="workspace-nav-icon" aria-hidden="true">ⓘ</span><span>About Beabots</span></button>
-          <button class="workspace-nav-link" type="button" data-workspace="about" data-about-section="contact" title="Contact"><span class="workspace-nav-icon" aria-hidden="true">✉</span><span>Contact</span></button>
+          <button class="workspace-nav-link" type="button" data-workspace="about" data-about-section="about" title="About Beabots"><i class="workspace-nav-icon" data-lucide="info" data-icon-size="20" aria-hidden="true"></i><span>About Beabots</span></button>
+          <button class="workspace-nav-link" type="button" data-workspace="about" data-about-section="contact" title="Contact"><i class="workspace-nav-icon" data-lucide="mail" data-icon-size="20" aria-hidden="true"></i><span>Contact</span></button>
         </div>
       </aside>
       <button class="workspace-backdrop" id="workspaceBackdrop" type="button" aria-label="Close workspace menu" hidden></button>
 
       <div class="workspace-main">
         <header class="workspace-header">
-          <button class="workspace-mobile-toggle" id="workspaceMobileToggle" type="button" aria-label="Open workspace menu" aria-controls="workspaceSidebar" aria-expanded="false"><span aria-hidden="true">☰</span></button>
+          <button class="workspace-mobile-toggle" id="workspaceMobileToggle" type="button" aria-label="Open workspace menu" aria-controls="workspaceSidebar" aria-expanded="false"><i class="workspace-header-icon workspace-mobile-icon" data-lucide="menu" data-icon-size="16" aria-hidden="true"></i></button>
           <div class="workspace-beacon-status" id="workspaceBeaconStatus" role="img" aria-label="Checking Beacon connection" title="Checking Beacon connection">
             <svg class="workspace-heartbeat heartbeat-disconnected" id="workspaceBeaconHeartbeat" viewBox="0 0 100 24" aria-hidden="true"><path d="M2 13h96"></path><path class="heartbeat-flat-base" d="M2 13h96"></path><path class="heartbeat-flat-trace" d="M2 13h96"></path></svg>
           </div>
           <form class="workspace-search" id="workspaceSearchForm" role="search">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg>
+            <i class="workspace-header-icon" data-lucide="search" data-icon-size="16" aria-hidden="true"></i>
             <input id="workspaceSearchInput" type="search" list="workspaceSearchOptions" placeholder="Search tools, patients, or transmittal #" aria-label="Search tools, patients, or transmittal number" autocomplete="off">
             <datalist id="workspaceSearchOptions"><option value="Dashboard"></option><option value="SOA Generator"></option><option value="Claim Form 2"></option><option value="Upload SOA"></option><option value="Claim Form 4"></option><option value="Upload Documents"></option><option value="Edit Claims"></option><option value="Run Full Workflow"></option><option value="PDF Auto Rename"></option><option value="PDF Splitter"></option><option value="PDF Editor"></option><option value="DTR Generator"></option><option value="Team Chat"></option><option value="Settings"></option></datalist>
             <kbd>Enter</kbd>
           </form>
           <div class="workspace-header-spacer"></div>
           <div class="workspace-notifications">
-        <button class="workspace-notification-trigger" id="workspaceNotificationTrigger" type="button" aria-expanded="false" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10 21a2 2 0 0 0 4 0"/></svg><span id="workspaceUnreadBadge" hidden></span></button>
-        <div class="workspace-notification-menu" id="workspaceNotificationMenu" hidden><strong>Messages</strong><button id="workspaceNotificationChat" type="button"><span>Team Chat</span><span class="workspace-chat-unread" id="workspaceChatUnread" hidden></span></button></div>
+        <button class="workspace-notification-trigger" id="workspaceNotificationTrigger" type="button" aria-expanded="false" aria-label="Notifications"><i class="workspace-header-icon" data-lucide="bell" data-icon-size="16" aria-hidden="true"></i><span id="workspaceUnreadBadge" hidden></span></button>
+        <div class="workspace-notification-menu" id="workspaceNotificationMenu" hidden><strong>Messages</strong><button id="workspaceNotificationChat" type="button"><i class="workspace-menu-icon" data-lucide="messages-square" data-icon-size="16" aria-hidden="true"></i><span>Team Chat</span><span class="workspace-chat-unread" id="workspaceChatUnread" hidden></span></button></div>
       </div>
       <div class="workspace-account">
         <button class="workspace-account-trigger" id="workspaceAccountTrigger" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="workspaceAccountMenu">
-          <span class="workspace-avatar" id="workspaceUserAvatar"><img src="assets/avatar/avatar-penguin.svg" alt=""></span><span class="workspace-account-name" id="workspaceUserName">Workspace</span><span class="workspace-account-chevron" aria-hidden="true">⌄</span>
+          <span class="workspace-avatar" id="workspaceUserAvatar"><img src="assets/avatar/avatar-penguin.svg" alt=""></span><span class="workspace-account-name" id="workspaceUserName">Workspace</span><i class="workspace-account-chevron" data-lucide="chevron-down" data-icon-size="16" aria-hidden="true"></i>
         </button>
         <div class="workspace-account-menu" id="workspaceAccountMenu" role="menu" hidden>
-          <button id="workspaceProfileSettings" type="button" role="menuitem">Profile Settings</button>
-          <button id="workspaceSignOut" type="button" role="menuitem">Sign out</button>
+          <button id="workspaceProfileSettings" type="button" role="menuitem"><i class="workspace-menu-icon" data-lucide="user-round" data-icon-size="16" aria-hidden="true"></i>Profile Settings</button>
+          <button id="workspaceSignOut" type="button" role="menuitem"><i class="workspace-menu-icon" data-lucide="log-out" data-icon-size="16" aria-hidden="true"></i>Sign out</button>
         </div>
       </div>
     </header>
@@ -105,6 +105,8 @@
     </div>
   </div>
   <script src="js/common.js"></script>
+  <script src="vendor/lucide/lucide.min.js"></script>
+  <script src="js/icons.js"></script>
   <script src="js/workspace.js"></script>
 </body>
 </html>
