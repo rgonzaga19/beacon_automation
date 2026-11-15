@@ -141,6 +141,7 @@
 .footer-links a:hover { color:var(--accent); }
 .footer-bottom { display:flex; justify-content:space-between; gap:12px; padding-top:14px; color:#aab7c8; border-top:1px solid rgba(147,171,198,.14); font-size:10px; }
 
+html[data-theme="light"] .cta-primary { color:#fff; }
 html[data-theme="light"] .workflow-track { background:linear-gradient(145deg,#fff,#f4f8fc); border-color:#dbe3ec; box-shadow:0 16px 38px rgba(16,24,40,.07); }
 html[data-theme="light"] .workflow-track::before { background:linear-gradient(90deg,rgba(13,148,136,.12),rgba(13,148,136,.44),rgba(13,148,136,.12)); }
 html[data-theme="light"] .workflow-step { border-color:#e4e9f0; }

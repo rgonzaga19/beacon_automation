@@ -1091,7 +1091,7 @@ def _prepare_upload_folder(files, allowed_extensions):
 
 @app.route("/")
 def web_index():
-    return send_from_directory(app.static_folder, "home.html")
+    return send_from_directory(app.static_folder, "landing.html")
 
 
 @app.route("/login")
