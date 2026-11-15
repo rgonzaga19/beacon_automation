@@ -60,8 +60,17 @@
       <div class="workspace-main">
         <header class="workspace-header">
           <button class="workspace-mobile-toggle" id="workspaceMobileToggle" type="button" aria-label="Open workspace menu" aria-controls="workspaceSidebar" aria-expanded="false"><span aria-hidden="true">☰</span></button>
-      <div class="workspace-header-spacer"></div>
-      <div class="workspace-notifications">
+          <div class="workspace-beacon-status" id="workspaceBeaconStatus" role="img" aria-label="Checking Beacon connection" title="Checking Beacon connection">
+            <svg class="workspace-heartbeat heartbeat-disconnected" id="workspaceBeaconHeartbeat" viewBox="0 0 100 24" aria-hidden="true"><path d="M2 13h96"></path><path class="heartbeat-flat-base" d="M2 13h96"></path><path class="heartbeat-flat-trace" d="M2 13h96"></path></svg>
+          </div>
+          <form class="workspace-search" id="workspaceSearchForm" role="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg>
+            <input id="workspaceSearchInput" type="search" list="workspaceSearchOptions" placeholder="Search tools, patients, or transmittal #" aria-label="Search tools, patients, or transmittal number" autocomplete="off">
+            <datalist id="workspaceSearchOptions"><option value="Dashboard"></option><option value="SOA Generator"></option><option value="Claim Form 2"></option><option value="Upload SOA"></option><option value="Claim Form 4"></option><option value="Upload Documents"></option><option value="Edit Claims"></option><option value="Run Full Workflow"></option><option value="PDF Auto Rename"></option><option value="PDF Splitter"></option><option value="PDF Editor"></option><option value="DTR Generator"></option><option value="Team Chat"></option><option value="Settings"></option></datalist>
+            <kbd>Enter</kbd>
+          </form>
+          <div class="workspace-header-spacer"></div>
+          <div class="workspace-notifications">
         <button class="workspace-notification-trigger" id="workspaceNotificationTrigger" type="button" aria-expanded="false" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10 21a2 2 0 0 0 4 0"/></svg><span id="workspaceUnreadBadge" hidden></span></button>
         <div class="workspace-notification-menu" id="workspaceNotificationMenu" hidden><strong>Messages</strong><button id="workspaceNotificationChat" type="button"><span>Team Chat</span><span class="workspace-chat-unread" id="workspaceChatUnread" hidden></span></button></div>
       </div>

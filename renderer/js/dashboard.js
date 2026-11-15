@@ -1064,11 +1064,9 @@ class HeartbeatController {
   }
 
   init() {
-    if (!this.heartbeatEl) return;
     this.connectSocket();
     this.updateHeartbeat();
     this.startPolling();
-    this.handleVisibilityChange();
   }
 
   connectSocket() {
@@ -1174,10 +1172,18 @@ class HeartbeatController {
   }
 
   updateHeartbeat() {
-    if (!this.heartbeatEl) return;
-
     const { connected = false, slow = false } = this.lastConnectionState || {};
     const automationActive = this.activeAutomations.size > 0;
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: "beacon-heartbeat-update",
+        connected,
+        slow,
+        active: automationActive,
+        checking: !this.lastConnectionState,
+      }, window.location.origin);
+    }
+    if (!this.heartbeatEl) return;
 
     // Remove all state classes
     this.heartbeatEl.classList.remove(
@@ -1226,6 +1232,10 @@ if (document.readyState === "loading") {
 } else {
   heartbeatController = new HeartbeatController();
 }
+window.addEventListener("message", (event) => {
+  if (event.origin !== window.location.origin || event.source !== window.parent || event.data?.type !== "beacon-status-refresh") return;
+  heartbeatController?.pollConnectionStatus();
+});
 
 // ---------------------------------------------------------------------------
 // Initial state

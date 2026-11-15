@@ -17,6 +17,13 @@ let courseInWardRowIndex = 0;
 let editorDirty = false;
 let editorLoading = false;
 let editorLoaded = false;
+window.addEventListener("message", (event) => {
+  if (event.origin !== window.location.origin || event.source !== window.parent || event.data?.type !== "workspace-claim-search") return;
+  const query = String(event.data.query || "").trim();
+  if (!query) return;
+  transmittalInput.value = query;
+  lookupForm.requestSubmit();
+});
 
 function patientSurname(name) {
   const normalized = String(name || "").trim().replace(/\s+/g, " ");

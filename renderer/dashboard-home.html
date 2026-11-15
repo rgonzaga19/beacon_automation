@@ -13,20 +13,6 @@
   .site-header.agreement-blocked { opacity:.55; }
   .site-brand { display:flex; align-items:center; gap:10px; color:var(--text-pri); font-weight:800; letter-spacing:.7px; text-decoration:none; }
   .site-brand img { width:30px; height:30px; object-fit:contain; }
-  .workspace-heartbeat { width:clamp(110px,16vw,220px); height:24px; flex:0 1 clamp(110px,16vw,220px); min-width:72px; overflow:visible; color:var(--accent); opacity:.8; transition:color 300ms ease,opacity 300ms ease; }
-  .workspace-heartbeat path { fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:150; stroke-dashoffset:150; animation:heartbeat-trace 2.8s ease-in-out infinite; }
-  .workspace-heartbeat .heartbeat-flat-base,.workspace-heartbeat .heartbeat-flat-trace { display:none; }
-  @keyframes heartbeat-trace { 0%,12% { stroke-dashoffset:150; opacity:.35; } 52%,78% { stroke-dashoffset:0; opacity:1; } 100% { stroke-dashoffset:-150; opacity:.35; } }
-  @keyframes heartbeat-flat-scan { to { stroke-dashoffset:-96; } }
-
-  .workspace-heartbeat.heartbeat-active { color:var(--warning); opacity:1; }
-  .workspace-heartbeat.heartbeat-active path { animation:heartbeat-trace 1.2s ease-in-out infinite; }
-  .workspace-heartbeat.heartbeat-slow path,
-  .workspace-heartbeat.heartbeat-disconnected path { animation:none; stroke-dasharray:none; stroke-dashoffset:0; opacity:.4; }
-  .workspace-heartbeat.heartbeat-slow { color:var(--accent); opacity:.8; }
-  .workspace-heartbeat.heartbeat-disconnected { color:var(--error); opacity:1; }
-  .workspace-heartbeat.heartbeat-disconnected .heartbeat-flat-base { display:block; opacity:.55; }
-  .workspace-heartbeat.heartbeat-disconnected .heartbeat-flat-trace { display:block; stroke-dasharray:14 82; stroke-dashoffset:96; animation:heartbeat-flat-scan 1.8s linear infinite; opacity:1; filter:drop-shadow(0 0 3px currentColor); }
   .site-nav { display:flex; align-items:center; gap:8px; height:100%; margin-left:auto; }
   .site-nav button { height:100%; padding:0 13px; color:var(--text-sec); background:none; border:0; border-bottom:1px solid transparent; font:600 13px var(--font-ui); cursor:pointer; }
   .site-nav button:hover,.site-nav button.active { color:var(--text-pri); border-bottom-color:var(--accent); }
@@ -374,13 +360,10 @@
     .app-window.dashboard-entering .titlebar,
     .app-window.dashboard-entering .sidebar-column,
     .app-window.dashboard-entering .body { animation-duration:160ms; animation-delay:0ms; }
-    .workspace-heartbeat path { animation:none; stroke-dasharray:none; stroke-dashoffset:0; opacity:.75; }
-    .workspace-heartbeat .heartbeat-flat-trace { animation:none; stroke-dasharray:none; stroke-dashoffset:0; filter:none; }
   }
   @media (max-width:760px) {
     .site-header { height:auto; min-height:64px; flex:0 0 auto; flex-wrap:wrap; gap:6px; padding:8px 12px 0; }
     .site-brand { order:0; margin-right:auto; }
-    .workspace-heartbeat { order:1; width:clamp(56px,12vw,100px); flex-basis:clamp(56px,12vw,100px); margin-right:8px; }
     .mobile-menu-trigger { display:inline-flex; order:1; }
     .site-account { order:2; }
     .site-nav { order:3; width:100%; height:40px; justify-content:center; gap:2px; margin:0; }
@@ -399,8 +382,7 @@
     .home-columns { grid-template-columns:1fr; }
     .tool-list { grid-template-columns:1fr; }
   }
-  @media (max-width:500px) { .workspace-heartbeat { width:34px; flex-basis:34px; min-width:34px; margin-right:4px; } }
-</style>
+  </style>
 <link rel="stylesheet" href="css/site-header.css" />
 <style>
   .site-header { border-bottom:1px solid var(--border); }
@@ -422,7 +404,6 @@
   <div class="app-window no-glow" id="dashboardShell">
     <header class="site-header">
       <a class="site-brand" href="/workspace.html" id="siteBrand"><img src="assets/bot.ico" alt=""><span class="header-brand-copy"><span>BEABOTS</span><span class="brand-tagline">Beacon Automation</span></span></a>
-      <svg class="workspace-heartbeat heartbeat-disconnected" viewBox="0 0 100 24" aria-hidden="true"><path d="M2 13h23l7-1 5-7 8 15 8-12 5 5h10l4-1h26" /><path class="heartbeat-flat-base" d="M2 13h96" /><path class="heartbeat-flat-trace" d="M2 13h96" /></svg>
       <button class="mobile-menu-trigger" id="mobileMenuButton" type="button" aria-controls="dashboardSidebar" aria-expanded="false" aria-label="Open workspace menu"><span aria-hidden="true">&#9776;</span></button>
       <nav class="site-nav" aria-label="Main navigation">
         <button id="siteHome" type="button">Home</button><button id="siteClaims" type="button">Claims</button><button id="siteAbout" type="button">About</button><button id="siteContact" type="button">Contact</button>

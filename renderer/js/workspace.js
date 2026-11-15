@@ -177,6 +177,62 @@ navLinks.forEach((link) => {
   }));
 });
 
+const workspaceSearchForm = document.getElementById("workspaceSearchForm");
+const workspaceSearchInput = document.getElementById("workspaceSearchInput");
+const searchableWorkspaceTools = [
+  { terms: ["dashboard", "home"], key: "dashboard" },
+  { terms: ["soa generator", "soa"], key: "soaExcel" },
+  { terms: ["claim form 2", "cf2"], key: "cf2" },
+  { terms: ["upload soa"], key: "uploadSoa" },
+  { terms: ["claim form 4", "cf4"], key: "cf4" },
+  { terms: ["upload documents", "document upload"], key: "uploadDocuments" },
+  { terms: ["edit claims", "claims editor"], key: "editClaims" },
+  { terms: ["run full workflow", "full workflow"], key: "runAll" },
+  { terms: ["pdf auto rename", "auto rename"], key: "autoRename" },
+  { terms: ["team chat", "chat"], key: "teamCollab" },
+  { terms: ["settings", "profile settings"], key: "settings" },
+  { terms: ["user management", "users"], key: "users" },
+  { terms: ["about beabots", "about"], key: "about" },
+];
+const externalWorkspaceTools = [
+  { terms: ["pdf splitter", "splitter"], url: "https://rgonzaga19.github.io/pdfsplitter/" },
+  { terms: ["pdf editor", "editor"], url: "https://rgonzaga19.github.io/pdfeditor/" },
+  { terms: ["dtr generator", "dtr"], url: "https://rgonzaga19.github.io/nephro_dtrgenerator/" },
+];
+
+function findToolMatch(value, tools) {
+  const normalized = value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
+  return tools.find((tool) => tool.terms.some((term) => term === normalized));
+}
+
+function sendClaimSearch(frame, query) {
+  const send = () => frame.contentWindow?.postMessage({ type: "workspace-claim-search", query }, location.origin);
+  let ready = false;
+  try { ready = frame.contentDocument?.readyState === "complete" && frame.contentWindow.location.pathname.endsWith("/edit-claims.html"); } catch { /* Wait for the editor frame to load. */ }
+  if (ready) send();
+  else frame.addEventListener("load", send, { once: true });
+}
+
+workspaceSearchForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const query = workspaceSearchInput.value.trim();
+  if (!query) return;
+  const tool = findToolMatch(query, searchableWorkspaceTools);
+  if (tool) {
+    activateWorkspace(tool.key);
+    workspaceSearchInput.blur();
+    return;
+  }
+  const externalTool = findToolMatch(query, externalWorkspaceTools);
+  if (externalTool) {
+    window.open(externalTool.url, "_blank", "noopener,noreferrer");
+    workspaceSearchInput.blur();
+    return;
+  }
+  activateWorkspace("editClaims");
+  sendClaimSearch(frames.editClaims, query);
+  workspaceSearchInput.blur();
+});
 const sidebarCollapse = document.getElementById("workspaceSidebarCollapse");
 sidebarCollapse.addEventListener("click", () => {
   const collapsed = sidebar.classList.toggle("collapsed");
@@ -221,7 +277,30 @@ window.addEventListener("blur", () => {
 });
 window.addEventListener("message", (event) => {
   if (event.origin !== location.origin || !event.data) return;
-  if (event.source === frames.about.contentWindow && event.data.type === "agreement-open-state") {
+  if (event.source === frames.dashboard.contentWindow && event.data.type === "beacon-heartbeat-update") {
+    const status = document.getElementById("workspaceBeaconStatus");
+    const heartbeat = document.getElementById("workspaceBeaconHeartbeat");
+    const state = event.data.checking
+      ? "checking"
+      : !event.data.connected
+        ? "disconnected"
+        : event.data.active
+          ? "active"
+          : event.data.slow ? "slow" : "connected";
+    const stateClass = state === "checking" ? "heartbeat-slow" : `heartbeat-${state}`;
+    status.classList.remove("heartbeat-connected", "heartbeat-active", "heartbeat-slow", "heartbeat-disconnected");
+    heartbeat.classList.remove("heartbeat-connected", "heartbeat-active", "heartbeat-slow", "heartbeat-disconnected");
+    status.classList.add(stateClass);
+    heartbeat.classList.add(stateClass);
+    const path = heartbeat.querySelector("path");
+    if (path) path.setAttribute("d", event.data.connected ? "M2 13h23l7-1 5-7 8 15 8-12 5 5h10l4-1h26" : "M2 13h96");
+    const labels = { checking: "Checking", disconnected: "Offline", active: "Active", slow: "Slow", connected: "Connected" };
+    const description = `Beacon ${labels[state].toLocaleLowerCase()}`;
+    status.setAttribute("aria-label", description);
+    status.title = description;
+  } else if (event.source === frames.settings.contentWindow && event.data.type === "settings-beacon-updated") {
+    frames.dashboard.contentWindow?.postMessage({ type: "beacon-status-refresh" }, location.origin);
+  } else if (event.source === frames.about.contentWindow && event.data.type === "agreement-open-state") {
     document.querySelector(".workspace-header").inert = Boolean(event.data.open);
     sidebar.inert = Boolean(event.data.open);
   } else if (event.source === frames.dashboard.contentWindow && event.data.type === "chat-unread-update") {
