@@ -145,20 +145,27 @@ function renderClaims() {
       claimState[index].epoQty = quantity;
       renderSummary();
     });
-    row.querySelectorAll("[data-field]").forEach((input) => input.addEventListener("change", () => {
-      const field = input.dataset.field;
-      claimState[index][field] = input.type === "checkbox" ? input.checked : input.type === "number" ? Number(input.value) : input.value;
-      if (field === "hasEpo" && !input.checked) {
-        claimState[index].epoQty = 1;
-        claimState[index].epoType = "alfa";
-      }
-      if (field === "epoType" && input.value === "beta") claimState[index].epoQty = 1;
-      if (field === "epoQty") {
-        const max = claimState[index].epoType === "beta" ? 1 : 2;
-        claimState[index].epoQty = Math.max(1, Math.min(Math.trunc(Number(input.value)) || 1, max));
-      }
-      renderClaims();
-    }));
+    // Handle renderDate separately: update state without full re-render to avoid
+    // losing focus while typing in the native date picker (which fires change on keystrokes).
+    const dateInput = row.querySelector('[data-field="renderDate"]');
+    dateInput?.addEventListener("change", () => {
+      claimState[index].renderDate = dateInput.value;
+      renderSummary(); // only update summary for missing date count
+    });
+
+    // Structural fields that require DOM rebuild (show/hide EPO type, qty, lab constraints)
+    row.querySelectorAll('[data-field="hasEpo"], [data-field="hasLab"], [data-field="epoType"]').forEach((input) => {
+      input.addEventListener("change", () => {
+        const field = input.dataset.field;
+        claimState[index][field] = input.type === "checkbox" ? input.checked : input.value;
+        if (field === "hasEpo" && !input.checked) {
+          claimState[index].epoQty = 1;
+          claimState[index].epoType = "alfa";
+        }
+        if (field === "epoType" && input.value === "beta") claimState[index].epoQty = 1;
+        renderClaims();
+      });
+    });
   });
 
   document.getElementById("applyDateToAll").disabled = !claimState[0]?.renderDate;
