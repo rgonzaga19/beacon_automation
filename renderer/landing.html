@@ -28,11 +28,11 @@
         <div class="landing-nav-item">
           <button class="landing-nav-trigger" type="button" aria-expanded="false" aria-controls="productsMenu">Products <span class="landing-chevron" aria-hidden="true"></span></button>
           <div class="landing-dropdown" id="productsMenu" hidden>
-            <button class="landing-product-link is-locked" type="button" disabled title="Sign in to access this product" data-auth-route="/dashboard.html#soaExcel">SOA Generator <span class="product-lock-note">Sign in first</span></button>
-            <button class="landing-product-link is-locked" type="button" disabled title="Sign in to access this product" data-auth-route="/dashboard.html#autoRename">PDF Auto Rename <span class="product-lock-note">Sign in first</span></button>
+            <button class="landing-product-link is-locked" type="button" disabled title="Sign in to access this product" data-auth-route="/workspace.html#soaExcel">SOA Generator <span class="product-lock-note">Sign in first</span></button>
+            <button class="landing-product-link is-locked" type="button" disabled title="Sign in to access this product" data-auth-route="/workspace.html#autoRename">PDF Auto Rename <span class="product-lock-note">Sign in first</span></button>
             <span class="landing-dropdown-label">AUTO ENCODE</span>
-            <button class="landing-product-link is-locked" type="button" disabled title="Sign in to access this product" data-auth-route="/dashboard.html#cf2">CF2 <span class="product-lock-note">Sign in first</span></button>
-            <button class="landing-product-link is-locked" type="button" disabled title="Sign in to access this product" data-auth-route="/dashboard.html#cf4">CF4 <span class="product-lock-note">Sign in first</span></button>
+            <button class="landing-product-link is-locked" type="button" disabled title="Sign in to access this product" data-auth-route="/workspace.html#cf2">CF2 <span class="product-lock-note">Sign in first</span></button>
+            <button class="landing-product-link is-locked" type="button" disabled title="Sign in to access this product" data-auth-route="/workspace.html#cf4">CF4 <span class="product-lock-note">Sign in first</span></button>
           </div>
         </div>
         <div class="landing-nav-item">
@@ -150,10 +150,10 @@
     fetch('/api/auth/me').then(response => response.json()).then(data => {
       if (data.authenticated) {
         document.getElementById('accountLink').textContent = 'Open workspace';
-        document.getElementById('accountLink').href = '/dashboard.html';
+        document.getElementById('accountLink').href = '/workspace.html';
         document.getElementById('createAccountLink').hidden = true;
-        document.getElementById('workspaceLink').href = '/dashboard.html';
-        document.getElementById('footerWorkspaceLink').href = '/dashboard.html';
+        document.getElementById('workspaceLink').href = '/workspace.html';
+        document.getElementById('footerWorkspaceLink').href = '/workspace.html';
         document.querySelectorAll('[data-auth-route]').forEach((item) => {
           item.disabled = false;
           item.classList.remove('is-locked');

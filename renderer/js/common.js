@@ -9,11 +9,11 @@ function openDashboardWorkspace(workspaceKey) {
     if (typeof window.parent.openBeabotsWorkspace === "function") {
       window.parent.openBeabotsWorkspace(workspaceKey);
     } else {
-      window.parent.location.href = `/dashboard.html#${workspaceKey}`;
+      window.parent.location.href = `/workspace.html#${workspaceKey}`;
     }
     return;
   }
-  window.location.href = `/dashboard.html#${workspaceKey}`;
+  window.location.href = `/workspace.html#${workspaceKey}`;
 }
 
 if (!window.beabots) {
@@ -21,13 +21,13 @@ if (!window.beabots) {
     apiBase: window.location.origin,
     goHome: () => {
       if (window.parent && window.parent !== window) {
-        window.parent.location.href = "/dashboard.html";
+        window.parent.location.href = "/workspace.html";
       } else {
-        window.location.href = "/dashboard.html";
+        window.location.href = "/workspace.html";
       }
     },
-    goToDashboard: () => { window.location.href = "/dashboard.html"; },
-    showWorkspaceHome: () => { window.location.href = "/dashboard.html"; },
+    goToDashboard: () => { window.location.href = "/workspace.html"; },
+    showWorkspaceHome: () => { window.location.href = "/workspace.html"; },
     openCf2Window: () => openDashboardWorkspace("cf2"),
     openUploadSoaWindow: () => openDashboardWorkspace("uploadSoa"),
     openCf4Window: () => openDashboardWorkspace("cf4"),

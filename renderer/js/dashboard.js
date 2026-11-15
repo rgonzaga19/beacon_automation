@@ -4,10 +4,6 @@
 
 // API_BASE, fetchJSON, showModal, and showError all live in common.js (loaded before this file).
 
-if (window.parent && window.parent !== window) {
-  window.parent.location.href = window.location.href;
-}
-
 // ---------------------------------------------------------------------------
 // Toolbar navigation
 // ---------------------------------------------------------------------------
@@ -576,6 +572,9 @@ function updateChatUnreadIndicator() {
     "aria-label",
     `Notifications${unreadCount ? `, ${unreadCount} unread chat${unreadCount === 1 ? "" : "s"}` : ""}`
   );
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: "chat-unread-update", count: unreadCount }, location.origin);
+  }
 }
 
 async function refreshChatUnread() {
@@ -683,6 +682,7 @@ function playDashboardEntrance() {
 window.beabots?.onDashboardEnter(playDashboardEntrance);
 
 const workspaceButtons = {
+  dashboard: document.getElementById("btnSidebarDashboard"),
   cf2: document.getElementById("btnCf2"),
   runAll: document.getElementById("btnRunAll"),
   uploadSoa: document.getElementById("btnUploadSoa"),
@@ -735,16 +735,24 @@ function setWorkspaceActive(activeKey) {
 }
 
 function showWorkspaceHome() {
+  if (window.parent !== window && typeof window.parent.openBeabotsWorkspace === "function") {
+    window.parent.openBeabotsWorkspace("dashboard");
+    return;
+  }
   activeWorkspaceKey = null;
   closeMobileSidebar();
   dashboardLayout.classList.remove("claims-mode");
   workspaceColumn.classList.remove("workspace-active");
   Object.values(workspaceFrames).forEach((frame) => frame.classList.remove("active"));
   setWorkspaceActive("dashboard");
-  history.replaceState(null, "", "dashboard.html");
+  history.replaceState(null, "", "workspace.html");
 }
 
 function openWorkspace(activeKey) {
+  if (window.parent !== window && typeof window.parent.openBeabotsWorkspace === "function") {
+    window.parent.openBeabotsWorkspace(activeKey);
+    return;
+  }
   if (activeKey === "users" && !signedInIsAdmin) return;
   const route = workspaceRoutes[activeKey];
   const frame = workspaceFrames[activeKey];
@@ -763,7 +771,7 @@ function openWorkspace(activeKey) {
     frame.contentWindow?.postMessage({ type: "chat-active" }, location.origin);
   }
   setWorkspaceActive(activeKey);
-  history.replaceState(null, "", `dashboard.html#${activeKey}`);
+  history.replaceState(null, "", `workspace.html#${activeKey}`);
 }
 
 function openSoaExcelSubtab(subtab) {
@@ -791,6 +799,10 @@ function setTopNavigation(active) {
 }
 
 document.getElementById("siteHome").addEventListener("click", () => {
+  setTopNavigation("siteHome");
+  showWorkspaceHome();
+});
+document.getElementById("btnSidebarDashboard").addEventListener("click", () => {
   setTopNavigation("siteHome");
   showWorkspaceHome();
 });
@@ -827,6 +839,10 @@ function focusAboutSection(section) {
 }
 
 function openAboutAgreement({ required = false } = {}) {
+  if (window.parent !== window && typeof window.parent.openBeabotsAgreement === "function") {
+    window.parent.openBeabotsAgreement(required);
+    return;
+  }
   openWorkspace("about");
   const frame = workspaceFrames.about;
   const show = () => frame.contentWindow?.postMessage({ type: "open-agreement", required }, location.origin);
