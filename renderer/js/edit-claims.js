@@ -784,7 +784,7 @@ function markRowTransmitted(row, sourceRow) {
 }
 
 function getReadyTransmittalGroups() {
-  const rows = Array.from(claimsBody.querySelectorAll("tr[data-claim-row]"));
+  const rows = Array.from(claimsBody.querySelectorAll("tr[data-claim-row].selected"));
   const groups = new Map();
   rows.forEach((row) => {
     const button = row.querySelector('[data-action="transmit-claim"]');
@@ -838,7 +838,7 @@ function showTransmitAllConfirm(transmittalCount, rowCount, onConfirm) {
     <div class="modal-overlay">
       <div class="modal-box">
         <h3>Confirm Batch Transmit</h3>
-        <p>Transmit ${transmittalCount} draft transmittal${transmittalCount === 1 ? "" : "s"} (${rowCount} claim row${rowCount === 1 ? "" : "s"}) to PhilHealth now?\n\nThis action submits the claims for processing and cannot be undone. Rows that are not in DRAFT status are skipped.</p>
+        <p>Transmit ${transmittalCount} draft transmittal${transmittalCount === 1 ? "" : "s"} selected from ${rowCount} selected claim row${rowCount === 1 ? "" : "s"} to PhilHealth now?\n\nBeacon transmits a whole transmittal, so any unselected claims in those transmittals will be included. This action cannot be undone.</p>
         <div class="modal-actions">
           <button class="cyber-btn" id="transmitAllCancelBtn" type="button">CANCEL</button>
           <button class="cyber-btn danger" id="transmitAllConfirmBtn" type="button">YES, TRANSMIT BATCH</button>
@@ -864,7 +864,7 @@ function showTransmitAllConfirm(transmittalCount, rowCount, onConfirm) {
 }
 
 function getDraftClaimsForSoa() {
-  return Array.from(claimsBody.querySelectorAll("tr[data-claim-row]"))
+  return Array.from(claimsBody.querySelectorAll("tr[data-claim-row].selected"))
     .filter((row) => row.querySelector('[data-action="edit-claim"]')
       && String(row.dataset.transmittalStatus || "").trim().toUpperCase() === "DRAFT");
 }
@@ -875,7 +875,7 @@ function showDeleteClaimsConfirm(claimCount, onConfirm) {
     <div class="modal-overlay">
       <div class="modal-box">
         <h3>Confirm Draft Claim Deletion</h3>
-        <p>Permanently delete all ${claimCount} visible draft claim${claimCount === 1 ? "" : "s"} and their generated ESA/eSOA documents? Afterward, any of their DRAFT transmittals that are empty will also be deleted. This cannot be undone; transmittals containing other claims will be kept.</p>
+        <p>Permanently delete the ${claimCount} selected draft claim${claimCount === 1 ? "" : "s"} and their generated ESA/eSOA documents? Afterward, any of their DRAFT transmittals that are empty will also be deleted. This cannot be undone; transmittals containing other claims will be kept.</p>
         <div class="modal-actions">
           <button class="cyber-btn" id="deleteClaimsCancelBtn" type="button">CANCEL</button>
           <button class="cyber-btn danger" id="deleteClaimsConfirmBtn" type="button">YES, DELETE DRAFTS</button>
@@ -903,7 +903,7 @@ function showDeleteClaimsConfirm(claimCount, onConfirm) {
 async function runDeleteClaims() {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No visible draft claims are available to delete. Run a lookup first.", true);
+    setTransmitAllStatus("Select at least one draft claim to delete.", true);
     return;
   }
 
@@ -1064,7 +1064,7 @@ function showGenerateSoaAllConfirm(claimCount, onConfirm) {
 async function runGenerateCf4All() {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for CF4 generation.", true);
+    setTransmitAllStatus("Select at least one draft claim for CF4 generation.", true);
     return;
   }
 
@@ -1111,7 +1111,7 @@ async function runGenerateCf4All() {
 async function runGenerateSoaAll() {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for SOA generation.", true);
+    setTransmitAllStatus("Select at least one draft claim for SOA generation.", true);
     return;
   }
 
@@ -1220,7 +1220,7 @@ function showRemoveGeneratedSoaAllConfirm(claimCount, onConfirm) {
 async function runRemoveGeneratedSoaAll() {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for generated SOA removal.", true);
+    setTransmitAllStatus("Select at least one draft claim for generated SOA removal.", true);
     return;
   }
 
@@ -1267,7 +1267,7 @@ async function runRemoveGeneratedSoaAll() {
 async function runRemoveSoaAll() {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for SOA removal.", true);
+    setTransmitAllStatus("Select at least one draft claim for SOA removal.", true);
     return;
   }
 
@@ -1314,7 +1314,7 @@ async function runRemoveSoaAll() {
 async function runChangeArAll() {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for Account Receivable updates.", true);
+    setTransmitAllStatus("Select at least one draft claim for Account Receivable updates.", true);
     return;
   }
 
@@ -1411,7 +1411,7 @@ function showChangeArAllConfirm(claimCount, onConfirm) {
 async function runTransmitAll() {
   const { rows, groups } = getReadyTransmittalGroups();
   if (!groups.size) {
-    setTransmitAllStatus("No ready rows to transmit. Only rows in a DRAFT transmittal can be transmitted.", true);
+    setTransmitAllStatus("Select at least one ready claim in a DRAFT transmittal to transmit.", true);
     return;
   }
 
@@ -1437,7 +1437,7 @@ async function runTransmitAll() {
         await transmitTransmittal(button);
         transmitted += 1;
         rowTotal += groupRows.length;
-        rows.forEach((row) => {
+        claimsBody.querySelectorAll("tr[data-claim-row]").forEach((row) => {
           if (row === primaryRow) return;
           const siblingButton = row.querySelector('[data-action="transmit-claim"]');
           if (siblingButton && siblingButton.dataset.transmittalId === transmittalId) markRowTransmitted(row, primaryRow);
@@ -1464,7 +1464,7 @@ async function runTransmitAll() {
 async function runFinalizeAll() {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available to finalize.", true);
+    setTransmitAllStatus("Select at least one draft claim to finalize.", true);
     return;
   }
   let finalized = 0;
@@ -1486,7 +1486,7 @@ async function runFinalizeAll() {
       const row = rows[index];
       const editButton = row.querySelector('[data-action="edit-claim"]');
       const { transmittalId, claimId } = editButton.dataset;
-      setTransmitAllStatus(`Finalizing ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
+      setTransmitAllStatus(`Finalizing selected claim ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
       try {
         const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/finalize`, {
           method: "POST",
@@ -1543,7 +1543,7 @@ function showFinalizeAllConfirm(claimCount, onConfirm) {
 finalizeAllButton.addEventListener("click", () => {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available to finalize. Run a lookup first.", true);
+    setTransmitAllStatus("Select at least one draft claim to finalize.", true);
     return;
   }
   showFinalizeAllConfirm(rows.length, runFinalizeAll);
@@ -1569,7 +1569,7 @@ document.getElementById("copyTransmittalsButton").addEventListener("click", asyn
 transmitAllButton.addEventListener("click", () => {
   const { groups } = getReadyTransmittalGroups();
   if (!groups.size) {
-    setTransmitAllStatus("No ready rows to transmit. Only rows in a DRAFT transmittal can be transmitted.", true);
+    setTransmitAllStatus("Select at least one ready claim in a DRAFT transmittal to transmit.", true);
     return;
   }
   const transmittalCount = groups.size;
@@ -1580,7 +1580,7 @@ transmitAllButton.addEventListener("click", () => {
 document.getElementById("generateCf4AllButton").addEventListener("click", () => {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for CF4 generation.", true);
+    setTransmitAllStatus("Select at least one draft claim for CF4 generation.", true);
     return;
   }
   showGenerateCf4AllConfirm(rows.length, runGenerateCf4All);
@@ -1589,7 +1589,7 @@ document.getElementById("generateCf4AllButton").addEventListener("click", () => 
 document.getElementById("generateSoaAllButton").addEventListener("click", () => {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for SOA generation.", true);
+    setTransmitAllStatus("Select at least one draft claim for SOA generation.", true);
     return;
   }
   showGenerateSoaAllConfirm(rows.length, runGenerateSoaAll);
@@ -1598,7 +1598,7 @@ document.getElementById("generateSoaAllButton").addEventListener("click", () => 
 document.getElementById("changeArAllButton").addEventListener("click", () => {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for Account Receivable updates.", true);
+    setTransmitAllStatus("Select at least one draft claim for Account Receivable updates.", true);
     return;
   }
   showChangeArAllConfirm(rows.length, runChangeArAll);
@@ -1607,7 +1607,7 @@ document.getElementById("changeArAllButton").addEventListener("click", () => {
 document.getElementById("removeSoaAllButton").addEventListener("click", () => {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for SOA removal.", true);
+    setTransmitAllStatus("Select at least one draft claim for SOA removal.", true);
     return;
   }
   showRemoveSoaAllConfirm(rows.length, runRemoveSoaAll);
@@ -1616,7 +1616,7 @@ document.getElementById("removeSoaAllButton").addEventListener("click", () => {
 document.getElementById("removeGeneratedSoaAllButton").addEventListener("click", () => {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No draft claims are available for generated SOA removal.", true);
+    setTransmitAllStatus("Select at least one draft claim for generated SOA removal.", true);
     return;
   }
   showRemoveGeneratedSoaAllConfirm(rows.length, runRemoveGeneratedSoaAll);
@@ -1625,7 +1625,7 @@ document.getElementById("removeGeneratedSoaAllButton").addEventListener("click",
 document.getElementById("deleteClaimsButton").addEventListener("click", () => {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
-    setTransmitAllStatus("No visible draft claims are available to delete. Run a lookup first.", true);
+    setTransmitAllStatus("Select at least one draft claim to delete.", true);
     return;
   }
   showDeleteClaimsConfirm(rows.length, runDeleteClaims);
