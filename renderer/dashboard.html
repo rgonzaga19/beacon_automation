@@ -31,13 +31,16 @@
   .site-nav button { height:100%; padding:0 13px; color:var(--text-sec); background:none; border:0; border-bottom:1px solid transparent; font:600 13px var(--font-ui); cursor:pointer; }
   .site-nav button:hover,.site-nav button.active { color:var(--text-pri); border-bottom-color:var(--accent); }
   .site-nav button[hidden] { display:none; }
-  .site-account { position:relative; }
-  .account-trigger { display:flex; align-items:center; gap:9px; padding:7px 11px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:999px; cursor:pointer; }
+  .site-account { position:relative; display:flex; align-items:center; gap:8px; }
+  .account-trigger, .notification-trigger { display:flex; align-items:center; gap:9px; padding:7px 11px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:999px; cursor:pointer; }
+  .notification-trigger { padding:7px; }
+  .notification-icon { color:var(--text-sec); transition:color 140ms ease; }
+  .notification-trigger:hover .notification-icon { color:var(--accent); }
   .account-avatar { display:grid; width:28px; height:28px; place-items:center; color:var(--bg-dark); background:var(--accent); border-radius:50%; font-size:12px; font-weight:800; }
   .account-avatar img { display:block; width:100%; height:100%; border-radius:inherit; object-fit:cover; }
   .account-avatar-wrap { position:relative; display:inline-flex; }
-  .chat-unread-indicator { position:absolute; top:-4px; right:-6px; display:grid; min-width:16px; height:16px; padding:0 3px; place-items:center; color:#fff; background:#dc3545; border:2px solid var(--bg-card); border-radius:999px; font:700 9px/1 var(--font-ui); }
-  .chat-unread-indicator[hidden] { display:none; }
+  .notification-unread-indicator { position:absolute; top:-4px; right:-6px; display:grid; min-width:16px; height:16px; padding:0 3px; place-items:center; color:#fff; background:#dc3545; border:2px solid var(--bg-card); border-radius:999px; font:700 9px/1 var(--font-ui); }
+  .notification-unread-indicator[hidden] { display:none; }
   .account-menu { position:absolute; z-index:20; top:calc(100% + 8px); right:0; width:190px; padding:7px; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow-md); }
   .account-menu[hidden] { display:none; }
   .account-menu-group { display:grid; gap:2px; padding:3px 0; }
@@ -65,18 +68,14 @@
   .sidebar-group-toggle .group-chevron { margin-left:auto; width:16px; color:var(--text-sec); font-size:16px; line-height:1; text-align:center; }
   .sidebar-group-toggle .group-chevron::before { content:"+"; }
   .sidebar-group-toggle[aria-expanded="true"] .group-chevron::before { content:"−"; }
-  .sidebar-subnav { display:flex; flex-direction:column; gap:6px; padding:8px 12px; margin:0 -4px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
+  .sidebar-subnav { display:flex; flex-direction:column; gap:4px; padding:0; margin:0; background:transparent; border:0; border-radius:0; }
   .sidebar-subnav[hidden] { display:none; }
-  .sidebar-subnav .side-link { height:38px; padding-left:12px; font-size:10px; background:transparent; border-color:transparent; }
+  .sidebar-subnav .side-link { height:38px; font-size:10px; background:transparent; border-color:transparent; }
   .sidebar-subnav .side-link:hover { background:var(--accent-soft); border-color:var(--border); }
   .sidebar-subnav .side-link.active { background:var(--accent-soft-strong); border-color:var(--accent); }
   .sidebar-subnav .side-icon svg { width:17px; height:17px; overflow:visible; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
   .sidebar-column.collapsed .sidebar-group-toggle .group-chevron { display:none; }
   .sidebar-column.collapsed .sidebar-subnav { display:none; }
-  @media(min-width:761px) {
-    .sidebar-subnav { margin-right:-4px; margin-left:-4px; padding:8px 12px; }
-    .sidebar-subnav .side-link { padding-left:14px; }
-  }
   .sidebar-footer { margin-top:auto; padding:15px 2px 4px; }
   .sidebar-help-card { position:relative; display:flex; width:100%; min-height:74px; align-items:center; gap:11px; padding:11px; overflow:hidden; color:var(--text-pri); background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 20%,var(--bg-panel)),var(--bg-card) 72%); border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border)); border-radius:14px; text-align:left; cursor:pointer; box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 10%,transparent); transition:transform 160ms ease,border-color 160ms ease,box-shadow 160ms ease; }
   .sidebar-help-card::after { position:absolute; width:72px; height:72px; right:-24px; top:-34px; content:""; border:1px solid color-mix(in srgb,var(--accent) 22%,transparent); border-radius:50%; box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 6%,transparent),0 0 0 17px color-mix(in srgb,var(--accent) 4%,transparent); pointer-events:none; }
@@ -417,15 +416,18 @@
         <button id="siteHome" type="button">Home</button><button id="siteClaims" type="button">Claims</button><button id="siteAbout" type="button">About</button><button id="siteContact" type="button">Contact</button>
       </nav>
       <div class="site-account">
-        <button class="account-trigger" id="accountTrigger" type="button" aria-expanded="false"><span class="account-avatar-wrap"><span class="account-avatar" id="accountAvatar"><img src="assets/avatar/avatar-penguin.svg" alt=""></span><span class="chat-unread-indicator" id="chatUnreadIndicator" hidden></span></span><span id="accountName">Account</span><span aria-hidden="true">⌄</span></button>
+        <button class="notification-trigger" id="notificationTrigger" type="button" aria-expanded="false" aria-label="Notifications"><span class="account-avatar-wrap"><svg class="notification-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="notification-unread-indicator" id="notificationUnreadIndicator" hidden></span></span></button>
+        <div class="account-menu" id="notificationMenu" hidden>
+          <div class="account-menu-group" aria-label="Messages">
+            <div class="account-menu-heading">Messages</div>
+            <button class="account-chat-link" id="notificationTeamChat" type="button"><span>Team Chat</span><span class="account-chat-unread" id="notificationTeamChatUnread" aria-label="Unread messages" hidden></span></button>
+          </div>
+        </div>
+        <button class="account-trigger" id="accountTrigger" type="button" aria-expanded="false"><span class="account-avatar-wrap"><span class="account-avatar" id="accountAvatar"><img src="assets/avatar/avatar-penguin.svg" alt=""></span></span><span id="accountName">Account</span><span aria-hidden="true">⌄</span></button>
         <div class="account-menu" id="accountMenu" hidden>
           <div class="account-menu-group" aria-label="Account settings">
             <button id="accountSettings" type="button">Settings</button>
             <button id="siteUsers" type="button" hidden>User Management</button>
-          </div>
-          <div class="account-menu-group" aria-label="Messages">
-            <div class="account-menu-heading">Messages</div>
-            <button class="account-chat-link" id="accountTeamChat" type="button"><span>Team Chat</span><span class="account-chat-unread" id="teamChatUnread" aria-label="Unread messages" hidden></span></button>
           </div>
           <div class="account-menu-group" aria-label="Session">
             <button id="accountLogout" type="button">Sign out</button>
@@ -474,6 +476,7 @@
               </div>
             </section>
             <button class="side-link" id="btnCollaborationChat" type="button" title="Team Chat"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 4.5h14v9H9l-4.5 3v-3H3z"/><path d="M6.5 8.5h.01M10 8.5h.01M13.5 8.5h.01"/></svg></span><span class="side-label">Team Chat</span></button>
+            <button class="side-link" id="btnSettings" type="button" title="Settings"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2.75 14 3l.75 2.35a7.1 7.1 0 0 1 1.65.95l2.35-.75 1.4 2.4-1.6 1.9c.15.7.15 1.4 0 2.1l1.6 1.9-1.4 2.4-2.35-.75a7.1 7.1 0 0 1-1.65.95L14 18.8l-2 .25-2-.25-.75-2.35a7.1 7.1 0 0 1-1.65-.95l-2.35.75-1.4-2.4 1.6-1.9a5 5 0 0 1 0-2.1l-1.6-1.9 1.4-2.4 2.35.75a7.1 7.1 0 0 1 1.65-.95L10 3l2-.25Z"/><circle cx="12" cy="10.9" r="3"/></svg></span><span class="side-label">Settings</span></button>
           </nav>
           <footer class="sidebar-footer" aria-label="Help and contact">
             <button class="sidebar-help-card" id="sidebarHelpButton" type="button" title="Open About contact section">

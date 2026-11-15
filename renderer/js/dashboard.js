@@ -566,15 +566,15 @@ function updateChatUnreadIndicator() {
   if (!latestChatState || !chatReadStateKey) return;
   const cursors = readChatCursors() || { team: latestChatState.team };
   const teamUnread = Number(latestChatState.team || 0) > Number(cursors.team || 0);
-  document.getElementById("teamChatUnread").hidden = !teamUnread;
+  document.getElementById("notificationTeamChatUnread").hidden = !teamUnread;
   const unreadCount = Number(teamUnread);
-  const indicator = document.getElementById("chatUnreadIndicator");
+  const indicator = document.getElementById("notificationUnreadIndicator");
   indicator.hidden = unreadCount === 0;
   indicator.textContent = String(unreadCount);
   indicator.setAttribute("aria-label", `${unreadCount} chat${unreadCount === 1 ? "" : "s"} with unread messages`);
-  document.getElementById("accountTrigger").setAttribute(
+  document.getElementById("notificationTrigger").setAttribute(
     "aria-label",
-    `${document.getElementById("accountName").textContent || "Account"}${unreadCount ? ", unread team chat messages" : ""}`
+    `Notifications${unreadCount ? `, ${unreadCount} unread chat${unreadCount === 1 ? "" : "s"}` : ""}`
   );
 }
 
@@ -694,6 +694,7 @@ const workspaceButtons = {
   autoRename: document.getElementById("btnAutoRename"),
   users: document.getElementById("siteUsers"),
   teamCollab: document.getElementById("btnCollaborationChat"),
+  settings: document.getElementById("btnSettings"),
 };
 
 const workspaceColumn = document.getElementById("workspaceColumn");
@@ -839,34 +840,55 @@ document.querySelectorAll("[data-open-tool]").forEach((button) => button.addEven
 
 const accountTrigger = document.getElementById("accountTrigger");
 const accountMenu = document.getElementById("accountMenu");
+const notificationTrigger = document.getElementById("notificationTrigger");
+const notificationMenu = document.getElementById("notificationMenu");
+
 function closeAccountMenu() {
   accountMenu.hidden = true;
   accountTrigger.setAttribute("aria-expanded", "false");
 }
+function closeNotificationMenu() {
+  notificationMenu.hidden = true;
+  notificationTrigger.setAttribute("aria-expanded", "false");
+}
+function closeAllMenus() {
+  closeAccountMenu();
+  closeNotificationMenu();
+}
+
 accountTrigger.addEventListener("click", () => {
   const expanded = accountTrigger.getAttribute("aria-expanded") !== "true";
+  if (expanded) closeNotificationMenu();
   accountTrigger.setAttribute("aria-expanded", String(expanded));
   accountMenu.hidden = !expanded;
 });
+notificationTrigger.addEventListener("click", () => {
+  const expanded = notificationTrigger.getAttribute("aria-expanded") !== "true";
+  if (expanded) closeAccountMenu();
+  notificationTrigger.setAttribute("aria-expanded", String(expanded));
+  notificationMenu.hidden = !expanded;
+});
 document.addEventListener("click", (event) => {
-  if (accountMenu.hidden) return;
+  if (accountMenu.hidden && notificationMenu.hidden) return;
   if (accountTrigger.contains(event.target) || accountMenu.contains(event.target)) return;
-  closeAccountMenu();
+  if (notificationTrigger.contains(event.target) || notificationMenu.contains(event.target)) return;
+  closeAllMenus();
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape" || accountMenu.hidden) return;
-  closeAccountMenu();
-  accountTrigger.focus();
+  if (event.key !== "Escape" || (accountMenu.hidden && notificationMenu.hidden)) return;
+  closeAllMenus();
+  if (!accountMenu.hidden) accountTrigger.focus();
+  else if (!notificationMenu.hidden) notificationTrigger.focus();
 });
 // Clicks inside a workspace iframe do not bubble here, but they blur this window.
-window.addEventListener("blur", closeAccountMenu);
+window.addEventListener("blur", closeAllMenus);
 document.getElementById("accountSettings").addEventListener("click", () => {
   closeAccountMenu();
   openWorkspace("settings");
 });
 
-document.getElementById("accountTeamChat").addEventListener("click", () => {
-  closeAccountMenu();
+document.getElementById("notificationTeamChat").addEventListener("click", () => {
+  closeNotificationMenu();
   openWorkspace("teamCollab");
 });
 document.getElementById("accountLogout").addEventListener("click", () => window.beabots?.logout());
@@ -1001,6 +1023,9 @@ document.getElementById("btnAutoRename").addEventListener("click", () => {
 });
 document.getElementById("btnCollaborationChat").addEventListener("click", () => {
   openWorkspace("teamCollab");
+});
+document.getElementById("btnSettings").addEventListener("click", () => {
+  openWorkspace("settings");
 });
 document.getElementById("siteUsers").addEventListener("click", () => {
   closeAccountMenu();
