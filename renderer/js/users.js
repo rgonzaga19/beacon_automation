@@ -27,7 +27,7 @@ function formatDate(value) {
 
 function renderUsers(users) {
   if (!users.length) {
-    usersBody.innerHTML = '<tr><td colspan="8" class="empty">No users match this search.</td></tr>';
+    usersBody.innerHTML = '<tr><td colspan="9" class="empty">No users match this search.</td></tr>';
     return;
   }
   usersBody.innerHTML = users.map((user) => {
@@ -35,7 +35,8 @@ function renderUsers(users) {
     const upgradeRequest = user.upgrade_request;
     const requestCell = !upgradeRequest
       ? '<span class="pill">—</span>'
-      : `<span class="pill ${upgradeRequest.status === "pending" ? "" : "good"}">${escapeHtml(upgradeRequest.status)}</span>${upgradeRequest.status === "pending" ? `<p>${escapeHtml(upgradeRequest.message)}</p><div class="request-actions"><button class="accept-request-btn" type="button" data-request-id="${upgradeRequest.id}">Accept</button><button class="decline-request-btn" type="button" data-request-id="${upgradeRequest.id}">Decline</button></div>` : ""}`;
+      : `<span class="pill ${upgradeRequest.status === "pending" ? "" : "good"}">${escapeHtml(upgradeRequest.status)}</span>${upgradeRequest.status === "pending" ? `<div class="request-actions"><button class="accept-request-btn" type="button" data-request-id="${upgradeRequest.id}">Accept</button><button class="decline-request-btn" type="button" data-request-id="${upgradeRequest.id}">Decline</button></div>` : ""}`;
+    const requestMessage = upgradeRequest?.message ? escapeHtml(upgradeRequest.message) : "—";
     return `<tr>
       <td class="identity"><strong>${escapeHtml(name)}</strong><span>${escapeHtml(user.email)}</span></td>
       <td><span class="pill ${user.is_active ? "good" : ""}">${user.is_active ? "Active" : "Inactive"}</span></td>
@@ -48,6 +49,7 @@ function renderUsers(users) {
       <td>${escapeHtml(formatDate(user.created_at))}</td>
       <td>${escapeHtml(formatDate(user.updated_at))}</td>
       <td class="upgrade-request-cell">${requestCell}</td>
+      <td class="upgrade-message-cell">${requestMessage}</td>
       <td class="actions-cell"><button class="delete-user-btn" type="button" data-user-id="${user.id}" data-user-email="${escapeHtml(user.email)}" ${user.can_delete ? "" : "disabled"} title="${user.can_delete ? "Delete this account" : "You cannot delete your own account or the last active administrator."}">Delete</button></td>
     </tr>`;
   }).join("");
@@ -60,7 +62,7 @@ async function loadUsers() {
   previousBtn.disabled = true;
   nextBtn.disabled = true;
   summary.textContent = "Loading users…";
-  usersBody.innerHTML = '<tr><td colspan="8" class="empty">Loading user directory…</td></tr>';
+  usersBody.innerHTML = '<tr><td colspan="9" class="empty">Loading user directory…</td></tr>';
   try {
     const params = new URLSearchParams({ page: String(page), per_page: "25", q: searchInput.value.trim() });
     const response = await fetch(`${API_BASE}/api/admin/users?${params}`);
@@ -73,7 +75,7 @@ async function loadUsers() {
     previousBtn.disabled = payload.page <= 1;
     nextBtn.disabled = payload.page >= pages;
   } catch (error) {
-    usersBody.innerHTML = '<tr><td colspan="8" class="empty">User directory unavailable.</td></tr>';
+    usersBody.innerHTML = '<tr><td colspan="9" class="empty">User directory unavailable.</td></tr>';
     summary.textContent = "Could not load users";
     errorNode.textContent = error.message || String(error);
     errorNode.style.display = "block";

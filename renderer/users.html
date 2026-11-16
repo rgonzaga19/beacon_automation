@@ -10,7 +10,7 @@
   * { box-sizing:border-box; }
   html,body { height:auto; min-height:100%; overflow-x:hidden; overflow-y:auto; }
   body { min-height:100vh; color:var(--text-pri); background:var(--bg-dark); }
-  main { width:min(1180px,100%); margin:0 auto; padding:clamp(18px,3vw,36px); }
+  main { width:min(1600px,100%); margin:0 auto; padding:clamp(18px,3vw,36px); }
   .page-head { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:22px; }
   .eyebrow { color:var(--accent); font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
   h1 { margin:7px 0; font-size:clamp(24px,4vw,32px); letter-spacing:-.6px; }
@@ -26,7 +26,7 @@
   #summary { margin-left:auto; color:var(--text-sec); font-size:11px; }
   #error { display:none; margin:0 0 12px; padding:11px 13px; color:var(--error); border:1px solid var(--border); border-radius:var(--radius-md); font-size:11px; }
   .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
-  table { width:100%; min-width:820px; border-collapse:collapse; font-size:11px; }
+  table { width:100%; min-width:1040px; border-collapse:collapse; font-size:11px; }
   th,td { padding:12px 11px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
   th { color:var(--text-sec); background:var(--bg-card); font-size:9px; letter-spacing:.6px; text-transform:uppercase; white-space:nowrap; }
   tbody tr:last-child td { border-bottom:0; }
@@ -42,8 +42,8 @@
   .delete-user-btn { min-height:32px; padding:6px 9px; color:var(--error); background:transparent; border:1px solid var(--border); border-radius:var(--radius-md); font:700 10px var(--font-ui); cursor:pointer; }
   .delete-user-btn:hover:not(:disabled) { border-color:var(--error); background:color-mix(in srgb,var(--error) 10%,transparent); }
   .delete-user-btn:disabled { opacity:.4; cursor:not-allowed; }
-  .upgrade-request-cell { min-width:220px; max-width:310px; }
-  .upgrade-request-cell p { margin:6px 0 0; color:var(--text-sec); white-space:normal; line-height:1.45; }
+  .upgrade-request-cell { min-width:160px; }
+  .upgrade-message-cell { min-width:220px; max-width:340px; color:var(--text-sec); white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
   .request-actions { display:flex; gap:5px; margin-top:8px; }
   .request-actions button { min-height:29px; padding:5px 8px; border:1px solid var(--border); border-radius:var(--radius-md); font:700 9px var(--font-ui); cursor:pointer; }
   .accept-request-btn { color:var(--success); background:transparent; }
@@ -74,7 +74,7 @@
   <section class="panel" aria-label="User directory">
     <div class="toolbar"><form id="searchForm"><input id="searchInput" type="search" maxlength="120" placeholder="Search email or name" aria-label="Search users"><button type="submit">Search</button></form><button id="refreshBtn" type="button">Refresh</button><span id="summary" aria-live="polite">Loading users…</span></div>
     <div id="error" role="alert"></div>
-    <div class="table-wrap"><table><thead><tr><th>User</th><th>Account</th><th>Role</th><th>Beacon</th><th>Joined</th><th>Last updated</th><th>Upgrade request</th><th>Actions</th></tr></thead><tbody id="usersBody"><tr><td colspan="8" class="empty">Loading user directory…</td></tr></tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>User</th><th>Account</th><th>Role</th><th>Beacon</th><th>Joined</th><th>Last updated</th><th>Upgrade request</th><th>Request message</th><th>Actions</th></tr></thead><tbody id="usersBody"><tr><td colspan="9" class="empty">Loading user directory…</td></tr></tbody></table></div>
     <div class="pager"><button id="previousBtn" type="button" disabled>Previous</button><span id="pageLabel">Page 1</span><button id="nextBtn" type="button" disabled>Next</button></div>
     <p class="privacy-note">Admin grants User Management access. Subscriber and Member currently have the same app permissions. Account passwords and saved Beacon credentials are never shown here.</p>
   </section>

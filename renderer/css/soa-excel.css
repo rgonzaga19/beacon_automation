@@ -313,10 +313,13 @@ body { height: 100vh; height: 100dvh; display: flex; flex-direction: column; ove
   .header-copy h1 { font-size: 18px; }
   .soa-header .status-card { padding: 0 9px; font-size: 10px; }
   .page-body { padding: 14px var(--soa-page-inset) 0; }
-  .settings-grid { grid-template-columns: 1fr 1fr; gap: 14px 10px; }
+  .settings-grid { grid-template-columns: minmax(0,1fr); gap: 14px; }
   .individual-settings { padding: 14px; }
+  .individual-settings .choice-stack { width: 100%; }
+  .individual-settings .choice-pill { flex: 1; justify-content: center; min-width: 0; padding: 0 10px; }
   .individual-helpers { grid-column: 1 / -1; }
-  .individual-helpers .quiet-btn { flex: 1; padding: 0 8px; font-size: 10px; }
+  .individual-helpers { flex-direction: column; }
+  .individual-helpers .quiet-btn { width: 100%; padding: 0 8px; font-size: 10px; }
   .individual-footer { align-items: stretch; flex-direction: column; gap: 10px; margin: 14px calc(0px - var(--soa-page-inset)) 0; padding: 12px; }
   .individual-summary { line-height: 1.7; }
   .side-actions { display: grid; grid-template-columns: 1fr 1.25fr; }
