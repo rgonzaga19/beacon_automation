@@ -381,7 +381,13 @@ function renderPhysicalExam() {
 
     const label = document.createElement("div");
     label.className = "system-label";
-    label.textContent = section.system;
+    const labelText = document.createElement("span");
+    labelText.textContent = section.system;
+    const systemCount = document.createElement("span");
+    systemCount.className = "system-count";
+    systemCount.dataset.system = section.system;
+    label.appendChild(labelText);
+    label.appendChild(systemCount);
     block.appendChild(label);
 
     const grid = document.createElement("div");
@@ -409,6 +415,7 @@ function applyValues(values) {
       el.value = values[key] ?? "";
     }
   }
+  refreshSettingsState();
 }
 
 function readValues() {
@@ -419,6 +426,113 @@ function readValues() {
   }
   return values;
 }
+
+// ---------------------------------------------------------------------------
+// Settings state: selected-counts, unsaved-changes indicator, section nav,
+// and the "Auto Encode" summary on the Automation tab.
+// ---------------------------------------------------------------------------
+const SYMPTOM_KEYS = SYMPTOM_COLUMNS.flat().map((f) => f.key);
+const EXAM_SYSTEMS = PHYSICAL_EXAM_SECTIONS.map((s) => ({
+  system: s.system,
+  keys: s.fields.map((f) => f.key),
+}));
+let savedValues = null;   // last values loaded from / written to the server
+let savedSnapshot = null; // JSON of savedValues, for the dirty check
+
+function countLive(keys) {
+  return keys.filter((key) => fields[key]?.checked).length;
+}
+
+function countSaved(keys) {
+  return keys.filter((key) => savedValues && savedValues[key]).length;
+}
+
+function updateSelectionCounts() {
+  const symptoms = countLive(SYMPTOM_KEYS);
+  const examTotal = EXAM_SYSTEMS.reduce((sum, s) => sum + countLive(s.keys), 0);
+  document.querySelectorAll('[data-count="symptoms"]').forEach((el) => {
+    el.textContent = `${symptoms} selected`;
+  });
+  document.querySelectorAll('[data-count="exam"]').forEach((el) => {
+    el.textContent = `${examTotal} selected`;
+  });
+  EXAM_SYSTEMS.forEach((s) => {
+    document.querySelectorAll(".system-count").forEach((el) => {
+      if (el.dataset.system === s.system) el.textContent = `${countLive(s.keys)}/${s.keys.length}`;
+    });
+  });
+}
+
+function updateDirty() {
+  const dirty = savedSnapshot !== null && JSON.stringify(readValues()) !== savedSnapshot;
+  document.getElementById("dirtyBadge").hidden = !dirty;
+  document.getElementById("tabDirtyDot").hidden = !dirty;
+}
+
+function updateAutoEncodeSummary() {
+  const box = document.getElementById("autoEncodeSummary");
+  if (!savedValues) {
+    box.textContent = "Uses your saved encoding defaults.";
+    return;
+  }
+  const complaint = String(savedValues.chief_complaint || "").trim();
+  const symptoms = countSaved(SYMPTOM_KEYS);
+  const findings = EXAM_SYSTEMS.reduce((sum, s) => sum + countSaved(s.keys), 0);
+  box.textContent =
+    `Saved defaults — Chief complaint: ${complaint || "(blank)"} · ` +
+    `${symptoms} symptom${symptoms === 1 ? "" : "s"} · ` +
+    `${findings} exam finding${findings === 1 ? "" : "s"}.`;
+}
+
+function refreshSettingsState() {
+  updateSelectionCounts();
+  updateDirty();
+}
+
+function markSaved() {
+  savedValues = readValues();
+  savedSnapshot = JSON.stringify(savedValues);
+  refreshSettingsState();
+  updateAutoEncodeSummary();
+}
+
+// Any edit in the settings form updates counts and the unsaved indicator.
+["input", "change"].forEach((type) => {
+  document.getElementById("settings").addEventListener(type, refreshSettingsState);
+});
+
+// Section navigation (scrolls the form; highlights the section in view).
+const settingsBody = document.getElementById("settingsBody");
+const settingsNavBtns = [...document.querySelectorAll(".settings-nav-btn")];
+
+function setActiveNav(activeBtn) {
+  settingsNavBtns.forEach((btn) => {
+    const active = btn === activeBtn;
+    btn.classList.toggle("active", active);
+    if (active) btn.setAttribute("aria-current", "true");
+    else btn.removeAttribute("aria-current");
+  });
+}
+
+settingsNavBtns.forEach((btn) => btn.addEventListener("click", () => {
+  const target = document.getElementById(btn.dataset.target);
+  if (target) target.scrollIntoView({ block: "start", behavior: "smooth" });
+  setActiveNav(btn);
+}));
+
+settingsBody.addEventListener("scroll", () => {
+  const top = settingsBody.getBoundingClientRect().top;
+  let current = settingsNavBtns[0];
+  settingsNavBtns.forEach((btn) => {
+    const section = document.getElementById(btn.dataset.target);
+    if (section && section.getBoundingClientRect().top - top <= 40) current = btn;
+  });
+  // At the very bottom the last section may be too short to reach the top.
+  if (settingsBody.scrollTop + settingsBody.clientHeight >= settingsBody.scrollHeight - 2) {
+    current = settingsNavBtns[settingsNavBtns.length - 1];
+  }
+  setActiveNav(current);
+});
 
 // ---------------------------------------------------------------------------
 // Save note helper
@@ -445,6 +559,7 @@ async function loadSettings() {
   try {
     const values = await fetchJSON("/api/cf4/settings");
     applyValues({ ...DEFAULT_CF4_SETTINGS, ...values });
+    markSaved();
   } catch (err) {
     applyValues(DEFAULT_CF4_SETTINGS);
     setSaveNote("Could not load saved values — showing defaults.", "error");
@@ -459,10 +574,12 @@ const btnSave = document.getElementById("btnSave");
 btnSave.addEventListener("click", async () => {
   btnSave.disabled = true;
   try {
-    await fetchJSON("/api/cf4/settings", {
+    const saveResult = await fetchJSON("/api/cf4/settings", {
       method: "POST",
       body: JSON.stringify(readValues()),
     });
+    if (saveResult && saveResult.error) throw new Error(saveResult.error);
+    markSaved();
     setSaveNote("Saved.", "success");
   } catch (err) {
     setSaveNote("Failed to save.", "error");
@@ -488,18 +605,24 @@ loadSettings();
 const tabBtns = document.querySelectorAll(".tab-btn");
 const tabContents = document.querySelectorAll(".tab-content");
 
-tabBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const tabName = btn.dataset.tab;
-    
-    // Deactivate all tabs
-    tabBtns.forEach((b) => b.classList.remove("active"));
-    tabContents.forEach((content) => content.classList.remove("active"));
-    
-    // Activate selected tab
-    btn.classList.add("active");
-    document.getElementById(tabName).classList.add("active");
+function activateTab(tabName) {
+  const btn = [...tabBtns].find((b) => b.dataset.tab === tabName);
+  const content = document.getElementById(tabName);
+  if (!btn || !content) return;
+
+  tabBtns.forEach((b) => {
+    b.classList.remove("active");
+    b.setAttribute("aria-selected", "false");
   });
+  tabContents.forEach((c) => c.classList.remove("active"));
+
+  btn.classList.add("active");
+  btn.setAttribute("aria-selected", "true");
+  content.classList.add("active");
+}
+
+tabBtns.forEach((btn) => {
+  btn.addEventListener("click", () => activateTab(btn.dataset.tab));
 });
 
 // ---------------------------------------------------------------------------
@@ -515,24 +638,48 @@ function updateCount() {
   const n = lines.length;
   countLabel.textContent = `${n} transmittal${n !== 1 ? "s" : ""}`;
 }
-transmittalsInput.addEventListener("keyup", updateCount);
+
+function getTransmittals() {
+  return transmittalsInput.value.split("\n").map((l) => l.trim()).filter(Boolean);
+}
+
+// While nothing is running, the queue table mirrors the textarea so the
+// operator can review the batch before starting. Results from a finished run
+// stay on screen until the list of transmittals actually changes.
+function previewTransmittals() {
+  if (cf4Running) return;
+  const list = getTransmittals();
+  const current = cf4Rows.map((row) => row.transmittal);
+  if (current.length === list.length && current.every((value, i) => value === list[i])) return;
+  setCf4Rows(list);
+  showReport();
+}
+
+// "input" also catches paste and drag-text, which keyup alone would miss.
+transmittalsInput.addEventListener("input", () => {
+  updateCount();
+  previewTransmittals();
+  updateStartState();
+});
+
+document.getElementById("editDefaultsLink").addEventListener("click", () => activateTab("settings"));
 
 // ---------------------------------------------------------------------------
 // AUTOMATION: Log box (same colour-tag detection as ui.py's write_log)
 // ---------------------------------------------------------------------------
 const logBox = document.getElementById("logBox");
-document.querySelectorAll(".cf4-log-tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".cf4-log-tab").forEach((item) => {
-      const active = item === tab;
-      item.classList.toggle("active", active);
-      item.setAttribute("aria-selected", String(active));
-    });
-    document.querySelectorAll(".cf4-log-panel").forEach((panel) => panel.classList.remove("active"));
-    const panel = document.getElementById(tab.dataset.logPanel);
-    panel.classList.add("active");
-    panel.scrollTop = panel.scrollHeight;
-  });
+const logDrawer = document.getElementById("logDrawer");
+const logDrawerToggle = document.getElementById("logDrawerToggle");
+const logDrawerPreview = document.getElementById("logDrawerPreview");
+
+// Collapsible automation-log drawer: the queue table stays visible above it.
+function setLogDrawer(open) {
+  logDrawer.classList.toggle("open", open);
+  logDrawerToggle.setAttribute("aria-expanded", String(open));
+  if (open) logBox.scrollTop = logBox.scrollHeight;
+}
+logDrawerToggle.addEventListener("click", () => {
+  setLogDrawer(!logDrawer.classList.contains("open"));
 });
 
 function writeLog(message, explicitLevel) {
@@ -556,6 +703,9 @@ function writeLog(message, explicitLevel) {
   line.textContent = message;
   logBox.appendChild(line);
   logBox.scrollTop = logBox.scrollHeight;
+  // Latest line stays visible in the drawer header while it is collapsed.
+  if (message.trim()) logDrawerPreview.textContent = message;
+  if (tag === "ERROR") logDrawer.classList.add("has-error");
 
   const processingMatch = message.match(/TRANSMITTAL\s+(\d+)\/(\d+)\s*:/i);
   if (processingMatch) {
@@ -582,6 +732,8 @@ function writeLog(message, explicitLevel) {
 
 function clearLogs() {
   logBox.innerHTML = "";
+  logDrawerPreview.textContent = "";
+  logDrawer.classList.remove("has-error");
 }
 
 // ---------------------------------------------------------------------------
@@ -639,6 +791,18 @@ function applyCf4Results(results) {
   }));
 }
 
+const CF4_EMPTY_STATE = `
+  <div class="cf4-empty">
+    <span class="es-icon icon-flat"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M9 10v10"/></svg></span>
+    <div class="es-title">No transmittals queued</div>
+    <p class="es-sub">Each transmittal gets its own row here so you can follow the run one by one.</p>
+    <ol class="es-steps">
+      <li><span>1</span>Paste the transmittal numbers</li>
+      <li><span>2</span>Choose your options</li>
+      <li><span>3</span>Start the automation</li>
+    </ol>
+  </div>`;
+
 function showReport(results) {
   if (Array.isArray(results) && results.length) {
     applyCf4Results(results);
@@ -649,9 +813,15 @@ function showReport(results) {
   const failed = cf4Rows.filter((item) => item.status === "failed").length;
   const done = success + skipped + failed;
   const total = cf4Rows.length;
-  const statusText = total
-    ? `CF4 automation ${cf4Running ? "is running" : done === total ? "finished" : "is ready"}. ${done}/${total} result line${done === 1 ? "" : "s"} captured.`
-    : "Enter transmittals and start automation.";
+  if (!total) {
+    reportBox.innerHTML = CF4_EMPTY_STATE;
+    return;
+  }
+  const statusText = cf4Running
+    ? `CF4 automation is running. ${done}/${total} result line${done === 1 ? "" : "s"} captured.`
+    : done === 0
+      ? `${total} transmittal${total === 1 ? "" : "s"} queued. Start automation when ready.`
+      : `CF4 automation ${done === total ? "finished" : "stopped"}. ${done}/${total} result line${done === 1 ? "" : "s"} captured.`;
   const rows = cf4Rows.map((row, index) => `
     <tr class="cf4-status-row ${row.status}" data-index="${index}">
       <td>
@@ -709,15 +879,37 @@ const startBtn = document.getElementById("startBtn");
 const clearBtn = document.getElementById("clearBtn");
 let cf4StopRequested = false;
 
+const startBtnLabel = document.getElementById("startBtnLabel");
+const startHint = document.getElementById("startHint");
+let controlsRunning = false;
+
+// Start is disabled until at least one transmittal is entered, and the hint
+// beside it says why (the click handler keeps its own validation as well).
+function updateStartState() {
+  if (controlsRunning) {
+    startBtn.disabled = false;
+    startHint.textContent = cf4StopRequested
+      ? "Stopping…"
+      : "Running. Click Stop Automation to cancel.";
+    return;
+  }
+  const count = getTransmittals().length;
+  startBtn.disabled = count === 0;
+  startHint.textContent = count === 0
+    ? "Enter at least one transmittal number."
+    : `${count} transmittal${count === 1 ? "" : "s"} ready to run.`;
+}
+
 function setControlsRunning(running) {
-  startBtn.disabled = false;
+  controlsRunning = running;
   transmittalsInput.disabled = running;
   document.getElementById("autoEncodeCf4").disabled = running;
   clearBtn.disabled = running;
   startBtn.classList.toggle("running", running);
-  startBtn.textContent = running
-    ? (cf4StopRequested ? "STOPPING..." : "STOP AUTOMATION")
-    : "▶ START AUTOMATION";
+  startBtnLabel.textContent = running
+    ? (cf4StopRequested ? "Stopping..." : "Stop Automation")
+    : "Start Automation";
+  updateStartState();
 }
 
 // ---------------------------------------------------------------------------
@@ -731,10 +923,7 @@ startBtn.addEventListener("click", async () => {
     return;
   }
 
-  const transmittals = transmittalsInput.value
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+  const transmittals = getTransmittals();
 
   if (transmittals.length === 0) {
     showError("No Input", "Please paste at least one transmittal number.");
@@ -746,17 +935,23 @@ startBtn.addEventListener("click", async () => {
   cf4Running = true;
   cf4StopRequested = false;
   showReport();
+  setLogDrawer(true);
   writeLog("Automation started.");
   writeLog(`Found ${transmittals.length} transmittal(s).`);
   setControlsRunning(true);
 
-  const result = await fetchJSON("/api/beacon/start", {
-    method: "POST",
-    body: JSON.stringify({
-      transmittals,
-      auto_encode_cf4: document.getElementById("autoEncodeCf4").checked,
-    }),
-  });
+  let result;
+  try {
+    result = await fetchJSON("/api/beacon/start", {
+      method: "POST",
+      body: JSON.stringify({
+        transmittals,
+        auto_encode_cf4: document.getElementById("autoEncodeCf4").checked,
+      }),
+    });
+  } catch (error) {
+    result = { error: `Unable to start the automation. ${error.message}` };
+  }
 
   if (result.error) {
     writeLog(`ERROR: ${result.error}`, "ERROR");
@@ -778,6 +973,8 @@ clearBtn.addEventListener("click", () => {
   setCf4Rows([]);
   showReport([]);
   updateCount();
+  setLogDrawer(false);
+  updateStartState();
 });
 
 // ---------------------------------------------------------------------------
@@ -803,3 +1000,6 @@ socket.on("beacon_done", (data) => {
 // Initialize counts on load
 showReport([]);
 updateCount();
+updateStartState();
+refreshSettingsState();
+updateAutoEncodeSummary();

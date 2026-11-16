@@ -7,504 +7,271 @@
 <link rel="stylesheet" href="css/theme.css" />
 <style>
   /* ============================================================
-     CF4 Auto Encode defaults — editable version of the values
-     beacon.py's `auto_encode_cf4` branch used to hardcode. Same
-     visual language as the workspace dashboard/CF2/Upload SOA (titlebar,
-     .cyber-btn, .card, .section-label), just a form instead of a
-     log console.
+     CF4 & D.M. mapping — two tabs, same visual language as CF2 and
+     Upload SOA.
+
+       • Automation        Setup (transmittals + options) → Review & Run
+                           (queue table, log drawer, action bar)
+       • Encoding defaults section nav + form cards, with selected-counts
+                           and an unsaved-changes indicator
+       • User guide        a modal opened from the header
 
      The "Pertinent Signs and Symptoms" and "Physical Examination"
-     sections are rendered at runtime by js/cf4.js from the field
-     lists there — this file only supplies the container elements
-     (#symptomsColumns, #physicalExamSections) they render into.
+     sections are still rendered at runtime by js/cf4.js into
+     #symptomsColumns and #physicalExamSections.
+     Flat UI: no shadows or gradients, separation by borders and fills.
      ============================================================ */
 
+  :root { --gap-1: 8px; --gap-2: 16px; --gap-3: 24px; }
+
+  .icon-flat { display: inline-flex; align-items: center; justify-content: center; flex: none; line-height: 0; }
+  .icon-flat svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ---------- Page header ---------- */
   .page-header {
-    position: relative;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    padding: 14px 24px 12px 24px;
-    border-bottom: 0;
-    background:transparent;
+    position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 14px var(--gap-3) 12px var(--gap-3); background: transparent;
   }
-  .page-header::after { position:absolute; right:24px; bottom:0; left:24px; height:1px; background:color-mix(in srgb,var(--border) 55%,transparent); content:""; pointer-events:none; }
-  .page-header .title-block { line-height: 1.3; }
-  .page-header .title-main {
-    font-family: var(--font-ui);
-    color: var(--text-pri);
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 0.4px;
-    text-transform: none;
+  .page-header::after { position: absolute; right: var(--gap-3); bottom: 0; left: var(--gap-3); height: 1px; background: color-mix(in srgb, var(--border) 55%, transparent); content: ""; pointer-events: none; }
+  .page-header .title-block { line-height: 1.3; min-width: 0; }
+  .page-header .title-main { font-family: var(--font-ui); color: var(--text-pri); font-size: 18px; font-weight: 700; letter-spacing: 0.4px; }
+  .page-header .subtitle { font-family: var(--font-ui); color: var(--text-sec); font-size: 12px; letter-spacing: 0.3px; }
+  .guide-button {
+    display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 8px;
+    padding: 8px 14px; color: var(--text-pri); background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: var(--radius-md);
+    font: 600 12px/1.4 var(--font-ui); cursor: pointer;
   }
-  .page-header .subtitle {
-    font-family: var(--font-ui);
-    color: var(--text-sec);
-    font-size: 11px;
-    letter-spacing: 0.3px;
-  }
-  .page-header .btn-home {
-    margin-left: auto;
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--bg-panel);
-    color: var(--accent);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-md);
-    font-family: var(--font-ui);
-    font-size: 11.5px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    padding: 8px 14px;
-    cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease;
-  }
-  .page-header .btn-home:hover {
-    background: var(--accent-soft);
-    color: var(--text-pri);
-  }
+  .guide-button:hover { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .guide-button:focus-visible, .tab-btn:focus-visible, .settings-nav-btn:focus-visible, .log-drawer-head:focus-visible,
+  .link-btn:focus-visible, .guide-modal-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  .form-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px 24px 8px 24px;
-    min-height: 0;
-  }
-
-  .form-card {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: none;
-    padding: 4px 18px 16px 18px;
-    margin-bottom: 14px;
-  }
-
-  .field-row { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 6px 0; }
-  .field-row .field-label {
-    font-size: 11.5px;
-    color: var(--text-sec);
-    font-weight: 700;
-    letter-spacing: 0.2px;
-  }
-  .field-row textarea, .field-row input[type="text"] { width: 100%; }
-
-  .checkbox-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--text-pri);
-  }
-  .checkbox-row input[type="checkbox"] { cursor: pointer; width: 15px; height: 15px; flex: none; accent-color: var(--accent); }
-
-  /* "Pain  ....specify...." / "Others  ....specify...." rows — checkbox +
-     label + inline dotted text field, same line, matching the CF4 form. */
-  .checkbox-row.inline-specify { flex-wrap: nowrap; }
-  .checkbox-row.inline-specify > span { flex: none; white-space: nowrap; }
-  .checkbox-row.inline-specify input[type="text"] {
-    flex: 1;
-    min-width: 40px;
-    background: transparent;
-    border: none;
-    border-bottom: 1px dotted var(--border);
-    border-radius: 0;
-    padding: 2px 4px;
-    font-size: 12.5px;
-  }
-  .checkbox-row.inline-specify input[type="text"]:focus {
-    box-shadow: none;
-    border-bottom-color: var(--accent);
-  }
-
-  /* ---- Pertinent Signs and Symptoms: 4 fixed columns, top-to-bottom
-     within each column, matching the live CF4 form's layout. ---- */
-  .symptom-columns {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px 22px;
-    margin: 10px 0 4px 0;
-  }
-  .symptom-col { display: flex; flex-direction: column; gap: 9px; }
-
-  /* ---- Physical Examination: one card per body system, each with an
-     accent system label and a wrapping checkbox grid. ---- */
-  .system-block { margin-bottom: 18px; }
-  .system-block:last-child { margin-bottom: 4px; }
-  .system-block .system-label {
-    color: var(--accent);
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-    margin: 4px 0 8px 0;
-  }
-  .system-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px 20px;
-  }
-
-  .hint { font-size: 11px; color: var(--text-sec); margin: 2px 0 0 0; }
-
-  .footer-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 24px 18px 24px;
-    border-top: 1px solid var(--border);
-  }
-  .footer-bar .push-right { margin-left: auto; display: flex; gap: 8px; }
-
-  .save-note { font-size: 11.5px; color: var(--text-sec); }
-  .save-note.success { color: var(--success); }
-  .save-note.error { color: var(--error); }
-
-  /* Tab interface */
-  .tabs {
-    flex-shrink: 0;
-    display: flex;
-    gap: 0;
-    padding: 0 24px;
-    border-bottom: 0;
-    background: transparent;
-  }
+  /* ---------- Tabs ---------- */
+  .tabs { flex-shrink: 0; display: flex; gap: 0; padding: 0 var(--gap-3); background: transparent; }
   .tab-btn {
-    padding: 12px 20px;
-    background: transparent;
-    border: none;
-    color: var(--text-sec);
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.15s ease;
-    letter-spacing: 0.3px;
+    display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px;
+    background: transparent; border: 0; border-bottom: 2px solid transparent;
+    color: var(--text-sec); font: 700 12.5px var(--font-ui); letter-spacing: 0.3px; cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
   }
-  .tab-btn:hover {
-    color: var(--text-pri);
-  }
-  .tab-btn.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
+  .tab-btn:hover { color: var(--text-pri); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warning); }
+  .tab-dot[hidden] { display: none; }
+  .tab-content { display: none; min-height: 0; }
+  .tab-content.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
 
-  .tab-content {
-    display: none;
-    min-height: 0;
-  }
-  .tab-content.active {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    overflow: hidden;
-  }
-  #userGuide { overflow-y: auto; align-items: center; justify-content: center; padding: 28px 24px; }
-  .guide-wrap { width: min(100%, 960px); margin: auto; }
-  .guide-hero { position: relative; overflow: hidden; margin-bottom: 18px; padding: 22px 26px; background: linear-gradient(115deg, color-mix(in srgb, var(--accent) 17%, var(--bg-panel)), var(--bg-panel) 65%); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 16px; }
-  .guide-hero::after { content: "✦"; position: absolute; top: -30px; right: 24px; color: color-mix(in srgb, var(--accent) 24%, transparent); font-size: 120px; line-height: 1; }
-  .guide-kicker { display: block; margin-bottom: 6px; color: var(--accent); font-size: 9px; font-weight: 850; letter-spacing: 1.6px; text-transform: uppercase; }
-  .guide-hero h1 { position: relative; z-index: 1; margin: 0 0 6px; color: var(--text-pri); font-size: 21px; }
-  .guide-intro { position: relative; z-index: 1; max-width: 600px; margin: 0; color: var(--text-sec); font-size: 12px; }
-  .guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
-  .guide-card { position: relative; min-height: 145px; padding: 19px 19px 17px 62px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 13px; box-shadow: 0 7px 20px color-mix(in srgb, #000 12%, transparent); transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
-  .guide-card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); box-shadow: 0 12px 26px color-mix(in srgb, #000 20%, transparent); }
-  .guide-card::before { position: absolute; top: 17px; left: 17px; display: grid; width: 31px; height: 31px; place-items: center; color: var(--bg-dark); background: var(--accent); border-radius: 10px; font-size: 11px; font-weight: 900; box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 28%, transparent); }
-  .guide-card:nth-child(1)::before { content: "01"; }
-  .guide-card:nth-child(2)::before { content: "02"; }
-  .guide-card:nth-child(3)::before { content: "03"; }
+  /* ---------- Guide modal ---------- */
+  .guide-modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(8, 12, 20, 0.62); }
+  .guide-modal[hidden] { display: none; }
+  .guide-modal .modal-box { width: min(760px, 100%); max-width: none; max-height: 100%; display: flex; flex-direction: column; }
+  .guide-modal .modal-box h3 { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .guide-modal-close { font: inherit; color: var(--text-sec); background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 9px; cursor: pointer; }
+  .guide-scroll { overflow-y: auto; max-height: min(66vh, 560px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-right: 4px; }
+  .guide-card { position: relative; padding: 14px 14px 12px 52px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .guide-card::before { position: absolute; top: 13px; left: 13px; display: grid; width: 28px; height: 28px; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: var(--radius-sm); font-size: 12px; font-weight: 800; }
+  .guide-card:nth-child(1)::before { content: "1"; }
+  .guide-card:nth-child(2)::before { content: "2"; }
+  .guide-card:nth-child(3)::before { content: "3"; }
   .guide-card:nth-child(4)::before { content: "✓"; }
-  .guide-card h2 { margin: 0 0 9px; color: var(--text-pri); font-size: 13px; }
-  .guide-card p, .guide-card li { color: var(--text-sec); font-size: 11px; line-height: 1.65; }
+  .guide-card h2 { margin: 0 0 8px; color: var(--text-pri); font-size: 13px; }
+  .guide-card p, .guide-card li { color: var(--text-sec); font-size: 12px; line-height: 1.6; }
   .guide-card p { margin: 0; }
   .guide-card ol, .guide-card ul { display: grid; gap: 5px; margin: 0; padding-left: 16px; }
   .guide-card strong { color: var(--text-pri); }
-  .guide-card:last-child { background: linear-gradient(115deg, color-mix(in srgb, var(--accent) 10%, var(--bg-panel)), var(--bg-panel)); border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
-  @media (max-width: 700px) { .guide-grid { grid-template-columns: 1fr; } #userGuide { align-items: flex-start; padding: 16px; } .guide-card { min-height: 0; } .guide-hero { padding: 19px; } }
+  @media (max-width: 700px) { .guide-scroll { grid-template-columns: 1fr; } }
 
-  /* Automation section specific styles */
-  #automation .form-body {
-    display: grid;
-    grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr);
-    gap: 14px;
-    align-items: stretch;
-    overflow-y: auto;
+  /* ============ AUTOMATION TAB ============ */
+  .main-row {
+    flex: 1; display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+    gap: var(--gap-3); padding: var(--gap-2) var(--gap-3) var(--gap-3) var(--gap-3); min-height: 0;
   }
-  #automation .form-card { min-width: 0; min-height: 0; margin-bottom: 0; }
-  #automation .form-card:nth-child(1) {
-    grid-column: 1;
-    grid-row: 1;
-    min-height: 500px;
-    display: flex;
-    flex-direction: column;
-    container-type: inline-size;
-  }
-  #automation .form-card:nth-child(2) {
-    grid-column: 2;
-    grid-row: 1;
-    display: flex;
-    flex-direction: column;
-  }
-  #transmittalsInput {
-    flex: 1;
-    min-height: 300px;
-    resize: none;
-    width: 100%;
-  }
+  .setup-col, .review-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--gap-1); }
+  .setup-col { overflow-y: auto; scrollbar-gutter: stable; }
+  .section-label span { font-size: 11px; }
+  .setup-col > .section-label, .review-col > .section-label { padding: 0 2px 2px 2px; }
+
+  .setup-card { flex: none; display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+  .setup-card.grow { flex: 1; min-height: 260px; }
+  .step-head { display: flex; align-items: flex-start; gap: 10px; }
+  .step-badge { width: 26px; height: 26px; flex: none; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: var(--radius-sm); font-size: 12px; font-weight: 800; }
+  .step-copy { flex: 1; min-width: 0; }
+  .step-copy h2 { margin: 0 0 2px; color: var(--text-pri); font: 700 14px var(--font-ui); }
+  .step-copy p { margin: 0; color: var(--text-sec); font-size: 12px; line-height: 1.5; }
+  .step-chip { flex: none; padding: 4px 9px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; font: 800 11px var(--font-ui); white-space: nowrap; }
+
+  .input-wrapper { flex: 1; min-height: 0; display: flex; }
+  #transmittalsInput { flex: 1; width: 100%; min-height: 160px; resize: none; }
   #transmittalsInput::placeholder { color: var(--text-sec); }
-  .input-wrapper { flex: 1; display: flex; min-height: 0; margin: 10px 0 8px 0; }
+  #transmittalsInput:disabled { opacity: 0.6; }
 
-  .bottom-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 8px;
-    padding: 0 2px 10px 2px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 12px;
+  /* Option row: checkbox as a flat switch */
+  .option-row { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
+  .option-row input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 36px; height: 20px; margin: 1px 0 0;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
-  .bottom-row label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    cursor: pointer;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-  }
-  .bottom-row .count {
-    justify-self: end;
-    min-width: max-content;
-    line-height: 1.35;
-    text-align: right;
-  }
+  .option-row input[type="checkbox"]::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--text-sec); border-radius: 50%; transition: transform 0.15s ease, background-color 0.15s ease; }
+  .option-row input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+  .option-row input[type="checkbox"]:checked::after { transform: translateX(16px); background: var(--bg-dark); }
+  .option-row input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }
+  .option-row input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .option-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .option-title { color: var(--text-pri); font-size: 13px; font-weight: 700; }
+  .option-sub { color: var(--text-sec); font-size: 12px; line-height: 1.5; }
+  .option-summary { padding: 8px 10px; color: var(--text-sec); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11.5px; line-height: 1.5; overflow-wrap: anywhere; }
+  .link-btn { align-self: flex-start; padding: 2px 0; color: var(--accent); background: transparent; border: 0; font: 600 12px var(--font-ui); cursor: pointer; }
+  .link-btn:hover { color: var(--text-pri); text-decoration: underline; text-underline-offset: 3px; }
 
-  #startBtn {
-    width: 100%;
-    min-width: 0;
-    padding: 11px 10px;
-    font-size: 10.5pt;
-    line-height: 1.25;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-  .automation-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(72px, 88px);
-    gap: 8px;
-    width: 100%;
-    min-width: 0;
-  }
-  .automation-actions #startBtn {
-    min-width: 0;
-  }
-  #clearBtn {
-    width: 100%;
-    min-width: 0;
-    padding: 11px 10px;
-    overflow-wrap: anywhere;
-  }
-  @container (max-width: 260px) {
-    .bottom-row {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .bottom-row .count {
-      justify-self: start;
-      min-width: 0;
-      text-align: left;
-    }
-    .automation-actions {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-  @property --cf4-border-angle {
-    syntax: "<angle>";
-    initial-value: 0deg;
-    inherits: false;
-  }
-  #startBtn.running {
-    --cf4-border-angle: 0deg;
-    border: 2px solid transparent;
-    background:
-      linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box,
-      conic-gradient(from var(--cf4-border-angle), transparent 0 62%, var(--accent) 78%, transparent 94%) border-box;
-    color: var(--text-pri);
-    opacity: 1;
-    animation: cf4-border-spin 900ms linear infinite;
-  }
-  @keyframes cf4-border-spin { to { --cf4-border-angle: 360deg; } }
+  .review-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #reportBox { flex: 1; min-height: 0; display: block; white-space: normal; overflow: auto; }
+  .log-line.ERROR { color: var(--error, #ff6b6b); }
 
-  #logBox {
-    height: auto;
-    min-height: 150px;
-    margin: 8px 0 0 0;
-    flex: 1;
-    overflow-y: auto;
-  }
-  #reportBox {
-    height: auto;
-    min-height: 150px;
-    flex: 1;
-    margin: 8px 0 0 0;
-    overflow: auto;
-    white-space: normal;
-  }
-  .cf4-log-tabs {
-    display: flex;
-    gap: 4px;
-    padding: 3px;
-    margin: 10px 0 0 0;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-  }
-  .cf4-log-tab {
-    flex: 1;
-    padding: 8px 10px;
-    color: var(--text-sec);
-    background: transparent;
-    border: 0;
-    border-radius: var(--radius-sm);
-    font: 700 10.5px var(--font-ui);
-    cursor: pointer;
-  }
-  .cf4-log-tab.active {
-    color: var(--bg-dark);
-    background: var(--accent);
-  }
-  .cf4-log-panel {
-    min-height: 0;
-    display: none;
-  }
-  .cf4-log-panel.active {
-    display: block;
-  }
-  .cf4-summary {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    white-space: normal;
-    font-family: var(--font-ui);
-    line-height: 1.35;
-  }
-  .cf4-summary-strip {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .cf4-summary-stat {
-    padding: 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-  }
-  .cf4-summary-stat .label {
-    color: var(--text-sec);
-    font-size: 9.5px;
-    font-weight: 800;
-    letter-spacing: .4px;
-    text-transform: uppercase;
-  }
-  .cf4-summary-stat .value {
-    margin-top: 4px;
-    color: var(--text-pri);
-    font-size: 18px;
-    font-weight: 900;
-  }
+  .cf4-summary { height: 100%; display: flex; flex-direction: column; gap: 10px; white-space: normal; font-family: var(--font-ui); line-height: 1.35; }
+  .cf4-summary-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .cf4-summary-stat { padding: 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .cf4-summary-stat .label { color: var(--text-sec); font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; }
+  .cf4-summary-stat .value { margin-top: 4px; color: var(--text-pri); font-size: 18px; font-weight: 900; }
   .cf4-summary-stat.success .value { color: var(--success); }
   .cf4-summary-stat.warning .value { color: var(--warning); }
   .cf4-summary-stat.error .value { color: var(--error); }
-  .cf4-summary-status {
-    padding: 10px 12px;
-    color: var(--text-sec);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    border-radius: var(--radius-md);
-    font-size: 11px;
-  }
-  .cf4-status-table-wrap {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-  }
-  .cf4-status-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-  }
-  .cf4-status-table th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    padding: 7px 10px;
-    color: var(--text-sec);
-    background: var(--bg-panel);
-    border-bottom: 1px solid var(--border);
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: .4px;
-    text-transform: uppercase;
-    text-align: left;
-  }
-  .cf4-status-table th:first-child { width: 120px; }
-  .cf4-status-table td {
-    padding: 9px 11px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-pri);
-    font-size: 11.5px;
-    line-height: 1.35;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  .cf4-summary-status { padding: 10px 12px; color: var(--text-sec); background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-md); font-size: 12px; }
+  .cf4-status-table-wrap { flex: 1; min-height: 0; overflow: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .cf4-status-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .cf4-status-table th { position: sticky; top: 0; z-index: 1; padding: 8px 10px; color: var(--text-sec); background: var(--bg-panel); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; text-align: left; }
+  .cf4-status-table th:first-child { width: 130px; }
+  .cf4-status-table td { padding: 9px 11px; border-bottom: 1px solid var(--border); color: var(--text-pri); font-size: 12px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cf4-status-table tbody tr:last-child td { border-bottom: 0; }
-  .cf4-status-row.running {
-    background: var(--accent-soft);
-    outline: 1px solid var(--accent);
-    outline-offset: -1px;
-  }
+  .cf4-status-table tbody tr:hover { background: var(--accent-soft); }
+  .cf4-status-row.running { background: var(--accent-soft); outline: 1px solid var(--accent); outline-offset: -1px; }
   .cf4-status-row.running td:first-child { color: var(--accent); }
   .cf4-status-row.success td:first-child { color: var(--success); }
   .cf4-status-row.skipped td:first-child { color: var(--warning); }
   .cf4-status-row.failed td:first-child { color: var(--error); }
-  .cf4-row-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    font-weight: 900;
-  }
-  .cf4-row-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: currentColor;
-    opacity: .55;
-  }
-  .cf4-status-row.running .cf4-row-dot {
-    opacity: 1;
-    animation: cf4-row-pulse .9s ease-in-out infinite;
-  }
-  @keyframes cf4-row-pulse {
-    0%, 100% { opacity: .35; transform: scale(.85); }
-    50% { opacity: 1; transform: scale(1.12); }
-  }
+  .cf4-row-status { display: inline-flex; align-items: center; gap: 7px; font-weight: 900; }
+  .cf4-row-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .55; }
+  .cf4-status-row.running .cf4-row-dot { opacity: 1; animation: cf4-row-pulse .9s ease-in-out infinite; }
+  @keyframes cf4-row-pulse { 0%, 100% { opacity: .35; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.12); } }
+  @media (max-width: 1100px) { .cf4-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-  @media (max-width: 900px) {
-    #automation .form-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; align-content: start; }
-    #automation .form-card:nth-child(n) { grid-column: 1; grid-row: auto; }
-    #automation .form-card:nth-child(1) { min-height: 430px; }
-    #automation .form-card:nth-child(2) { height: 480px; min-height: 480px; }
+  .cf4-empty { height: 100%; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
+  .es-icon { width: 48px; height: 48px; color: var(--accent); background: var(--accent-soft); border-radius: 50%; }
+  .es-icon svg { width: 24px; height: 24px; }
+  .es-title { color: var(--text-pri); font-size: 15px; font-weight: 700; }
+  .es-sub { margin: 0; max-width: 360px; color: var(--text-sec); font-size: 12.5px; line-height: 1.5; }
+  .es-steps { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 18px; }
+  .es-steps li { display: flex; align-items: center; gap: 8px; color: var(--text-pri); font-size: 12.5px; }
+  .es-steps li span { width: 22px; height: 22px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: 50%; font-size: 11px; font-weight: 800; }
+
+  /* Log drawer */
+  .log-drawer { flex: none; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .log-drawer-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: transparent; color: var(--text-pri); border: 0; font: 700 12px var(--font-ui); text-align: left; cursor: pointer; }
+  .log-drawer-head:hover { background: var(--accent-soft); }
+  .ld-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-sec); opacity: 0.6; }
+  .log-drawer.has-error .ld-dot { background: var(--error); opacity: 1; }
+  .ld-preview { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-sec); font-weight: 500; font-size: 11.5px; }
+  .log-drawer.open .ld-preview { visibility: hidden; }
+  .ld-chev { color: var(--text-sec); transition: transform 0.15s ease; }
+  .log-drawer.open .ld-chev { transform: rotate(180deg); }
+  .log-drawer #logBox { display: none; height: 220px; margin: 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: #000; overflow-y: auto; }
+  .log-drawer.open #logBox { display: block; }
+  #logBox:empty::before { content: "Live automation steps appear here once the run starts."; color: var(--text-sec); }
+
+  /* Action bar */
+  .action-bar { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+  #startBtn { flex: none; min-width: 210px; padding: 12px 18px; font-size: 13px; line-height: 1.25; display: flex; align-items: center; justify-content: center; gap: 9px; }
+  .start-hint { flex: 1; min-width: 120px; color: var(--text-sec); font-size: 12px; }
+  .action-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
+  .ghost-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 12px; color: var(--text-sec); background: transparent; border: 0; border-radius: var(--radius-md); font: 600 12px var(--font-ui); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+  .ghost-btn:hover:not(:disabled) { color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }
+  .ghost-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .ghost-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @property --cf4-border-angle { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+  #startBtn.running {
+    border: 2px solid transparent; color: var(--bg-dark);
+    background:
+      linear-gradient(var(--accent), var(--accent)) padding-box,
+      conic-gradient(from var(--cf4-border-angle), transparent 0 68%, var(--text-pri) 78%, transparent 90%) border-box;
+    animation: cf4-border-spin .85s linear infinite; opacity: 1;
   }
-  @media (max-width: 1100px) {
-    .cf4-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @keyframes cf4-border-spin { to { --cf4-border-angle: 360deg; } }
+
+  /* ============ ENCODING DEFAULTS TAB ============ */
+  .settings-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--gap-3); padding: var(--gap-2) var(--gap-3) 0 var(--gap-3); }
+  .settings-nav { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .settings-nav .section-label { padding: 0 2px 6px 2px; }
+  .settings-nav-btn {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 9px 10px;
+    color: var(--text-sec); background: transparent; border: 0; border-left: 2px solid transparent; border-radius: var(--radius-sm);
+    font: 600 12.5px var(--font-ui); text-align: left; cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .settings-nav-btn:hover { color: var(--text-pri); background: var(--accent-soft); }
+  .settings-nav-btn.active { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); }
+  .nav-count { flex: none; color: var(--text-sec); font-size: 11px; font-weight: 700; }
+  .nav-count:empty { display: none; }
+
+  .form-body { min-width: 0; min-height: 0; overflow-y: auto; padding: 0 8px 16px 0; scrollbar-gutter: stable; scroll-behavior: smooth; }
+  .form-card { margin-bottom: 14px; padding: 4px 18px 16px 18px; scroll-margin-top: 4px; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .count-chip { flex: none; margin-top: 8px; padding: 3px 9px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; font: 800 11px var(--font-ui); }
+  .count-chip:empty { display: none; }
+
+  .field-row { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 6px 0; }
+  .field-row .field-label { font-size: 12px; color: var(--text-sec); font-weight: 700; letter-spacing: 0.2px; }
+  .field-row textarea, .field-row input[type="text"] { width: 100%; }
+  .hint { font-size: 11.5px; color: var(--text-sec); margin: 2px 0 0 0; }
+
+  .checkbox-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; margin: 0 -6px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; color: var(--text-pri); transition: background-color 0.12s ease; }
+  .checkbox-row:hover { background: var(--accent-soft); }
+  .checkbox-row input[type="checkbox"] { cursor: pointer; width: 15px; height: 15px; flex: none; accent-color: var(--accent); }
+  .checkbox-row:has(input[type="checkbox"]:checked) > span { font-weight: 700; }
+  .checkbox-row.inline-specify { flex-wrap: nowrap; }
+  .checkbox-row.inline-specify > span { flex: none; white-space: nowrap; }
+  .checkbox-row.inline-specify input[type="text"] { flex: 1; min-width: 40px; background: transparent; border: none; border-bottom: 1px dotted var(--border); border-radius: 0; padding: 2px 4px; font-size: 12.5px; }
+  .checkbox-row.inline-specify input[type="text"]:focus { box-shadow: none; border-bottom-color: var(--accent); }
+
+  .symptom-columns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 22px; margin: 10px 0 4px 0; }
+  .symptom-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  #physicalExamSections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+  .system-block { min-width: 0; padding: 10px 12px 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .system-block .system-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin: 0 0 6px 0; }
+  .system-count { color: var(--text-sec); font-size: 11px; font-weight: 700; letter-spacing: 0; }
+  .system-count:empty { display: none; }
+  .system-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0 14px; }
+  .system-grid .checkbox-row.inline-specify { grid-column: 1 / -1; }
+
+  /* Footer bar */
+  .footer-bar { flex: none; display: flex; align-items: center; gap: 10px; margin: 0 var(--gap-3) var(--gap-3); padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+  .footer-bar .push-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .dirty-badge { padding: 3px 9px; color: var(--warning); background: color-mix(in srgb, var(--warning) 14%, transparent); border-radius: 999px; font: 800 11px var(--font-ui); }
+  .dirty-badge[hidden] { display: none; }
+  .save-note { font-size: 12px; color: var(--text-sec); }
+  .save-note.success { color: var(--success); }
+  .save-note.error { color: var(--error); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1200px) { .symptom-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); } #physicalExamSections { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 900px) {
+    .main-row { grid-template-columns: minmax(0, 1fr); align-content: start; overflow-y: auto; }
+    .setup-col { overflow: visible; padding-right: 0; }
+    .review-col { height: 680px; min-height: 680px; }
+    .settings-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: var(--gap-1); }
+    .settings-nav { flex-direction: row; overflow-x: auto; overflow-y: hidden; gap: 6px; padding-bottom: 4px; }
+    .settings-nav .section-label { display: none; }
+    .settings-nav-btn { width: auto; flex: none; white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent; border-radius: var(--radius-sm); }
+    .settings-nav-btn.active { border-bottom-color: var(--accent); }
+  }
+  @media (max-width: 620px) {
+    .page-header { align-items: flex-start; flex-direction: column; }
+    .guide-button { width: 100%; }
+    #startBtn { width: 100%; }
+    .start-hint { flex-basis: 100%; order: 3; }
+    .action-sep { display: none; }
+    .symptom-columns { grid-template-columns: minmax(0, 1fr); }
+    .footer-bar { flex-wrap: wrap; }
+    .footer-bar .push-right { margin-left: 0; width: 100%; justify-content: flex-end; }
   }
 </style>
 </head>
@@ -523,143 +290,200 @@
         <div class="title-main">CF4 &amp; D.M. mapping</div>
         <div class="subtitle">Run transmittal automation or edit CF4 encoding defaults</div>
       </div>
+      <button class="guide-button" id="userGuideBtn" type="button" aria-haspopup="dialog" aria-controls="userGuideModal"><span class="icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><path d="M12 17h.01"/></svg></span>USER GUIDE</button>
     </div>
 
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="automation">▶ Automation</button>
-      <button class="tab-btn" data-tab="settings">⚙ Settings</button>
-      <button class="tab-btn" data-tab="userGuide">User Guide</button>
+    <div class="tabs" role="tablist" aria-label="CF4 sections">
+      <button class="tab-btn active" type="button" data-tab="automation"><span class="icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 4.5v15l13-7.5z"/></svg></span>Automation</button>
+      <button class="tab-btn" type="button" data-tab="settings"><span class="icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h2"/><path d="M10 17h10"/><circle cx="8" cy="17" r="2"/></svg></span>Encoding defaults<span class="tab-dot" id="tabDirtyDot" title="Unsaved changes" hidden></span></button>
     </div>
 
-    <!-- AUTOMATION TAB -->
-    <div id="automation" class="tab-content active">
-      <div class="form-body">
-        <div class="form-card">
-          <div class="section-label"><span>▸ Input Transmittal Numbers:</span></div>
-          <div class="input-wrapper card">
-            <textarea id="transmittalsInput" placeholder="One transmittal number per line..."></textarea>
-          </div>
-          <div class="bottom-row">
-            <label class="text-sec text-small">
+    <div class="guide-modal" id="userGuideModal" hidden>
+      <section class="modal-box" role="dialog" aria-modal="true" aria-labelledby="userGuideTitle">
+        <h3 id="userGuideTitle">CF4 Quick Guide <button class="guide-modal-close" id="closeUserGuide" type="button" aria-label="Close user guide">&times;</button></h3>
+        <div class="guide-scroll">
+          <section class="guide-card">
+            <h2>Run CF4 automation</h2>
+            <ol>
+              <li>In <strong>Automation</strong>, enter one Beacon transmittal number per line. Blank lines are ignored.</li>
+              <li>Switch on <strong>Include Auto Encode CF4</strong> if you want Beabots to fill CF4 fields using your saved defaults.</li>
+              <li>Select <strong>Start Automation</strong> and let the workflow finish. Keep the app open while it runs.</li>
+              <li>Review the queue table for each transmittal and open the <strong>Automation log</strong> for processing details or errors.</li>
+            </ol>
+          </section>
+          <section class="guide-card">
+            <h2>Configure CF4 defaults</h2>
+            <ol>
+              <li>Open <strong>Encoding defaults</strong> to edit the text and selections used when Auto Encode CF4 is enabled.</li>
+              <li>Set admission details, pertinent symptoms, general survey, physical examination findings, and course in the ward to match your workflow.</li>
+              <li>Select <strong>Save</strong> to keep your changes. Use <strong>Reset to defaults</strong> to restore the original values.</li>
+            </ol>
+          </section>
+          <section class="guide-card">
+            <h2>Before you start</h2>
+            <ul>
+              <li>Sign in to Beacon and make sure the transmittal numbers are correct.</li>
+              <li>Review your saved defaults before enabling Auto Encode CF4.</li>
+              <li>Run a manageable set of transmittals and check the report before continuing with more.</li>
+            </ul>
+          </section>
+          <section class="guide-card">
+            <h2>Review in Beacon</h2>
+            <p>Automation results can require attention. Open the related claim in Beacon and verify the patient, transmittal, CF4 content, and any D.M. mapping before submitting. Correct missing or inaccurate information in Beacon.</p>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== AUTOMATION TAB ===== -->
+    <div id="automation" class="tab-content active" role="tabpanel">
+      <div class="main-row">
+
+        <div class="setup-col">
+          <div class="section-label"><span>SETUP</span></div>
+
+          <section class="panel setup-card grow" aria-labelledby="transmittalsTitle">
+            <div class="step-head">
+              <span class="step-badge">1</span>
+              <div class="step-copy">
+                <h2 id="transmittalsTitle">Transmittal numbers</h2>
+                <p>One Beacon transmittal number per line.</p>
+              </div>
+              <span class="step-chip" id="countLabel">0 transmittals</span>
+            </div>
+            <div class="input-wrapper">
+              <textarea id="transmittalsInput" placeholder="One transmittal number per line..." aria-labelledby="transmittalsTitle"></textarea>
+            </div>
+          </section>
+
+          <section class="panel setup-card" aria-labelledby="optionsTitle">
+            <div class="step-head">
+              <span class="step-badge">2</span>
+              <div class="step-copy">
+                <h2 id="optionsTitle">Options</h2>
+              </div>
+            </div>
+            <label class="option-row" for="autoEncodeCf4">
               <input type="checkbox" id="autoEncodeCf4" />
-              Include Auto Encode CF4
+              <span class="option-copy">
+                <span class="option-title">Include Auto Encode CF4</span>
+                <span class="option-sub">Fills the CF4 form in Beacon using your saved encoding defaults.</span>
+              </span>
             </label>
-            <span class="count text-sec text-small" id="countLabel">0 transmittals</span>
+            <div class="option-summary" id="autoEncodeSummary">Uses your saved encoding defaults.</div>
+            <button class="link-btn" id="editDefaultsLink" type="button">Review encoding defaults →</button>
+          </section>
+        </div>
+
+        <div class="review-col">
+          <div class="section-label"><span>REVIEW &amp; RUN</span></div>
+
+          <div class="review-stage">
+            <div class="log-box" id="reportBox" role="region" aria-label="Automation queue summary"></div>
           </div>
-          <div class="automation-actions">
-            <button class="cyber-btn" id="startBtn" style="text-align:center;">▶ START AUTOMATION</button>
-            <button class="cyber-btn" id="clearBtn" type="button">Clear</button>
+
+          <div class="log-drawer open" id="logDrawer">
+            <button class="log-drawer-head" id="logDrawerToggle" type="button" aria-expanded="true" aria-controls="logBox">
+              <span class="ld-dot"></span>
+              <span>Automation log</span>
+              <span class="ld-preview" id="logDrawerPreview"></span>
+              <span class="ld-chev icon-flat"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></span>
+            </button>
+            <div class="log-box" id="logBox" role="log" aria-label="Automation log"></div>
+          </div>
+
+          <div class="action-bar">
+            <button class="solid-btn" id="startBtn" type="button" disabled>
+              <span class="icon-flat"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 4.5v15l13-7.5z"/></svg></span>
+              <span id="startBtnLabel">Start Automation</span>
+            </button>
+            <span class="start-hint" id="startHint" aria-live="polite">Enter at least one transmittal number.</span>
+            <span class="action-sep" aria-hidden="true"></span>
+            <button class="ghost-btn" id="clearBtn" type="button">
+              <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg></span>
+              <span>Clear</span>
+            </button>
           </div>
         </div>
 
-        <div class="form-card">
-          <div class="section-label"><span>▸ AUTOMATION LOGS</span></div>
-          <div class="cf4-log-tabs" role="tablist" aria-label="CF4 automation activity">
-            <button class="cf4-log-tab active" data-log-panel="reportBox" role="tab" aria-selected="true">Summary Report</button>
-            <button class="cf4-log-tab" data-log-panel="logBox" role="tab" aria-selected="false">Automation Log</button>
-          </div>
-          <div class="log-box cf4-log-panel active" id="reportBox" role="tabpanel"></div>
-          <div class="log-box cf4-log-panel" id="logBox" role="tabpanel"></div>
-        </div>
-
       </div>
     </div>
 
-    <!-- SETTINGS TAB -->
-    <div id="settings" class="tab-content">
-      <div class="form-body">
+    <!-- ===== ENCODING DEFAULTS TAB ===== -->
+    <div id="settings" class="tab-content" role="tabpanel">
+      <div class="settings-layout">
 
-      <div class="form-card">
-        <div class="section-label"><span>▸ REASON FOR ADMISSION</span></div>
-        <div class="field-row">
-          <label class="field-label" for="chiefComplaint">Chief Complaint</label>
-          <textarea id="chiefComplaint" class="card" rows="2"></textarea>
-        </div>
-        <div class="field-row">
-          <label class="field-label" for="historyOfPresentIllness">1. History of Present Illness</label>
-          <textarea id="historyOfPresentIllness" class="card" rows="2"></textarea>
-        </div>
-        <div class="field-row">
-          <label class="field-label" for="pertinentPastMedicalHistory">2.a. Pertinent Past Medical History</label>
-          <textarea id="pertinentPastMedicalHistory" class="card" rows="2"></textarea>
+        <nav class="settings-nav" aria-label="Encoding defaults sections">
+          <div class="section-label"><span>SECTIONS</span></div>
+          <button class="settings-nav-btn active" type="button" data-target="sec-admission">Reason for admission</button>
+          <button class="settings-nav-btn" type="button" data-target="sec-symptoms">Signs &amp; symptoms<span class="nav-count" data-count="symptoms"></span></button>
+          <button class="settings-nav-btn" type="button" data-target="sec-survey">General survey</button>
+          <button class="settings-nav-btn" type="button" data-target="sec-exam">Physical examination<span class="nav-count" data-count="exam"></span></button>
+          <button class="settings-nav-btn" type="button" data-target="sec-course">Course in the ward</button>
+        </nav>
+
+        <div class="form-body" id="settingsBody">
+
+          <section class="panel form-card" id="sec-admission">
+            <div class="section-label"><span>REASON FOR ADMISSION</span></div>
+            <div class="field-row">
+              <label class="field-label" for="chiefComplaint">Chief Complaint</label>
+              <textarea id="chiefComplaint" class="card" rows="2"></textarea>
+            </div>
+            <div class="field-row">
+              <label class="field-label" for="historyOfPresentIllness">1. History of Present Illness</label>
+              <textarea id="historyOfPresentIllness" class="card" rows="2"></textarea>
+            </div>
+            <div class="field-row">
+              <label class="field-label" for="pertinentPastMedicalHistory">2.a. Pertinent Past Medical History</label>
+              <textarea id="pertinentPastMedicalHistory" class="card" rows="2"></textarea>
+            </div>
+          </section>
+
+          <section class="panel form-card" id="sec-symptoms">
+            <div class="card-head">
+              <div class="section-label"><span>3. PERTINENT SIGNS AND SYMPTOMS</span></div>
+              <span class="count-chip" data-count="symptoms"></span>
+            </div>
+            <div class="symptom-columns" id="symptomsColumns"></div>
+          </section>
+
+          <section class="panel form-card" id="sec-survey">
+            <div class="section-label"><span>GENERAL SURVEY</span></div>
+            <label class="checkbox-row"><input type="checkbox" id="generalSurveyAwakeAlert" /> <span>Mark as "Awake and alert"</span></label>
+          </section>
+
+          <section class="panel form-card" id="sec-exam">
+            <div class="card-head">
+              <div class="section-label"><span>5. PHYSICAL EXAMINATION ( PERTINENT FINDINGS PER SYSTEM )</span></div>
+              <span class="count-chip" data-count="exam"></span>
+            </div>
+            <div id="physicalExamSections"></div>
+          </section>
+
+          <section class="panel form-card" id="sec-course">
+            <div class="section-label"><span>COURSE IN THE WARD</span></div>
+            <div class="field-row">
+              <label class="field-label" for="courseInWardOrder">Doctor's Order / Action</label>
+              <textarea id="courseInWardOrder" class="card" rows="2"></textarea>
+            </div>
+            <div class="hint">Added once per session date read from CF2 (same text every time).</div>
+          </section>
+
         </div>
       </div>
 
-      <div class="form-card">
-        <div class="section-label"><span>▸ 3. PERTINENT SIGNS AND SYMPTOMS</span></div>
-        <div class="symptom-columns" id="symptomsColumns"></div>
-      </div>
-
-      <div class="form-card">
-        <div class="section-label"><span>▸ GENERAL SURVEY</span></div>
-        <label class="checkbox-row"><input type="checkbox" id="generalSurveyAwakeAlert" /> Mark as "Awake and alert"</label>
-      </div>
-
-      <div class="form-card">
-        <div class="section-label"><span>▸ 5. PHYSICAL EXAMINATION ( PERTINENT FINDINGS PER SYSTEM )</span></div>
-        <div id="physicalExamSections"></div>
-      </div>
-
-      <div class="form-card">
-        <div class="section-label"><span>▸ COURSE IN THE WARD</span></div>
-        <div class="field-row">
-          <label class="field-label" for="courseInWardOrder">Doctor's Order / Action</label>
-          <textarea id="courseInWardOrder" class="card" rows="2"></textarea>
+      <div class="footer-bar">
+        <button class="cyber-btn" id="btnResetDefaults" type="button">↺ Reset to defaults</button>
+        <span class="dirty-badge" id="dirtyBadge" hidden>Unsaved changes</span>
+        <span class="save-note" id="saveNote" aria-live="polite"></span>
+        <div class="push-right">
+          <button class="cyber-btn" id="btnCancel" type="button">Cancel</button>
+          <button class="solid-btn" id="btnSave" type="button">Save</button>
         </div>
-        <div class="hint">Added once per session date read from CF2 (same text every time).</div>
       </div>
     </div>
 
-    <div class="footer-bar">
-      <button class="cyber-btn" id="btnResetDefaults">↺ Reset to Defaults</button>
-      <span class="save-note" id="saveNote"></span>
-      <div class="push-right">
-        <button class="cyber-btn" id="btnCancel">Cancel</button>
-        <button class="solid-btn" id="btnSave">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- USER GUIDE TAB -->
-  <div id="userGuide" class="tab-content">
-    <div class="guide-wrap">
-      <header class="guide-hero">
-        <span class="guide-kicker">CF4 workflow · Quick guide</span>
-        <h1>From transmittal to verified claim</h1>
-        <p class="guide-intro">A simple walkthrough for running automation, setting CF4 defaults, and checking the result in Beacon.</p>
-      </header>
-      <div class="guide-grid">
-      <section class="guide-card">
-        <h2>Run CF4 automation</h2>
-        <ol>
-          <li>In <strong>Automation</strong>, enter one Beacon transmittal number per line. Blank lines are ignored.</li>
-          <li>Choose <strong>Include Auto Encode CF4</strong> if you want Beabots to fill CF4 fields using your saved defaults.</li>
-          <li>Select <strong>START AUTOMATION</strong> and let the workflow finish. Keep the app open while it runs.</li>
-          <li>Review the <strong>Summary Report</strong> for each transmittal and the <strong>Automation Log</strong> for processing details or errors.</li>
-        </ol>
-      </section>
-      <section class="guide-card">
-        <h2>Configure CF4 defaults</h2>
-        <ol>
-          <li>Open <strong>Settings</strong> to edit the text and selections used when Auto Encode CF4 is enabled.</li>
-          <li>Set admission details, pertinent symptoms, general survey, physical examination findings, and course in the ward to match your workflow.</li>
-          <li>Select <strong>Save</strong> to keep your changes. Use <strong>Reset to Defaults</strong> to restore the original values.</li>
-        </ol>
-      </section>
-      <section class="guide-card">
-        <h2>Before you start</h2>
-        <ul>
-          <li>Sign in to Beacon and make sure the transmittal numbers are correct.</li>
-          <li>Review your saved defaults before enabling Auto Encode CF4.</li>
-          <li>Run a manageable set of transmittals and check the report before continuing with more.</li>
-        </ul>
-      </section>
-      <section class="guide-card">
-        <h2>Review in Beacon</h2>
-        <p>Automation results can require attention. Open the related claim in Beacon and verify the patient, transmittal, CF4 content, and any D.M. mapping before submitting. Correct missing or inaccurate information in Beacon.</p>
-      </section>
-      </div>
-    </div>
   </div>
 
   <div id="modalRoot"></div>
@@ -667,5 +491,17 @@
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script src="js/common.js"></script>
   <script src="js/cf4.js"></script>
+  <script>
+    (() => {
+      const modal = document.getElementById("userGuideModal");
+      const openButton = document.getElementById("userGuideBtn");
+      const closeButton = document.getElementById("closeUserGuide");
+      const close = () => { modal.hidden = true; openButton.focus(); };
+      openButton.addEventListener("click", () => { modal.hidden = false; closeButton.focus(); });
+      closeButton.addEventListener("click", close);
+      modal.addEventListener("click", (event) => { if (event.target === modal) close(); });
+      document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !modal.hidden) close(); });
+    })();
+  </script>
 </body>
 </html>
