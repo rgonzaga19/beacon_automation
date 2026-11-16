@@ -36,6 +36,7 @@ html,body { width:100%; min-width:320px; height:100%; min-height:100%; margin:0;
 .workspace-notification-trigger:hover,.workspace-notification-trigger[aria-expanded="true"] { color:var(--text-pri); background:var(--accent-soft); border-color:var(--border); }
 .workspace-notification-trigger svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 .workspace-header-icon,.workspace-menu-icon { display:block; width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.workspace-notification-trigger svg.workspace-theme-icon { width:20px; height:20px; }
 .workspace-menu-icon { color:var(--accent); }
 .workspace-notification-trigger svg.workspace-header-icon { width:16px; height:16px; stroke-width:1.9; }
 #workspaceUnreadBadge { position:absolute; top:3px; right:2px; min-width:15px; height:15px; padding:0 3px; color:#fff; background:#dc3545; border:2px solid var(--bg-panel); border-radius:999px; font:700 8px/12px var(--font-ui); text-align:center; }

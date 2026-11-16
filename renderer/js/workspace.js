@@ -42,10 +42,27 @@ const mobileToggle = document.getElementById("workspaceMobileToggle");
 const backdrop = document.getElementById("workspaceBackdrop");
 const notificationTrigger = document.getElementById("workspaceNotificationTrigger");
 const notificationMenu = document.getElementById("workspaceNotificationMenu");
+const themeToggle = document.getElementById("workspaceThemeToggle");
 const accountTrigger = document.getElementById("workspaceAccountTrigger");
 const accountMenu = document.getElementById("workspaceAccountMenu");
 let isAdmin = false;
 BeabotsIcons.hydrate();
+
+function syncWorkspaceThemeToggle() {
+  const isLight = document.documentElement.getAttribute("data-theme") === "light";
+  themeToggle.setAttribute("aria-checked", String(isLight));
+  themeToggle.title = isLight ? "Switch to dark mode" : "Switch to light mode";
+  BeabotsIcons.replace(themeToggle.querySelector(".workspace-theme-icon"), isLight ? "toggle-right" : "toggle-left", {
+    size: 20,
+    className: "workspace-theme-icon",
+  });
+}
+
+syncWorkspaceThemeToggle();
+new MutationObserver(syncWorkspaceThemeToggle).observe(document.documentElement, {
+  attributes: true,
+  attributeFilter: ["data-theme"],
+});
 
 function closeNotificationMenu() {
   notificationMenu.hidden = true;
@@ -258,6 +275,7 @@ notificationTrigger.addEventListener("click", () => {
   notificationMenu.hidden = !open;
   notificationTrigger.setAttribute("aria-expanded", String(open));
 });
+themeToggle.addEventListener("click", () => window.beabotsTheme.toggleTheme());
 accountTrigger.addEventListener("click", () => {
   const open = accountTrigger.getAttribute("aria-expanded") !== "true";
   if (open) closeNotificationMenu();

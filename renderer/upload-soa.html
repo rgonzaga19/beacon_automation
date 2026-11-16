@@ -7,241 +7,217 @@
 <link rel="stylesheet" href="css/theme.css" />
 <style>
   /* ============================================================
-     Upload SOA layout — modern FLAT UI pass, matching CF2/dashboard.
+     Upload SOA layout — Setup → Review → Run (matches the CF2 page).
 
-       • no shadows — separation via borders / flat color fills only
-       • simple line-icon glyphs (inline SVG) instead of emoji
-       • spacing on an 8px grid
+       • Setup column   1 · SOA files   2 · Transmittal numbers
+       • Review & Run   queue table, collapsible log drawer, action bar
 
-     Structure only: every #id the renderer script (upload-soa.js)
-     touches, and its existing class list, is preserved as-is.
+     Flat UI: no shadows, separation by thin borders and color fills.
+     Every #id upload-soa.js touches is kept.
      ============================================================ */
 
   :root { --gap-1: 8px; --gap-2: 16px; --gap-3: 24px; }
 
-  .icon-flat { display:inline-flex; align-items:center; justify-content:center; flex:none; line-height:0; }
-  .icon-flat svg { stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-  .automate-btn-icon { display:block; width:16px; height:16px; flex:none; }
+  .icon-flat { display: inline-flex; align-items: center; justify-content: center; flex: none; line-height: 0; }
+  .icon-flat svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
+  /* ---------- Page header ---------- */
   .page-header {
     position: relative;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    padding: 14px var(--gap-3) 12px var(--gap-3);
-    border-bottom: 0;
-    background:transparent;
-  }
-  .page-header::after { position:absolute; right:var(--gap-3); bottom:0; left:var(--gap-3); height:1px; background:color-mix(in srgb,var(--border) 55%,transparent); content:""; pointer-events:none; }
-  .page-header { justify-content: space-between; gap: 16px; }
-  .guide-button {
-    display:inline-flex;
-    flex:none;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-    padding:8px 13px;
-    color:var(--text-pri);
-    background:var(--bg-card);
-    border:1px solid var(--border);
-    border-radius:var(--radius-md);
-    font:600 11px/1.4 var(--font-ui);
-    margin-left:auto;
-    cursor: pointer;
-  }
-  .guide-button:hover { color:var(--accent); background:var(--accent-soft); border-color:var(--accent); }
-  .guide-button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-  .guide-button-icon { display:block; width:16px; height:16px; flex:none; }
-  .page-header .title-block { line-height: 1.3; }
-  .page-header .title {
-    font-family: var(--font-ui);
-    color: var(--text-pri);
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 0.4px;
-    text-transform: none;
-  }
-  .page-header .subtitle {
-    font-family: var(--font-ui);
-    color: var(--text-sec);
-    font-size: 11px;
-    letter-spacing: 0.3px;
-  }
-
-  /* ---------- SOA folder ---------- */
-  .folder-section {
-    margin: 10px var(--gap-3) 0;
-    padding: 8px 0;
-    background:transparent;
-    border:0;
-    border-radius:var(--radius-lg);
-  }
-  .folder-section .section-label {
     justify-content: space-between;
-    gap: 12px;
-  }
-  .folder-section .section-label p {
-    margin: 0;
-    color: var(--text-sec);
-    font-size: 10px;
-    line-height: 1.35;
-    text-align: right;
-  }
-  .section-row {
-    margin: 4px 0 0 0;
-    display: flex;
-    gap: 8px;
-  }
-  .folder-input-wrapper {
-    flex: 0 1 420px;
-    min-width: 0;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 6px 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .folder-input-wrapper .icon-flat { color: var(--text-sec); }
-  .folder-input-wrapper .icon-flat svg { width: 15px; height: 15px; }
-  #soaFolderInput {
-    width: 100%;
+    gap: 16px;
+    padding: 14px var(--gap-3) 12px var(--gap-3);
     background: transparent;
-    color: var(--text-pri);
-    border: none;
-    font-family: var(--font-ui);
-    font-size: 11.5px;
   }
-  #soaFolderInput::placeholder { color: var(--text-sec); }
-  #browseBtn { flex: none; min-height:36px; padding:7px 12px; display: inline-flex; align-items: center; gap: 8px; border:0; }
+  .page-header::after { position: absolute; right: var(--gap-3); bottom: 0; left: var(--gap-3); height: 1px; background: color-mix(in srgb, var(--border) 55%, transparent); content: ""; pointer-events: none; }
+  .page-header .title-block { line-height: 1.3; min-width: 0; }
+  .page-header .title { font-family: var(--font-ui); color: var(--text-pri); font-size: 18px; font-weight: 700; letter-spacing: 0.4px; }
+  .page-header .subtitle { font-family: var(--font-ui); color: var(--text-sec); font-size: 12px; letter-spacing: 0.3px; }
+  .guide-button {
+    display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 8px;
+    padding: 8px 14px; color: var(--text-pri); background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: var(--radius-md);
+    font: 600 12px/1.4 var(--font-ui); cursor: pointer;
+  }
+  .guide-button:hover { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+  .guide-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* ---------- File-naming guide modal ---------- */
-  .soa-guide {
-    margin: 0;
-    padding: 0;
-    display: block;
-    max-height: min(65vh, 560px);
-    overflow-y: auto;
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-  }
-  .guide-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    background: rgba(8, 12, 20, 0.62);
-  }
+  .soa-guide { margin: 0; padding: 0; display: block; max-height: min(65vh, 560px); overflow-y: auto; background: transparent; border: 0; border-radius: 0; }
+  .guide-modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(8, 12, 20, 0.62); }
   .guide-modal[hidden] { display: none; }
   .guide-modal .modal-box { width: min(680px, 100%); max-height: 100%; display: flex; flex-direction: column; }
-  .guide-modal .modal-box h3 { display:flex; align-items:center; justify-content:space-between; gap:16px; }
-  .guide-modal-close { font:inherit; color:var(--text-sec); background:transparent; border:1px solid var(--border); border-radius:var(--radius-sm); padding:4px 9px; cursor:pointer; }
-  .soa-guide-list {
-    min-width: 0;
-    display: grid;
-    gap: 9px;
-    margin: 0;
-    padding: 0 0 0 22px;
-  }
-  .soa-guide-list li {
-    color: var(--text-sec);
-    font-size: 12px;
-    line-height: 1.5;
-    padding-left: 3px;
-  }
+  .guide-modal .modal-box h3 { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .guide-modal-close { font: inherit; color: var(--text-sec); background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 9px; cursor: pointer; }
+  .soa-guide-list { min-width: 0; display: grid; gap: 9px; margin: 0; padding: 0 0 0 22px; }
+  .soa-guide-list li { color: var(--text-sec); font-size: 12px; line-height: 1.5; padding-left: 3px; }
   .soa-guide-list li::marker { color: var(--accent); font-weight: 800; }
-  .soa-guide-list li:nth-child(10) {
-    color: var(--error);
-    font-weight: 800;
-  }
+  .soa-guide-list li:nth-child(10) { color: var(--error); font-weight: 800; }
 
-  /* ---------- Two-column body ---------- */
-  .body {
+  /* ---------- Main row ---------- */
+  .main-row {
     flex: 1;
-    display: flex;
-    gap: var(--gap-2);
+    display: grid;
+    grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+    gap: var(--gap-3);
     padding: var(--gap-2) var(--gap-3) var(--gap-3) var(--gap-3);
     min-height: 0;
   }
-  .col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: none;
-    padding: 4px 16px 16px 16px;
-  }
-  /* 20:80 split — transmittal numbers column narrow, logs column wide */
-  .body .col:first-child {
-    flex: 2 1 0;
-  }
-  .body .col:last-child {
-    flex: 8 1 0;
-  }
+  .setup-col, .review-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--gap-1); }
+  .setup-col { overflow-y: auto; scrollbar-gutter: stable; }
+  .setup-col > .section-label, .review-col > .section-label { padding: 0 2px 2px 2px; }
+  .section-label span { font-size: 11px; }
 
-  .input-wrapper { flex: 1; margin: 10px 0 8px 0; min-height: 0; }
-  #transmittalsInput {
-    width: 100%;
-    height: 100%;
-    resize: none;
+  /* ---------- Setup steps ---------- */
+  .setup-card { flex: none; display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+  .setup-card.grow { flex: 1; min-height: 240px; }
+  .step-head { display: flex; align-items: flex-start; gap: 10px; }
+  .step-badge {
+    width: 26px; height: 26px; flex: none; display: grid; place-items: center;
+    color: var(--accent); background: var(--accent-soft); border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 800;
   }
+  .step-copy { flex: 1; min-width: 0; }
+  .step-copy h2 { margin: 0 0 2px; color: var(--text-pri); font: 700 14px var(--font-ui); }
+  .step-copy p { margin: 0; color: var(--text-sec); font-size: 12px; line-height: 1.5; }
+  .step-chip { flex: none; padding: 4px 9px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; font: 800 11px var(--font-ui); white-space: nowrap; }
+
+  /* Drop zone (primary element until files are chosen) */
+  .dropzone {
+    width: 100%; min-height: 120px; padding: 16px 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    text-align: center; color: var(--text-pri);
+    background: var(--accent-soft); border: 2px dashed var(--accent); border-radius: var(--radius-lg);
+    font-family: var(--font-ui); cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .dropzone * { pointer-events: none; }
+  .dropzone:hover:not(:disabled), .dropzone.dragover { background: var(--accent-soft-strong); border-style: solid; }
+  .dropzone:disabled { opacity: 0.5; cursor: not-allowed; }
+  .dropzone:focus-visible, .log-drawer-head:focus-visible, .ghost-btn:focus-visible, .soa-file-remove:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dz-icon { width: 40px; height: 40px; color: var(--accent); background: var(--bg-panel); border-radius: 50%; }
+  .dz-icon svg { width: 20px; height: 20px; }
+  .dz-text { display: flex; flex-direction: column; gap: 2px; }
+  .dz-title { font-size: 14px; font-weight: 700; }
+  .dz-sub { color: var(--text-sec); font-size: 11.5px; }
+  .dz-loaded { display: none; }
+  .setup-card.loaded .dropzone { min-height: 0; flex-direction: row; gap: 10px; padding: 10px 14px; background: transparent; border-width: 1px; border-style: solid; }
+  .setup-card.loaded .dropzone:hover:not(:disabled) { background: var(--accent-soft); }
+  .setup-card.loaded .dz-idle { display: none; }
+  .setup-card.loaded .dz-loaded { display: inline; }
+  .setup-card.loaded .dz-icon { width: 24px; height: 24px; background: transparent; }
+  .setup-card.loaded .dz-icon svg { width: 16px; height: 16px; }
+  .setup-card.loaded .dz-title { font-size: 12.5px; }
+  .soa-hint { margin: 0; color: var(--text-sec); font-size: 11.5px; line-height: 1.5; }
+
+  .file-status {
+    min-width: 0; display: flex; align-items: center; gap: 8px;
+    color: var(--text-sec); font-size: 12px; padding: 8px 10px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  }
+  .setup-card.loaded .file-status .icon-flat { color: var(--success); }
+  .file-status span:last-child { min-width: 0; color: var(--text-pri); overflow-wrap: anywhere; }
+
+  .soa-file-list {
+    margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column;
+    max-height: 180px; overflow-y: auto;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
+  }
+  .soa-file-list:empty { display: none; }
+  .soa-file { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 6px 8px 6px 10px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .soa-file:last-child { border-bottom: 0; }
+  .soa-file .icon-flat { color: var(--text-sec); }
+  .soa-file-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-pri); }
+  .soa-file-size { color: var(--text-sec); font-size: 11px; }
+  .soa-file-remove { width: 22px; height: 22px; display: grid; place-items: center; padding: 0; color: var(--text-sec); background: transparent; border: 0; border-radius: var(--radius-sm); font-size: 15px; line-height: 1; cursor: pointer; }
+  .soa-file-remove:hover { color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }
+  .soa-file-list.locked .soa-file-remove { opacity: 0.4; pointer-events: none; }
+
+  .input-wrapper { flex: 1; min-height: 0; }
+  #transmittalsInput { width: 100%; height: 100%; min-height: 140px; resize: none; }
   #transmittalsInput::placeholder { color: var(--text-sec); }
+  #transmittalsInput:disabled { opacity: 0.6; }
 
-  .bottom-row {
-    display: flex;
-    align-items: center;
-    padding: 0 2px 10px 2px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 12px;
-  }
-  .bottom-row .count { margin-left: auto; }
+  /* ---------- Review & Run ---------- */
+  .review-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #summaryLogPanel { flex: 1; min-height: 0; display: block; white-space: normal; }
+  .log-line.ERROR { color: var(--error, #ff6b6b); }
 
-  #automateBtn {
-    width: 100%;
-    min-width: 0;
-    padding: 11px 10px;
-    font-size: 10.5pt;
-    line-height: 1.25;
-    line-height: 1.25;
-    margin-top: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    box-shadow: none;
+  .soa-summary { height: 100%; display: flex; flex-direction: column; gap: 10px; white-space: normal; font-family: var(--font-ui); line-height: 1.35; }
+  .soa-summary-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .soa-summary-stat { padding: 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .soa-summary-stat .label { color: var(--text-sec); font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; }
+  .soa-summary-stat .value { margin-top: 4px; color: var(--text-pri); font-size: 18px; font-weight: 900; }
+  .soa-summary-stat.success .value { color: var(--success); }
+  .soa-summary-stat.warning .value { color: var(--warning); }
+  .soa-summary-stat.error .value { color: var(--error); }
+  .soa-summary-status { padding: 10px 12px; color: var(--text-sec); background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-md); font-size: 12px; }
+  .soa-status-table-wrap { flex: 1; min-height: 0; overflow: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .soa-status-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .soa-status-table th {
+    position: sticky; top: 0; z-index: 1; padding: 8px 10px;
+    color: var(--text-sec); background: var(--bg-panel); border-bottom: 1px solid var(--border);
+    font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; text-align: left;
   }
-  #automateBtn:hover { box-shadow: none; }
-  .automation-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(72px, 88px);
-    gap: 8px;
-    margin-top: auto;
-  }
-  .automation-actions #automateBtn {
-    flex: 1;
-    margin-top: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  #clearBtn {
-    width: 100%;
-    min-width: 0;
-    padding: 11px 10px;
-  }
-  @property --soa-progress-angle {
-    syntax: "<angle>";
-    initial-value: 0deg;
-    inherits: false;
-  }
+  .soa-status-table th:first-child { width: 52px; }
+  .soa-status-table th:nth-child(2) { width: 140px; }
+  .soa-status-table td { padding: 9px 11px; border-bottom: 1px solid var(--border); color: var(--text-pri); font-size: 12px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .soa-status-table td.soa-idx { color: var(--text-sec); }
+  .soa-status-table tbody tr:last-child td { border-bottom: 0; }
+  .soa-status-table tbody tr:hover { background: var(--accent-soft); }
+  .soa-status-row.running { background: var(--accent-soft); outline: 1px solid var(--accent); outline-offset: -1px; }
+  .soa-status-row.running td:nth-child(2) { color: var(--accent); }
+  .soa-status-row.success td:nth-child(2) { color: var(--success); }
+  .soa-status-row.skipped td:nth-child(2) { color: var(--warning); }
+  .soa-status-row.failed td:nth-child(2) { color: var(--error); }
+  .soa-row-status { display: inline-flex; align-items: center; gap: 7px; font-weight: 900; }
+  .soa-row-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .55; }
+  .soa-status-row.running .soa-row-dot { opacity: 1; animation: soa-row-pulse .9s ease-in-out infinite; }
+  @keyframes soa-row-pulse { 0%, 100% { opacity: .35; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.12); } }
+  @media (max-width: 1100px) { .soa-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* Empty state (rendered by upload-soa.js when nothing is queued) */
+  .soa-empty { height: 100%; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
+  .es-icon { width: 48px; height: 48px; color: var(--accent); background: var(--accent-soft); border-radius: 50%; }
+  .es-icon svg { width: 24px; height: 24px; }
+  .es-title { color: var(--text-pri); font-size: 15px; font-weight: 700; }
+  .es-sub { margin: 0; max-width: 360px; color: var(--text-sec); font-size: 12.5px; line-height: 1.5; }
+  .es-steps { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 18px; }
+  .es-steps li { display: flex; align-items: center; gap: 8px; color: var(--text-pri); font-size: 12.5px; }
+  .es-steps li span { width: 22px; height: 22px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: 50%; font-size: 11px; font-weight: 800; }
+
+  /* ---------- Log drawer ---------- */
+  .log-drawer { flex: none; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .log-drawer-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: transparent; color: var(--text-pri); border: 0; font: 700 12px var(--font-ui); text-align: left; cursor: pointer; }
+  .log-drawer-head:hover { background: var(--accent-soft); }
+  .ld-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-sec); opacity: 0.6; }
+  .log-drawer.has-error .ld-dot { background: var(--error); opacity: 1; }
+  .ld-preview { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-sec); font-weight: 500; font-size: 11.5px; }
+  .log-drawer.open .ld-preview { visibility: hidden; }
+  .ld-chev { color: var(--text-sec); transition: transform 0.15s ease; }
+  .log-drawer.open .ld-chev { transform: rotate(180deg); }
+  .log-drawer #automationLogPanel { display: none; height: 220px; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: #000; color: #eef2f6; white-space: pre-wrap; }
+  .log-drawer.open #automationLogPanel { display: block; }
+  #automationLogPanel .log-line.INFO { color: #eef2f6; }
+  #automationLogPanel .log-line.SUCCESS { color: #34d399; }
+  #automationLogPanel .log-line.WARNING { color: #fbbf24; }
+  #automationLogPanel .log-line.ERROR { color: #f87171; }
+  #automationLogPanel .log-line.DIM,
+  #automationLogPanel:empty::before { color: #a4b1c3; }
+  #automationLogPanel:empty::before { content: "Live automation steps appear here once the upload starts."; }
+
+  /* ---------- Action bar ---------- */
+  .action-bar { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+  #automateBtn { flex: none; min-width: 210px; padding: 12px 18px; font-size: 13px; line-height: 1.25; display: flex; align-items: center; justify-content: center; gap: 9px; }
+  .start-hint { flex: 1; min-width: 120px; color: var(--text-sec); font-size: 12px; }
+  .action-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
+  .ghost-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 12px; color: var(--text-sec); background: transparent; border: 0; border-radius: var(--radius-md); font: 600 12px var(--font-ui); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+  .ghost-btn:hover:not(:disabled) { color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }
+  .ghost-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  @property --soa-progress-angle { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
   #automateBtn.running {
     border: 2px solid transparent;
     color: var(--bg-dark);
@@ -253,164 +229,18 @@
   }
   @keyframes soa-progress-border { to { --soa-progress-angle: 360deg; } }
 
-  .soa-log-tabs {
-    display: flex;
-    gap: 4px;
-    padding: 3px;
-    margin: 10px 0 0 0;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-  }
-  .soa-log-tab {
-    flex: 1;
-    padding: 8px 10px;
-    color: var(--text-sec);
-    background: transparent;
-    border: 0;
-    border-radius: var(--radius-sm);
-    font: 700 10.5px var(--font-ui);
-    cursor: pointer;
-  }
-  .soa-log-tab.active {
-    color: var(--bg-dark);
-    background: var(--accent);
-  }
-  .soa-log-panel {
-    flex: 1;
-    min-height: 0;
-    margin: 8px 0 0 0;
-    display: none;
-  }
-  .soa-log-panel.active { display: block; }
-  #summaryLogPanel { white-space: normal; }
-  #automationLogPanel { white-space: pre-wrap; }
-  .soa-summary {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    white-space: normal;
-    font-family: var(--font-ui);
-    line-height: 1.35;
-  }
-  .soa-summary-strip {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .soa-summary-stat {
-    padding: 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-  }
-  .soa-summary-stat .label {
-    color: var(--text-sec);
-    font-size: 9.5px;
-    font-weight: 800;
-    letter-spacing: .4px;
-    text-transform: uppercase;
-  }
-  .soa-summary-stat .value {
-    margin-top: 4px;
-    color: var(--text-pri);
-    font-size: 18px;
-    font-weight: 900;
-  }
-  .soa-summary-stat.success .value { color: var(--success); }
-  .soa-summary-stat.warning .value { color: var(--warning); }
-  .soa-summary-stat.error .value { color: var(--error); }
-  .soa-summary-status {
-    padding: 10px 12px;
-    color: var(--text-sec);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    border-radius: var(--radius-md);
-    font-size: 11px;
-  }
-  .soa-status-table-wrap {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-  }
-  .soa-status-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-  }
-  .soa-status-table th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    padding: 7px 10px;
-    color: var(--text-sec);
-    background: var(--bg-panel);
-    border-bottom: 1px solid var(--border);
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: .4px;
-    text-transform: uppercase;
-    text-align: left;
-  }
-  .soa-status-table th:first-child { width: 120px; }
-  .soa-status-table td {
-    padding: 9px 11px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-pri);
-    font-size: 11.5px;
-    line-height: 1.35;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .soa-status-table tbody tr:last-child td { border-bottom: 0; }
-  .soa-status-row.running {
-    background: var(--accent-soft);
-    outline: 1px solid var(--accent);
-    outline-offset: -1px;
-  }
-  .soa-status-row.running td:first-child { color: var(--accent); }
-  .soa-status-row.success td:first-child { color: var(--success); }
-  .soa-status-row.skipped td:first-child { color: var(--warning); }
-  .soa-status-row.failed td:first-child { color: var(--error); }
-  .soa-row-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    font-weight: 900;
-  }
-  .soa-row-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: currentColor;
-    opacity: .55;
-  }
-  .soa-status-row.running .soa-row-dot {
-    opacity: 1;
-    animation: soa-row-pulse .9s ease-in-out infinite;
-  }
-  @keyframes soa-row-pulse {
-    0%, 100% { opacity: .35; transform: scale(.85); }
-    50% { opacity: 1; transform: scale(1.12); }
-  }
-  @media (max-width: 1100px) {
-    .soa-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
+  /* ---------- Responsive: guide → setup → queue → actions ---------- */
   @media (max-width: 900px) {
-    .body { flex-direction:column; overflow-y:auto; }
-    .body .col:first-child, .body .col:last-child { flex:none; min-height:320px; }
+    .main-row { grid-template-columns: minmax(0, 1fr); align-content: start; overflow-y: auto; }
+    .setup-col { overflow: visible; padding-right: 0; }
+    .review-col { height: 680px; min-height: 680px; }
   }
   @media (max-width: 620px) {
-    .section-row { flex-direction:column; }
-    .folder-input-wrapper { flex:initial; width:100%; }
-    #browseBtn { width:100%; }
-    .guide-button { width:100%; margin-left:0; }
+    .page-header { align-items: flex-start; flex-direction: column; }
+    .guide-button { width: 100%; }
+    #automateBtn { width: 100%; }
+    .start-hint { flex-basis: 100%; order: 3; }
+    .action-sep { display: none; }
   }
 </style>
 </head>
@@ -429,24 +259,7 @@
         <div class="title">Upload SOA with discounts &amp; generate</div>
         <div class="subtitle">Upload SOA, apply discounts, validate, and generate the eSOA for each transmittal.</div>
       </div>
-    </div>
-
-    <div class="folder-section">
-      <div class="section-label">
-        <span>▸ SOA FOLDER</span>
-        <p id="soaSelectionHint" class="text-sec text-small">In the file picker: Ctrl+click to select multiple files, Shift+click for a range, or focus the file list and press Ctrl+A to select all.</p>
-      </div>
-      <div class="section-row">
-        <div class="folder-input-wrapper">
-          <span class="icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
-          <input type="text" id="soaFolderInput" readonly placeholder="No SOA Excel files selected" aria-describedby="soaSelectionHint" />
-        </div>
-        <button class="cyber-btn" id="browseBtn" aria-describedby="soaSelectionHint">
-          <span class="icon-flat"><i class="upload-files-icon" data-lucide="upload" data-icon-size="16" aria-hidden="true"></i></span>
-          BROWSE
-        </button>
-        <button class="guide-button" id="userGuideBtn" type="button" aria-haspopup="dialog" aria-controls="userGuideModal"><i class="guide-button-icon" data-lucide="circle-help" data-icon-size="16" aria-hidden="true"></i>USER GUIDE</button>
-      </div>
+      <button class="guide-button" id="userGuideBtn" type="button" aria-haspopup="dialog" aria-controls="userGuideModal"><span class="icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><path d="M12 17h.01"/></svg></span>USER GUIDE</button>
     </div>
 
     <div class="guide-modal" id="userGuideModal" hidden>
@@ -469,33 +282,76 @@
         </section>
     </div>
 
-    <div class="body">
-      <div class="col">
-        <div class="section-label"><span>▸ TRANSMITTAL NUMBERS</span></div>
-        <div class="input-wrapper card">
-          <textarea id="transmittalsInput" placeholder="One transmittal number per line..."></textarea>
-        </div>
-        <div class="bottom-row">
-          <span class="count text-sec text-small" id="countLabel">0 transmittals</span>
-        </div>
-        <div class="automation-actions">
-          <button class="solid-btn" id="automateBtn">
-            <i class="automate-btn-icon" data-lucide="upload" data-icon-size="16" aria-hidden="true"></i>
-            <span id="automateBtnLabel">AUTOMATE UPLOAD</span>
+    <div class="main-row">
+
+      <!-- ===== Setup: files, then transmittals ===== -->
+      <div class="setup-col">
+        <div class="section-label"><span>SETUP</span></div>
+
+        <section class="panel setup-card" id="soaFilesCard" aria-labelledby="soaFilesTitle">
+          <div class="step-head">
+            <span class="step-badge">1</span>
+            <div class="step-copy">
+              <h2 id="soaFilesTitle">SOA Excel files</h2>
+              <p>Beabots matches each file to a transmittal by its filename.</p>
+            </div>
+          </div>
+          <button class="dropzone" id="browseBtn" type="button" aria-describedby="soaSelectionHint">
+            <span class="dz-icon icon-flat"><svg viewBox="0 0 24 24"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
+            <span class="dz-text"><span class="dz-title"><span class="dz-idle">Drop SOA files here</span><span class="dz-loaded">Replace files</span></span><span class="dz-sub dz-idle">or click to browse · .xlsx, .xls</span></span>
           </button>
-          <button class="cyber-btn" id="clearBtn" type="button">Clear</button>
+          <p class="soa-hint" id="soaSelectionHint">In the file picker: Ctrl+click to select multiple files, Shift+click for a range, or focus the file list and press Ctrl+A to select all.</p>
+          <div class="file-status"><span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span id="soaFileSummary">No SOA Excel files selected</span></div>
+          <ul class="soa-file-list" id="soaFileList" aria-label="Selected SOA files"></ul>
+        </section>
+
+        <section class="panel setup-card grow" aria-labelledby="transmittalsTitle">
+          <div class="step-head">
+            <span class="step-badge">2</span>
+            <div class="step-copy">
+              <h2 id="transmittalsTitle">Transmittal numbers</h2>
+              <p>One per line. You can paste straight from CF2's Copy Transmittal.</p>
+            </div>
+            <span class="step-chip" id="countLabel">0 transmittals</span>
+          </div>
+          <div class="input-wrapper">
+            <textarea id="transmittalsInput" placeholder="One transmittal number per line..." aria-labelledby="transmittalsTitle"></textarea>
+          </div>
+        </section>
+      </div>
+
+      <!-- ===== Review & Run ===== -->
+      <div class="review-col">
+        <div class="section-label"><span>REVIEW &amp; RUN</span></div>
+
+        <div class="review-stage">
+          <div class="log-box" id="summaryLogPanel" role="region" aria-label="Upload queue summary"></div>
+        </div>
+
+        <div class="log-drawer open" id="logDrawer">
+          <button class="log-drawer-head" id="logDrawerToggle" type="button" aria-expanded="true" aria-controls="automationLogPanel">
+            <span class="ld-dot"></span>
+            <span>Automation log</span>
+            <span class="ld-preview" id="logDrawerPreview"></span>
+            <span class="ld-chev icon-flat"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></span>
+          </button>
+          <div class="log-box" id="automationLogPanel" role="log" aria-label="Automation log"></div>
+        </div>
+
+        <div class="action-bar">
+          <button class="solid-btn" id="automateBtn" type="button" disabled>
+            <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
+            <span id="automateBtnLabel">Upload &amp; Generate</span>
+          </button>
+          <span class="start-hint" id="automateHint" aria-live="polite">Add SOA files and transmittal numbers to begin.</span>
+          <span class="action-sep" aria-hidden="true"></span>
+          <button class="ghost-btn" id="clearBtn" type="button">
+            <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg></span>
+            <span>Clear</span>
+          </button>
         </div>
       </div>
 
-      <div class="col">
-        <div class="section-label"><span>▸ AUTOMATION LOGS</span></div>
-        <div class="soa-log-tabs" role="tablist" aria-label="SOA automation logs">
-          <button class="soa-log-tab active" data-log-panel="summaryLogPanel" role="tab" aria-selected="true">Summary Report</button>
-          <button class="soa-log-tab" data-log-panel="automationLogPanel" role="tab" aria-selected="false">Automation Log</button>
-        </div>
-        <div class="log-box soa-log-panel active" id="summaryLogPanel" role="tabpanel"></div>
-        <div class="log-box soa-log-panel" id="automationLogPanel" role="tabpanel"></div>
-      </div>
     </div>
   </div>
 
