@@ -1,5 +1,5 @@
 :root {
-  --soa-page: var(--bg-base);
+  --soa-page: var(--bg-dark);
   --soa-surface: var(--bg-panel);
   --soa-input: var(--bg-card);
   --soa-border: var(--border);
@@ -11,7 +11,7 @@
 }
 
 body { --soa-page-inset: clamp(24px, 4.45vw, 60px); margin: 0; min-height: 100vh; overflow: auto; background: var(--soa-page); color: var(--text-pri); font-family: var(--font-ui); font-size: 13px; }
-.soa-header { position:relative; min-height: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 14px 24px 12px; border-bottom: 0; background: transparent; }
+.soa-header { position:relative; min-height: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 14px 24px 12px; border-bottom: 0; background: var(--soa-page); }
 .soa-header::after { position:absolute; right:var(--soa-page-inset); bottom:0; left:var(--soa-page-inset); height:1px; background:color-mix(in srgb,var(--soa-border) 55%,transparent); content:""; pointer-events:none; }
 .header-copy h1 { margin: 0; font-family: var(--font-ui); color: var(--text-pri); font-size: 18px; line-height: 1.3; font-weight: 750; letter-spacing: -.2px; text-transform: none; }
 .header-copy p { margin: 4px 0 0; color: var(--text-sec); font-size: 11px; }
@@ -103,7 +103,7 @@ input[type="file"]:focus-visible { outline: 2px solid var(--soa-accent); outline
 #batchWarnings:not([hidden]) + .batch-actions { margin-top: 16px; }
 
 html[data-theme="light"] body {
-  --soa-page: var(--bg-base);
+  --soa-page: var(--bg-dark);
   --soa-surface: var(--bg-panel);
   --soa-input: var(--bg-card);
   --soa-border: var(--border);
@@ -112,10 +112,6 @@ html[data-theme="light"] body {
   --soa-danger: var(--error);
   background: var(--soa-page);
   color: var(--text-pri);
-}
-
-html[data-theme="light"] .soa-header {
-  background: var(--bg-base);
 }
 
 html[data-theme="light"] .header-copy p {
@@ -297,7 +293,7 @@ body { height: 100vh; height: 100dvh; display: flex; flex-direction: column; ove
 .claim-row-action { display: flex; justify-content: center; }
 .claim-delete { min-height: 30px; padding: 0 9px; font-size: 10px; }
 .claim-delete:disabled { opacity: .42; cursor: not-allowed; }
-.individual-footer { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 18px calc(0px - var(--soa-page-inset)) 0; padding: 14px 30px; border-top: 1px solid var(--soa-border); background: var(--bg-base); }
+.individual-footer { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 18px calc(0px - var(--soa-page-inset)) 0; padding: 14px 30px; border-top: 1px solid var(--soa-border); background: var(--soa-page); }
 .individual-summary { min-width: 0; color: var(--text-sec); font-size: 11px; font-weight: 600; }
 .individual-summary::first-letter { color: var(--text-pri); }
 .summary-missing { color: var(--text-sec); }
