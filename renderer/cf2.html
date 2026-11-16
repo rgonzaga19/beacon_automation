@@ -7,20 +7,15 @@
 <link rel="stylesheet" href="css/theme.css" />
 <style>
   /* ============================================================
-     CF2 page layout — modern FLAT UI pass.
+     CF2 page layout — Setup → Review → Run.
 
-     Flat design rules applied throughout this file:
-       • no gradients, no drop shadows, no skeuomorphism
-       • separation is drawn with color blocks / thin borders only
-       • one accent color, a couple of semantic colors, done
-       • simple line-icon glyphs (inline SVG) instead of emoji
-       • generous, consistent spacing on an 8px grid
-       • clear typographic hierarchy, sans-serif throughout
+     Zones:
+       • Settings bar   claim period + account receivable (set once)
+       • Setup column   one workflow at a time (New / Existing toggle)
+       • Review & Run   batch table, log drawer, action bar
 
-     Structure only: every #id the renderer script (cf2.js) touches
-     is unchanged, and every class name it toggles (.active, .log-line
-     levels, .guide-step*, etc.) still exists — so no logic is
-     affected by this pass.
+     Flat design: no gradients/shadows, separation by thin borders and
+     color blocks. Every #id and state class cf2.js touches is kept.
      ============================================================ */
 
   :root {
@@ -29,7 +24,7 @@
     --gap-3: 24px;
   }
 
-  /* ---------- Simple flat line-icon glyphs ---------- */
+  /* ---------- Flat line icons ---------- */
   .icon-flat { display: inline-flex; align-items: center; justify-content: center; flex: none; line-height: 0; }
   .icon-flat svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -41,652 +36,329 @@
     align-items: center;
     padding: 14px var(--gap-3) 12px var(--gap-3);
     border-bottom: 0;
-    background:transparent;
-  }
-  .page-header::after { position:absolute; right:var(--gap-3); bottom:0; left:var(--gap-3); height:1px; background:color-mix(in srgb,var(--border) 55%,transparent); content:""; pointer-events:none; }
-  .page-header .title-block { line-height: 1.3; }
-  .page-header .spacer { flex: 1; }
-  .page-header-actions { margin-left: auto; display: flex; align-items: center; }
-  .page-header-link {
-    padding: 4px 0;
-    color: var(--accent);
     background: transparent;
-    border: 0;
-    font: inherit;
-    font-size: 11px;
-    font-weight: 700;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    cursor: pointer;
   }
-  .page-header-link:hover { color: var(--text-pri); }
+  .page-header::after { position: absolute; right: var(--gap-3); bottom: 0; left: var(--gap-3); height: 1px; background: color-mix(in srgb, var(--border) 55%, transparent); content: ""; pointer-events: none; }
+  .page-header .title-block { line-height: 1.3; }
   .page-header .title {
     font-family: var(--font-ui);
     color: var(--text-pri);
     font-size: 18px;
     font-weight: 700;
     letter-spacing: 0.4px;
-    text-transform: none;
   }
   .page-header .subtitle {
     font-family: var(--font-ui);
     color: var(--text-sec);
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0.3px;
   }
-  .page-header .mode-flag {
-    margin-left: auto;
+
+  /* ---------- Settings bar (set once per session) ---------- */
+  .settings-bar {
     flex: none;
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    color: var(--accent);
-    background: var(--accent-soft);
-    border-radius: 999px;
-    font-family: var(--font-ui);
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-  }
-
-  /* Row that holds the left-hand form workspace and the right-hand log
-     panel side by side, both stretched to the same full height. */
-  .main-row {
-    flex: 1;
-    display: grid;
-    grid-template-columns: minmax(280px, 1fr) minmax(0, 1fr);
-    gap: var(--gap-2);
-    padding: var(--gap-2) var(--gap-3) var(--gap-3) var(--gap-3);
-    min-height: 0;
-  }
-
-  .workspace {
-    min-width: 0;
-    padding: 0 10px 0 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-2);
-    overflow-y: auto;
-    scrollbar-gutter: stable;
-    min-height: 0;
-  }
-
-  /* Flat panels: a single-weight border does the separating, no shadow. */
-  .section-block {
-    min-width: 0;
-    padding: 4px 14px 12px 14px;
+    flex-wrap: wrap;
+    gap: var(--gap-2) var(--gap-3);
+    margin: var(--gap-2) var(--gap-3) 0 var(--gap-3);
+    padding: 12px 16px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    box-shadow: none;
-    container-type: inline-size;
   }
-
-  /* Claim Period and Workbook panels keep their natural (compact)
-     height; the Reminder panel below absorbs whatever vertical space
-     is left in the column, instead of leaving dead space beneath it. */
-  .workspace > .panel { flex: none; }
-
-  /* Shared setup and distinct draft workflows */
-  .ar-workspace-card { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px; }
-  .ar-card-copy { min-width:0; display:flex; align-items:center; gap:12px; }
-  .ar-card-mark, .draft-step { width:38px; height:38px; flex:none; display:grid; place-items:center; border-radius:var(--radius-md); color:var(--accent); background:var(--accent-soft); font-size:12px; font-weight:800; }
-  .ar-card-copy strong { display:block; color:var(--text-pri); font-size:12px; }
-  .ar-card-copy p { margin:4px 0; color:var(--text-sec); font-size:10.5px; line-height:1.45; }
-  .ar-summary { color:var(--accent); font-size:10px; line-height:1.4; }
-  .ar-edit-btn { flex:none; }
-  .draft-workflows { flex:1; min-height:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; gap:12px; container-type:inline-size; }
-  .draft-section { min-width:0; display:flex; flex-direction:column; gap:13px; padding:16px; border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--bg-panel); transition:border-color .18s ease, background-color .18s ease; }
-  .draft-section.active { border-color:var(--accent); background:color-mix(in srgb,var(--accent-soft) 24%,var(--bg-panel)); }
-  .draft-section-heading { display:flex; align-items:flex-start; gap:11px; }
-  .draft-step { width:32px; height:32px; font-size:10px; }
-  .draft-step-existing { color:var(--info,var(--accent)); background:var(--accent-soft); }
-  .draft-kicker { color:var(--accent); font-size:9px; letter-spacing:.8px; font-weight:800; }
-  .draft-section h2 { margin:3px 0 4px; color:var(--text-pri); font:700 14px var(--font-ui); }
-  .draft-section-heading p { margin:0; color:var(--text-sec); font-size:10.5px; line-height:1.5; }
-  .draft-identifier { display:flex; flex-direction:column; gap:3px; padding:10px 12px; border-radius:var(--radius-md); background:var(--bg-card); border:1px solid var(--border); }
-  .draft-identifier span { color:var(--text-sec); font-size:9px; text-transform:uppercase; letter-spacing:.5px; }
-  .draft-identifier strong { color:var(--text-pri); font-size:11.5px; }
-  .draft-identifier small { color:var(--text-sec); font-size:9.5px; line-height:1.4; }
-  .draft-upload-btn { width:100%; min-height:40px; }
-  .file-status { min-width:0; }
-  .file-status span:last-child { overflow-wrap:anywhere; }
-  .draft-section-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
-  .template-link, .guide-link { padding:4px 0; color:var(--accent); background:transparent; border:0; font:600 10px var(--font-ui); text-align:left; cursor:pointer; }
-  .template-link:hover, .guide-link:hover { color:var(--text-pri); text-decoration:underline; text-underline-offset:3px; }
-  .draft-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:auto; }
-  .draft-stats > div { min-width:0; padding:9px 10px; display:flex; flex-direction:column; gap:4px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
-  .draft-stats small { color:var(--text-sec); font-size:8px; letter-spacing:.5px; }
-  .draft-stats strong { color:var(--text-pri); font-size:10px; overflow-wrap:anywhere; }
-  @container (max-width:680px) { .draft-workflows { grid-template-columns:minmax(0,1fr); } }
-
-
-  /* ---------- Claim period ---------- */
-  .field-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
-    gap: var(--gap-2);
-    padding: 10px 4px 4px 4px;
-  }
+  .sb-period { display: flex; align-items: flex-end; gap: 12px; }
+  .sb-divider { width: 1px; align-self: stretch; background: var(--border); }
   .field-group { min-width: 0; }
   .field-group label {
     display: block;
     color: var(--text-sec);
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 0.4px;
     text-transform: uppercase;
-    font-weight: bold;
-    margin-bottom: 6px;
+    font-weight: 700;
+    margin-bottom: 5px;
   }
   .field-group select {
     width: 100%;
+    min-width: 130px;
     background: var(--bg-card);
     color: var(--text-pri);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     font-family: var(--font-ui);
-    font-size: 12px;
+    font-size: 13px;
     padding: 8px 10px;
-    min-width: 0;
   }
-  .field-group select:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
-  }
+  .field-group select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .field-group select:disabled { opacity: 0.5; }
+  .modal-box .field-group { margin-bottom: 12px; }
+  .modal-box .field-group input { width: 100%; }
 
-  /* ---------- Mode toggle: New Draft vs Existing Draft ----------
-     A flat segmented control: the active segment is a solid color
-     fill (not a soft tint + shadow), which is what actually reads as
-     "selected" in flat UI — contrast of fill, not elevation. */
+  .ar-chip { flex: 1; min-width: 280px; display: flex; align-items: center; gap: 12px; }
+  .ar-card-mark {
+    width: 34px; height: 34px; flex: none; display: grid; place-items: center;
+    border-radius: var(--radius-md); color: var(--accent); background: var(--accent-soft);
+    font-size: 12px; font-weight: 800;
+  }
+  .ar-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+  .ar-label { color: var(--text-sec); font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+  .ar-summary { color: var(--accent); font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ar-edit-btn { flex: none; }
+
+  /* ---------- Main row ---------- */
+  .main-row {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+    gap: var(--gap-3);
+    padding: var(--gap-2) var(--gap-3) var(--gap-3) var(--gap-3);
+    min-height: 0;
+  }
+  .setup-col, .review-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--gap-1); }
+  .setup-col { overflow-y: auto; scrollbar-gutter: stable; }
+  .setup-col > .section-label, .review-col > .section-label { padding: 0 2px 2px 2px; }
+  .section-label span { font-size: 11px; }
+
+  /* ---------- Setup card ---------- */
+  .setup-card { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; padding: 14px; }
+
+  /* Segmented toggle: solid fill = selected */
   .mode-toggle {
-    display: flex;
-    gap: 0;
-    padding: 10px 4px 2px 4px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    margin-top: 2px;
   }
-  .mode-toggle { padding: 3px; gap: 3px; }
   .mode-btn {
     min-width: 0;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px 12px;
     background: transparent;
     color: var(--text-sec);
-    border: none;
+    border: 0;
     border-radius: var(--radius-sm);
-    font-family: var(--font-ui);
-    font-size: 11.5px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-    padding: 10px 12px;
-    line-height: 1.25;
-    white-space: normal;
-    overflow-wrap: anywhere;
+    font: 600 12.5px var(--font-ui);
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
   }
-  .mode-btn:hover { color: var(--text-pri); background: var(--accent-soft); }
-  .mode-btn.active {
-    background: var(--accent);
-    color: var(--bg-dark);
-  }
-  .mode-btn.active:hover { background: var(--accent); }
+  .mode-btn .mode-num { font-size: 10px; font-weight: 800; opacity: 0.7; }
+  .mode-btn:hover:not(:disabled) { color: var(--text-pri); background: var(--accent-soft); }
+  .mode-btn.active, .mode-btn.active:hover:not(:disabled) { background: var(--accent); color: var(--bg-dark); }
   .mode-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .mode-hint {
-    color: var(--text-sec);
-    font-size: 10.5px;
-    line-height: 1.35;
-    padding: 6px 6px 1px 6px;
-  }
+  .mode-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  /* ---------- Workbook: upload + guide ---------- */
-  .workbook-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(160px, 216px);
-    gap: 8px;
-    padding: 6px 4px 2px 4px;
-    align-items: stretch;
+  /* Only the active workflow is shown */
+  .draft-section { display: none; flex-direction: column; gap: 14px; min-width: 0; }
+  .draft-section.active { display: flex; }
+  .draft-head { display: flex; align-items: flex-start; gap: 10px; }
+  .draft-head-copy { flex: 1; min-width: 0; }
+  .draft-kicker { color: var(--accent); font-size: 11px; letter-spacing: 0.7px; font-weight: 800; }
+  .draft-section h2 { margin: 2px 0 3px; color: var(--text-pri); font: 700 15px var(--font-ui); }
+  .draft-head p { margin: 0; color: var(--text-sec); font-size: 12px; line-height: 1.5; }
+  .guide-link {
+    flex: none; display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; color: var(--accent); background: var(--accent-soft);
+    border: 0; border-radius: 999px; font: 700 11px var(--font-ui); cursor: pointer;
+    transition: background-color 0.15s ease;
   }
+  .guide-link:hover { background: var(--accent-soft-strong); }
+  .guide-link:focus-visible, .template-link:focus-visible, .dropzone:focus-visible,
+  .log-drawer-head:focus-visible, .ghost-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  .upload-col {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 7px;
-    padding: 2px 4px;
+  /* Compact column reference */
+  .col-spec { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .col-row { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .col-letter { width: 26px; height: 26px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: var(--radius-sm); font-size: 12px; font-weight: 800; }
+  .col-name { color: var(--text-pri); font-size: 12.5px; font-weight: 700; }
+  .col-tag { margin-left: 6px; color: var(--text-sec); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  .col-note { display: block; margin-top: 2px; color: var(--text-sec); font-size: 11.5px; line-height: 1.45; }
+
+  .template-link {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
+    padding: 2px 0; color: var(--accent); background: transparent; border: 0;
+    font: 600 12px var(--font-ui); text-align: left; cursor: pointer;
   }
+  .template-link:hover { color: var(--text-pri); text-decoration: underline; text-underline-offset: 3px; }
 
-  #uploadBtn {
-    align-self: flex-start;
-    max-width: 100%;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding-top: 9px;
-    padding-bottom: 9px;
-    line-height: 1.25;
-    white-space: normal;
-    overflow-wrap: anywhere;
+  /* ---------- Drop zone: the primary element before upload ---------- */
+  .dropzone {
+    width: 100%; min-height: 152px; padding: 18px 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    text-align: center; color: var(--text-pri);
+    background: var(--accent-soft); border: 2px dashed var(--accent); border-radius: var(--radius-lg);
+    font-family: var(--font-ui); cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
+  .dropzone * { pointer-events: none; }
+  .dropzone:hover:not(:disabled), .dropzone.dragover { background: var(--accent-soft-strong); border-style: solid; }
+  .dropzone:disabled { opacity: 0.5; cursor: not-allowed; }
+  .dz-icon { width: 44px; height: 44px; color: var(--accent); background: var(--bg-panel); border-radius: 50%; }
+  .dz-icon svg { width: 22px; height: 22px; }
+  .dz-text { display: flex; flex-direction: column; gap: 2px; }
+  .dz-title { font-size: 14px; font-weight: 700; }
+  .dz-sub { color: var(--text-sec); font-size: 11.5px; }
+  .dz-loaded { display: none; }
+  /* Once a workbook is loaded the drop zone steps back to a small
+     "replace" control so Start Automation becomes the primary action. */
+  .draft-section.loaded .dropzone {
+    min-height: 0; flex-direction: row; gap: 10px; padding: 10px 14px;
+    background: transparent; border-width: 1px; border-style: solid;
+  }
+  .draft-section.loaded .dropzone:hover:not(:disabled) { background: var(--accent-soft); }
+  .draft-section.loaded .dz-idle { display: none; }
+  .draft-section.loaded .dz-loaded { display: inline; }
+  .draft-section.loaded .dz-icon { width: 24px; height: 24px; background: transparent; }
+  .draft-section.loaded .dz-icon svg { width: 16px; height: 16px; }
+  .draft-section.loaded .dz-title { font-size: 12.5px; }
 
+  /* File status + stats */
   .file-status {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-sec);
-    font-family: var(--font-ui);
-    font-size: 12px;
-    padding: 7px 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    min-width: 0;
+    min-width: 0; display: flex; align-items: center; gap: 8px;
+    color: var(--text-sec); font-size: 12px; padding: 8px 10px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
   }
   .file-status .icon-flat { color: var(--text-sec); }
-  #fileLabel {
-    min-width: 0;
-    color: var(--text-pri);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .draft-section.loaded .file-status .icon-flat { color: var(--success); }
+  .file-status span:last-child { min-width: 0; color: var(--text-pri); overflow-wrap: anywhere; }
+  .draft-stats {
+    display: flex; flex-direction: column; gap: 6px; padding: 10px 12px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
   }
+  .stat-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 12px; color: var(--text-sec); }
+  .stat-line strong { min-width: 0; color: var(--text-pri); font-size: 12px; text-align: right; overflow-wrap: anywhere; }
 
-  #downloadTemplateLink {
-    align-self: flex-start;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--accent);
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-    padding-bottom: 1px;
-    max-width: 100%;
-    line-height: 1.35;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-  #downloadTemplateLink:hover { color: var(--text-pri); border-color: currentColor; }
-
-  /* Flat card: color-block accent bar for separation, no shadow ever
-     (including on hover — hover reads via a background fill change). */
-  .guide-card {
-    width: 216px;
-    max-width: 100%;
-    min-width: 0;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    text-align: left;
-    padding: 11px 13px 10px 13px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    transition: border-color 0.15s ease, background-color 0.15s ease;
-  }
-  .guide-card:hover {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-  }
-  .guide-card .guide-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--font-ui);
-    color: var(--accent);
-    font-weight: 700;
-    font-size: 11.5px;
-    letter-spacing: 0.4px;
-  }
-  .guide-card .guide-desc {
-    color: var(--text-sec);
-    font-size: 10.5px;
-    line-height: 1.35;
-  }
-  .guide-card .guide-open-btn {
-    margin-top: auto;
-    align-self: flex-start;
-    font-family: var(--font-ui);
-    color: var(--accent);
-    font-weight: 700;
-    font-size: 10.5px;
-    letter-spacing: 0.3px;
-  }
-  .guide-card:hover .guide-open-btn { color: var(--text-pri); }
-
-  /* ---------- Workbook summary readout ---------- */
-  .stat-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    padding: 2px 4px 0 4px;
-    margin-top: 6px;
-  }
-  .stat-card {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 7px 11px;
-    color: var(--text-pri);
-    font-family: var(--font-ui);
-    font-size: 12px;
-  }
-  .stat-card .stat-icon {
-    width: 22px;
-    height: 22px;
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--accent);
-    background: var(--accent-soft);
-    border-radius: var(--radius-sm);
-  }
-  .stat-card span:last-child {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  /* ---------- Logs + run control ---------- */
-  .log-section {
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    gap: var(--gap-1);
-    container-type: inline-size;
-  }
-  .log-tabs { display:flex; gap:4px; padding:3px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
-  .log-tab { flex:1; padding:8px 10px; color:var(--text-sec); background:transparent; border:0; border-radius:var(--radius-sm); font:600 10.5px var(--font-ui); cursor:pointer; }
-  .log-tab.active { color:var(--bg-dark); background:var(--accent); }
-  .log-panel { flex:1; min-height:0; display:none; }
-  .log-panel.active { display:block; }
+  /* ---------- Review & Run ---------- */
+  .review-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #summaryLogPanel { flex: 1; min-height: 0; display: block; }
   .log-line.ERROR { color: var(--error, #ff6b6b); }
-  .batch-board {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-height: 0;
-    font-family: var(--font-ui);
-    line-height: 1.3;
-    white-space: normal;
+
+  /* Empty state shown while the summary panel has no content */
+  .empty-state {
+    display: none; flex: 1; min-height: 0; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 24px; text-align: center;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
   }
+  .review-stage:has(#summaryLogPanel:empty) #summaryLogPanel { display: none; }
+  .review-stage:has(#summaryLogPanel:empty) .empty-state { display: flex; }
+  .es-icon { width: 48px; height: 48px; color: var(--accent); background: var(--accent-soft); border-radius: 50%; }
+  .es-icon svg { width: 24px; height: 24px; }
+  .es-title { color: var(--text-pri); font-size: 15px; font-weight: 700; }
+  .es-sub { margin: 0; max-width: 360px; color: var(--text-sec); font-size: 12.5px; line-height: 1.5; }
+  .es-steps { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 18px; }
+  .es-steps li { display: flex; align-items: center; gap: 8px; color: var(--text-pri); font-size: 12.5px; }
+  .es-steps li span { width: 22px; height: 22px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: 50%; font-size: 11px; font-weight: 800; }
+
+  /* Batch board (generated by cf2.js) */
+  .batch-board { height: 100%; display: flex; flex-direction: column; gap: 8px; min-height: 0; font-family: var(--font-ui); line-height: 1.3; white-space: normal; }
   .batch-status-card {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 8px;
-    align-items: center;
-    min-height: 44px;
-    padding: 7px 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center;
+    min-height: 44px; padding: 7px 10px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
   }
-  .batch-status-orb {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: var(--text-sec);
-  }
-  .batch-status-card.running .batch-status-orb {
-    background: var(--accent);
-    animation: cf2-current-pulse 0.9s ease-in-out infinite;
-  }
-  .batch-status-title {
-    color: var(--text-pri);
-    font: 800 11px var(--font-ui);
-    letter-spacing: 0.3px;
-  }
-  .batch-status-subtitle {
-    margin-top: 1px;
-    color: var(--text-sec);
-    font-size: 10px;
-    line-height: 1.25;
-    overflow-wrap: anywhere;
-  }
-  .batch-count-pill {
-    padding: 4px 8px;
-    color: var(--accent);
-    background: var(--accent-soft);
-    border-radius: 999px;
-    font: 800 10px var(--font-ui);
-    letter-spacing: 0.3px;
-    white-space: nowrap;
-  }
-  .cf2-summary-strip {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .cf2-summary-stat {
-    padding: 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-  }
-  .cf2-summary-stat .label {
-    color: var(--text-sec);
-    font-size: 9.5px;
-    font-weight: 800;
-    letter-spacing: .4px;
-    text-transform: uppercase;
-  }
-  .cf2-summary-stat .value {
-    margin-top: 4px;
-    color: var(--text-pri);
-    font-size: 18px;
-    font-weight: 900;
-  }
+  .batch-status-orb { width: 9px; height: 9px; border-radius: 50%; background: var(--text-sec); }
+  .batch-status-card.running .batch-status-orb { background: var(--accent); animation: cf2-current-pulse 0.9s ease-in-out infinite; }
+  .batch-status-title { color: var(--text-pri); font: 800 12px var(--font-ui); letter-spacing: 0.3px; }
+  .batch-status-subtitle { margin-top: 1px; color: var(--text-sec); font-size: 11px; line-height: 1.25; overflow-wrap: anywhere; }
+  .batch-count-pill { padding: 4px 8px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; font: 800 11px var(--font-ui); letter-spacing: 0.3px; white-space: nowrap; }
+  .cf2-summary-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .cf2-summary-stat { padding: 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .cf2-summary-stat .label { color: var(--text-sec); font-size: 10.5px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; }
+  .cf2-summary-stat .value { margin-top: 4px; color: var(--text-pri); font-size: 18px; font-weight: 900; }
   .cf2-summary-stat.success .value { color: var(--success); }
   .cf2-summary-stat.warning .value { color: var(--warning); }
   .cf2-summary-stat.error .value { color: var(--error); }
-  .batch-table-wrap {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--bg-card);
-    white-space: normal;
-  }
-  .batch-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-    font-family: var(--font-ui);
-  }
+  .batch-table-wrap { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-card); white-space: normal; }
+  .batch-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-family: var(--font-ui); }
   .batch-table th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    padding: 7px 10px;
-    color: var(--text-sec);
-    background: var(--bg-panel);
-    border-bottom: 1px solid var(--border);
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-    text-align: left;
+    position: sticky; top: 0; z-index: 1; padding: 8px 10px;
+    color: var(--text-sec); background: var(--bg-panel); border-bottom: 1px solid var(--border);
+    font-size: 11px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; text-align: left;
   }
-  .batch-table th:first-child { width: 112px; }
+  .batch-table th:first-child { width: 124px; }
   .batch-table th:nth-child(2) { width: 26%; }
   .batch-table th:nth-child(3) { width: 26%; }
   .batch-table td {
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-pri);
-    font-size: 11.5px;
-    line-height: 1.35;
-    vertical-align: middle;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    padding: 9px 12px; border-bottom: 1px solid var(--border);
+    color: var(--text-pri); font-size: 12px; line-height: 1.35; vertical-align: middle;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .batch-table tbody tr:last-child td { border-bottom: 0; }
-  .batch-table tbody tr {
-    position: relative;
-    transition: background-color 0.15s ease;
-  }
+  .batch-table tbody tr { position: relative; transition: background-color 0.15s ease; }
   .batch-table tbody tr:hover { background: var(--accent-soft); }
-  .batch-row.running {
-    background: var(--accent-soft);
-    outline: 1px solid var(--accent);
-    outline-offset: -1px;
-  }
+  .batch-row.running { background: var(--accent-soft); outline: 1px solid var(--accent); outline-offset: -1px; }
   .batch-row.running td:first-child { color: var(--accent); }
   .batch-row.success td:first-child { color: var(--success, #4ade80); }
   .batch-row.skipped td:first-child { color: var(--warning, #fbbf24); }
   .batch-row.failed td:first-child { color: var(--error, #ff6b6b); }
-  .row-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    min-width: 86px;
-    font-weight: 800;
-  }
-  .row-status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: currentColor;
-    opacity: 0.55;
-  }
-  .batch-row.running .row-status-dot {
-    opacity: 1;
-    animation: cf2-current-pulse 0.9s ease-in-out infinite;
-  }
-  .batch-phase {
-    display: block;
-    margin-top: 2px;
-    color: var(--text-sec);
-    font-size: 10px;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .batch-empty {
-    height: 100%;
-    display: grid;
-    place-items: center;
-    color: var(--text-sec);
-    font-size: 11.5px;
-    text-align: center;
-    padding: 18px;
-  }
+  .row-status { display: inline-flex; align-items: center; gap: 7px; min-width: 86px; font-weight: 800; }
+  .row-status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: 0.55; }
+  .batch-row.running .row-status-dot { opacity: 1; animation: cf2-current-pulse 0.9s ease-in-out infinite; }
+  .batch-phase { display: block; margin-top: 2px; color: var(--text-sec); font-size: 11px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .batch-empty { height: 100%; display: grid; place-items: center; color: var(--text-sec); font-size: 12px; text-align: center; padding: 18px; }
   @keyframes cf2-current-pulse {
     0%, 100% { opacity: 0.35; transform: scale(0.85); }
     50% { opacity: 1; transform: scale(1.12); }
   }
-  @media (max-width: 1100px) {
-    .cf2-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 1100px) { .cf2-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* ---------- Log drawer (collapsible, keeps the table visible) ---------- */
+  .log-drawer { flex: none; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .log-drawer-head {
+    width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    background: transparent; color: var(--text-pri); border: 0;
+    font: 700 12px var(--font-ui); text-align: left; cursor: pointer;
+  }
+  .log-drawer-head:hover { background: var(--accent-soft); }
+  .ld-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-sec); opacity: 0.6; }
+  .log-drawer.has-error .ld-dot { background: var(--error); opacity: 1; }
+  .ld-preview { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-sec); font-weight: 500; font-size: 11.5px; }
+  .log-drawer.open .ld-preview { visibility: hidden; }
+  .ld-chev { color: var(--text-sec); transition: transform 0.15s ease; }
+  .log-drawer.open .ld-chev { transform: rotate(180deg); }
+  .log-drawer #detailsLogPanel {
+    display: none; height: 220px; border: 0; border-top: 1px solid var(--border);
+    border-radius: 0; background: #000;
+  }
+  .log-drawer.open #detailsLogPanel { display: block; }
+  #detailsLogPanel .log-line.INFO { color: #eef2f6; }
+  #detailsLogPanel .log-line.SUCCESS { color: #34d399; }
+  #detailsLogPanel .log-line.WARNING { color: #fbbf24; }
+  #detailsLogPanel .log-line.ERROR { color: #f87171; }
+  #detailsLogPanel .log-line.DIM,
+  #detailsLogPanel:empty::before { color: #a4b1c3; }
+  #detailsLogPanel:empty::before { content: "Live automation steps appear here once a run starts."; }
+
+  /* ---------- Action bar ---------- */
+  .action-bar {
+    flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+    padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg);
   }
   #startBtn {
-    width: 100%;
-    min-width: 0;
-    margin-top: 4px;
-    padding: 12px 10px;
-    font-size: 10.5pt;
-    line-height: 1.25;
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    box-shadow: none;
+    flex: none; min-width: 210px; padding: 12px 18px; font-size: 13px; line-height: 1.25;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
   }
-  #startBtn:hover { box-shadow: none; }
-  .automation-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(72px, 92px) minmax(118px, 176px);
-    gap: 8px;
-    margin-top: 4px;
-    flex: none;
-    width: 100%;
-    min-width: 0;
-  }
-  .automation-actions #startBtn { min-width: 0; margin-top: 0; }
-  #clearBtn {
-    width: 100%;
-    min-width: 0;
-    padding: 12px 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    line-height: 1.25;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
+  .start-hint { flex: 1; min-width: 120px; color: var(--text-sec); font-size: 12px; }
+  .action-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
   #copyTransmittalsBtn {
-    width: 100%;
-    min-width: 0;
-    padding: 12px 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    line-height: 1.25;
-    white-space: normal;
-    overflow-wrap: anywhere;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 11px 14px; line-height: 1.25;
     transition: background-color .2s ease, color .2s ease, transform .2s ease;
   }
-  #copyTransmittalsBtn.copied {
-    color: var(--bg-dark);
-    background: var(--success, #4ade80);
-    animation: copied-pop .45s ease;
+  #copyTransmittalsBtn.copied { color: var(--bg-dark); background: var(--success, #4ade80); animation: copied-pop .45s ease; }
+  .ghost-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 11px 12px; color: var(--text-sec); background: transparent; border: 0;
+    border-radius: var(--radius-md); font: 600 12px var(--font-ui); cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
   }
-  @container (max-width: 420px) {
-    .workbook-row,
-    .field-row,
-    .stat-row {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .guide-card,
-    #uploadBtn {
-      width: 100%;
-    }
-    .mode-toggle {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-  @container (max-width: 560px) {
-    .automation-actions {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-  @keyframes copied-pop {
-    0% { transform: scale(1); }
-    45% { transform: scale(1.06); }
-    100% { transform: scale(1); }
-  }
-  @property --cf2-progress-angle {
-    syntax: "<angle>";
-    initial-value: 0deg;
-    inherits: false;
-  }
+  .ghost-btn:hover:not(:disabled) { color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }
+  .ghost-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  @keyframes copied-pop { 0% { transform: scale(1); } 45% { transform: scale(1.06); } 100% { transform: scale(1); } }
+  @property --cf2-progress-angle { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
   #startBtn.running {
     border: 2px solid transparent;
     background:
@@ -697,78 +369,42 @@
   }
   @keyframes cf2-progress-border { to { --cf2-progress-angle: 360deg; } }
 
-  /* ---------- User Guide modal (flat: border only, no elevation shadow) ---------- */
-  .guide-modal .modal-box { max-width: 620px; max-height: 80vh; overflow-y: auto; padding: var(--gap-3) 26px; box-shadow: none; }
+  /* ---------- Responsive: settings → setup → table → actions ---------- */
   @media (max-width: 900px) {
-    /* Size stacked rows from their contents instead of the remaining viewport. */
-    .main-row { grid-template-columns:minmax(0, 1fr); grid-template-rows:auto auto; align-content:start; overflow-y:auto; }
-    .workspace { min-height:auto; overflow:visible; padding-right:0; }
-    .log-section { height:480px; min-height:480px; }
-    .workbook-row { grid-template-columns:1fr; }
-    .guide-card { width:100%; }
+    .main-row { grid-template-columns: minmax(0, 1fr); align-content: start; overflow-y: auto; }
+    .setup-col { overflow: visible; padding-right: 0; }
+    .setup-card { flex: none; }
+    .review-col { height: 680px; min-height: 680px; }
   }
   @media (max-width: 620px) {
-    .field-row, .stat-row { grid-template-columns:1fr; gap:10px; }
-    .field-group, .field-group select { width:100%; }
-    .page-header { align-items:flex-start; }
-    .page-header .mode-flag { margin-left:0; }
+    .sb-divider { display: none; }
+    .sb-period, .ar-chip { width: 100%; }
+    .sb-period .field-group { flex: 1; }
+    #startBtn { width: 100%; }
+    .start-hint { flex-basis: 100%; order: 3; }
+    .action-sep { display: none; }
   }
+
+  /* ---------- User Guide modal ---------- */
+  .guide-modal .modal-box { max-width: 780px; max-height: 80vh; overflow-y: auto; padding: var(--gap-3) 26px; box-shadow: none; }
   .guide-modal h2 {
-    font-family: var(--font-ui);
-    text-align: left;
-    color: var(--text-pri);
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    margin: 0 0 4px 0;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--border);
+    font-family: var(--font-ui); text-align: left; color: var(--text-pri);
+    font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
+    margin: 0 0 4px 0; padding-bottom: 14px; border-bottom: 1px solid var(--border);
   }
-  .guide-step {
-    display: flex;
-    gap: var(--gap-2);
-    align-items: flex-start;
-    padding: 14px 4px;
-    border-bottom: 1px solid var(--border);
-  }
+  .guide-step { display: flex; gap: var(--gap-2); align-items: flex-start; padding: 14px 4px; border-bottom: 1px solid var(--border); }
   .guide-step:last-of-type { border-bottom: none; }
-  .guide-step .badge-col {
-    width: 44px;
-    flex: none;
-    text-align: center;
-  }
-  .guide-step .badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--accent-soft);
-    color: var(--accent);
-    border: none;
-    border-radius: var(--radius-sm);
-    font-weight: bold;
-    font-size: 11px;
-    width: 22px;
-    height: 22px;
-    margin-bottom: 8px;
-  }
-  .guide-step .step-title {
-    color: var(--text-pri);
-    font-weight: bold;
-    font-size: 12px;
-    letter-spacing: 0.2px;
-    margin-bottom: 5px;
-  }
+  .guide-step .step-title { color: var(--text-pri); font-weight: bold; font-size: 12px; letter-spacing: 0.2px; margin-bottom: 5px; }
   .guide-step .step-desc { color: var(--text-sec); font-size: 11px; line-height: 1.6; white-space: pre-line; }
   .guide-modal .modal-actions { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px; }
-  .guide-modal .modal-box { max-width: 780px; }
-  .guide-intro { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 15px; color:var(--text-sec); font-size:11.5px; }
-  .guide-mode-pill { flex:none; padding:5px 9px; color:var(--accent); background:var(--accent-soft); border:none; border-radius:999px; font-size:9.5px; font-weight:800; letter-spacing:.4px; }
-  .guide-steps-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-  .guide-steps-grid .guide-step { position:relative; display:block; min-height:142px; padding:15px 15px 14px 54px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
-  .guide-steps-grid .guide-step:hover { border-color:var(--accent); background:var(--accent-soft); }
-  .guide-step-number { position:absolute; top:14px; left:14px; width:27px; height:27px; display:grid; place-items:center; color:var(--accent); background:var(--bg-panel); border:1px solid var(--accent); border-radius:8px; font-size:10.5px; font-weight:900; }
-  .guide-step-note { margin-top:8px; color:var(--accent); font-size:10px; font-weight:700; line-height:1.45; }
-  @media (max-width:680px) { .guide-steps-grid { grid-template-columns:1fr; } .guide-steps-grid .guide-step { min-height:0; } }
+  .guide-intro { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 15px; color: var(--text-sec); font-size: 11.5px; }
+  .guide-mode-pill { flex: none; padding: 5px 9px; color: var(--accent); background: var(--accent-soft); border: none; border-radius: 999px; font-size: 9.5px; font-weight: 800; letter-spacing: .4px; }
+  .guide-steps-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .guide-steps-grid .guide-step { position: relative; display: block; min-height: 142px; padding: 15px 15px 14px 54px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .guide-steps-grid .guide-step:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .guide-step-number { position: absolute; top: 14px; left: 14px; width: 27px; height: 27px; display: grid; place-items: center; color: var(--accent); background: var(--bg-panel); border: 1px solid var(--accent); border-radius: 8px; font-size: 10.5px; font-weight: 900; }
+  .guide-step-note { margin-top: 8px; color: var(--accent); font-size: 10px; font-weight: 700; line-height: 1.45; }
+  @media (max-width: 680px) { .guide-steps-grid { grid-template-columns: 1fr; } .guide-steps-grid .guide-step { min-height: 0; } }
 </style>
 </head>
 <body>
@@ -788,61 +424,129 @@
       </div>
     </div>
 
+    <!-- ===== Settings bar: set once per session ===== -->
+    <section class="settings-bar" aria-label="Claim period and signatory">
+      <div class="sb-period">
+        <div class="field-group"><label for="claimYear">Claim Year</label><select id="claimYear"></select></div>
+        <div class="field-group"><label for="claimMonth">Claim Month</label><select id="claimMonth"></select></div>
+      </div>
+      <div class="sb-divider" aria-hidden="true"></div>
+      <div class="ar-chip">
+        <span class="ar-card-mark" aria-hidden="true">AR</span>
+        <div class="ar-copy">
+          <span class="ar-label">Account receivable</span>
+          <span class="ar-summary" id="arSummary">No details saved for this session.</span>
+        </div>
+        <button class="cyber-btn ar-edit-btn" id="accountReceivableBtn" type="button"><span class="icon-flat"><i data-lucide="pencil" data-icon-size="14" aria-hidden="true"></i></span> Edit details</button>
+      </div>
+    </section>
+
     <div class="main-row">
 
-      <div class="workspace">
-        <section class="panel section-block shared-settings">
-          <div class="section-label"><span>CLAIM PERIOD</span></div>
-          <div class="field-row">
-            <div class="field-group"><label for="claimYear">Claim Year</label><select id="claimYear"></select></div>
-            <div class="field-group"><label for="claimMonth">Claim Month</label><select id="claimMonth"></select></div>
+      <!-- ===== Setup: one workflow at a time ===== -->
+      <div class="setup-col">
+        <div class="section-label"><span>SETUP</span></div>
+        <div class="panel setup-card">
+
+          <div class="mode-toggle" role="group" aria-label="Draft workflow">
+            <button class="mode-btn active" type="button" data-mode-toggle="new_draft" aria-pressed="true"><span class="mode-num">01</span>New Draft</button>
+            <button class="mode-btn" type="button" data-mode-toggle="existing_draft" aria-pressed="false"><span class="mode-num">02</span>Existing Draft</button>
           </div>
-        </section>
-        <section class="panel section-block ar-workspace-card">
-          <div class="ar-card-copy"><span class="ar-card-mark" aria-hidden="true">AR</span><div><strong>Account receivable</strong><p>Signatory details used in CF2, shared by both draft workflows.</p><span class="ar-summary" id="arSummary">No details saved for this session.</span></div></div>
-          <button class="cyber-btn ar-edit-btn" id="accountReceivableBtn" type="button">Edit details</button>
-        </section>
-        <div class="draft-workflows" aria-label="Choose a CF2 workflow">
-          <section class="panel section-block draft-section active" data-mode-section="new_draft" aria-labelledby="newDraftTitle">
-            <div class="draft-section-heading"><span class="draft-step">01</span><div><span class="draft-kicker">NEW DRAFT</span><h2 id="newDraftTitle">Create a new draft</h2><p>Use this when the claim has not been created in Beacon yet.</p></div></div>
-            <div class="draft-identifier"><span>Column A (optional)</span><strong>Draft Title</strong><small>Up to 50 characters. Leave blank to use the patient name and treatment dates.</small></div>
-            <div class="draft-identifier"><span>Column B</span><strong>Member PIN</strong><small>A new Beacon draft will be created for each patient.</small></div>
-            <button class="solid-btn draft-upload-btn" id="uploadBtnNew" type="button" data-mode="new_draft"><span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>Upload New Draft Workbook</button>
+
+          <section class="draft-section active" data-mode-section="new_draft" aria-labelledby="newDraftTitle">
+            <div class="draft-head">
+              <div class="draft-head-copy">
+                <span class="draft-kicker">NEW DRAFT</span>
+                <h2 id="newDraftTitle">Create a new draft</h2>
+                <p>Use this when the claim has not been created in Beacon yet.</p>
+              </div>
+              <button class="guide-link" id="guideCardNew" type="button" data-guide-mode="new_draft" aria-label="View new draft workflow guide"><span class="icon-flat"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><path d="M12 17h.01"/></svg></span>Guide</button>
+            </div>
+            <ul class="col-spec">
+              <li class="col-row"><span class="col-letter">A</span><div><span class="col-name">Draft Title</span><span class="col-tag">Optional</span><span class="col-note">Up to 50 characters. Leave blank to use the patient name and treatment dates.</span></div></li>
+              <li class="col-row"><span class="col-letter">B</span><div><span class="col-name">Member PIN</span><span class="col-note">A new Beacon draft will be created for each patient.</span></div></li>
+            </ul>
+            <button class="template-link" id="downloadTemplateLinkNew" type="button" data-mode="new_draft"><span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M4 19h16"/></svg></span>Download new draft template</button>
+            <button class="dropzone draft-upload-btn" id="uploadBtnNew" type="button" data-mode="new_draft">
+              <span class="dz-icon icon-flat"><svg viewBox="0 0 24 24"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
+              <span class="dz-text"><span class="dz-title"><span class="dz-idle">Drop new draft workbook here</span><span class="dz-loaded">Replace workbook</span></span><span class="dz-sub dz-idle">or click to browse · .xlsx, .xls, .xlsm</span></span>
+            </button>
             <div class="file-status"><span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span><span id="fileLabelNew">No workbook selected</span></div>
-            <div class="draft-section-actions"><button class="template-link" id="downloadTemplateLinkNew" type="button" data-mode="new_draft">Download new draft template <span aria-hidden="true">&#8595;</span></button><button class="guide-link" id="guideCardNew" type="button" data-guide-mode="new_draft">View workflow guide</button></div>
-            <div class="draft-stats"><div><small>WORKSHEETS</small><strong id="sheetsLineNew">—</strong></div><div><small>PATIENTS FOUND</small><strong id="patientsLineNew">0</strong></div></div>
+            <div class="draft-stats">
+              <div class="stat-line"><span>Worksheets</span><strong id="sheetsLineNew">—</strong></div>
+              <div class="stat-line"><span>Patients found</span><strong id="patientsLineNew">0</strong></div>
+            </div>
           </section>
-          <section class="panel section-block draft-section" data-mode-section="existing_draft" aria-labelledby="existingDraftTitle">
-            <div class="draft-section-heading"><span class="draft-step draft-step-existing">02</span><div><span class="draft-kicker">EXISTING DRAFT</span><h2 id="existingDraftTitle">Continue a draft</h2><p>Use this when the claim already exists in Beacon.</p></div></div>
-            <div class="draft-identifier"><span>Column A</span><strong>Transmittal No.</strong><small>The automation locates and updates the matching draft.</small></div>
-            <button class="solid-btn draft-upload-btn" id="uploadBtnExisting" type="button" data-mode="existing_draft"><span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>Upload Existing Draft Workbook</button>
+
+          <section class="draft-section" data-mode-section="existing_draft" aria-labelledby="existingDraftTitle">
+            <div class="draft-head">
+              <div class="draft-head-copy">
+                <span class="draft-kicker">EXISTING DRAFT</span>
+                <h2 id="existingDraftTitle">Continue a draft</h2>
+                <p>Use this when the claim already exists in Beacon.</p>
+              </div>
+              <button class="guide-link" id="guideCardExisting" type="button" data-guide-mode="existing_draft" aria-label="View existing draft workflow guide"><span class="icon-flat"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><path d="M12 17h.01"/></svg></span>Guide</button>
+            </div>
+            <ul class="col-spec">
+              <li class="col-row"><span class="col-letter">A</span><div><span class="col-name">Transmittal No.</span><span class="col-note">The automation locates and updates the matching draft. It does not create a new one.</span></div></li>
+            </ul>
+            <button class="template-link" id="downloadTemplateLinkExisting" type="button" data-mode="existing_draft"><span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M4 19h16"/></svg></span>Download existing draft template</button>
+            <button class="dropzone draft-upload-btn" id="uploadBtnExisting" type="button" data-mode="existing_draft">
+              <span class="dz-icon icon-flat"><svg viewBox="0 0 24 24"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
+              <span class="dz-text"><span class="dz-title"><span class="dz-idle">Drop existing draft workbook here</span><span class="dz-loaded">Replace workbook</span></span><span class="dz-sub dz-idle">or click to browse · .xlsx, .xls, .xlsm</span></span>
+            </button>
             <div class="file-status"><span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span><span id="fileLabelExisting">No workbook selected</span></div>
-            <div class="draft-section-actions"><button class="template-link" id="downloadTemplateLinkExisting" type="button" data-mode="existing_draft">Download existing draft template <span aria-hidden="true">&#8595;</span></button><button class="guide-link" id="guideCardExisting" type="button" data-guide-mode="existing_draft">View workflow guide</button></div>
-            <div class="draft-stats"><div><small>WORKSHEETS</small><strong id="sheetsLineExisting">—</strong></div><div><small>PATIENTS FOUND</small><strong id="patientsLineExisting">0</strong></div></div>
+            <div class="draft-stats">
+              <div class="stat-line"><span>Worksheets</span><strong id="sheetsLineExisting">—</strong></div>
+              <div class="stat-line"><span>Patients found</span><strong id="patientsLineExisting">0</strong></div>
+            </div>
           </section>
+
         </div>
       </div>
 
-      <div class="log-section">
-        <div class="section-label"><span>▸ AUTOMATION ACTIVITY</span></div>
-        <div class="log-tabs" role="tablist" aria-label="Automation logs">
-          <button class="log-tab active" data-log-panel="summaryLogPanel" role="tab" aria-selected="true">Summary Report</button>
-          <button class="log-tab" data-log-panel="detailsLogPanel" role="tab" aria-selected="false">Automation Log</button>
+      <!-- ===== Review & Run ===== -->
+      <div class="review-col">
+        <div class="section-label"><span>REVIEW &amp; RUN</span></div>
+
+        <div class="review-stage">
+          <div class="log-box" id="summaryLogPanel" role="region" aria-label="Batch summary"></div>
+          <div class="empty-state" id="reviewEmpty">
+            <span class="es-icon icon-flat"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M9 10v10"/></svg></span>
+            <div class="es-title">No workbook loaded</div>
+            <p class="es-sub">The patient batch appears here for review before you run it.</p>
+            <ol class="es-steps">
+              <li><span>1</span>Download the template</li>
+              <li><span>2</span>Fill in the patient rows</li>
+              <li><span>3</span>Upload it on the left</li>
+            </ol>
+          </div>
         </div>
-        <div class="log-box log-panel active" id="summaryLogPanel" role="tabpanel"></div>
-        <div class="log-box log-panel" id="detailsLogPanel" role="tabpanel"></div>
-        <div class="automation-actions">
-          <button class="solid-btn" id="startBtn">
+
+        <div class="log-drawer open" id="logDrawer">
+          <button class="log-drawer-head" id="logDrawerToggle" type="button" aria-expanded="true" aria-controls="detailsLogPanel">
+            <span class="ld-dot"></span>
+            <span>Automation log</span>
+            <span class="ld-preview" id="logDrawerPreview"></span>
+            <span class="ld-chev icon-flat"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></span>
+          </button>
+          <div class="log-box" id="detailsLogPanel" role="log" aria-label="Automation log"></div>
+        </div>
+
+        <div class="action-bar">
+          <button class="solid-btn" id="startBtn" type="button" disabled>
             <span class="icon-flat"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 4.5v15l13-7.5z"/></svg></span>
             <span id="startBtnLabel">Start Automation</span>
           </button>
-          <button class="cyber-btn" id="clearBtn" type="button">
-            <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg></span>
-            <span>Clear</span>
-          </button>
+          <span class="start-hint" id="startHint" aria-live="polite">Upload a workbook first.</span>
           <button class="cyber-btn" id="copyTransmittalsBtn" type="button" disabled>
             <span class="icon-flat"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></span>
             <span id="copyTransmittalsLabel">Copy Transmittal</span>
+          </button>
+          <span class="action-sep" aria-hidden="true"></span>
+          <button class="ghost-btn" id="clearBtn" type="button">
+            <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg></span>
+            <span>Clear</span>
           </button>
         </div>
       </div>
@@ -855,6 +559,9 @@
 
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script src="js/common.js"></script>
+  <script src="vendor/lucide/lucide.min.js"></script>
+  <script src="js/icons.js"></script>
+  <script>BeabotsIcons.hydrate();</script>
   <script src="js/cf2.js"></script>
 </body>
 </html>

@@ -37,6 +37,8 @@ claimMonthSelect.value = MONTH_NAMES[new Date().getMonth()];
 // New Draft / Existing Draft mode toggle
 // ---------------------------------------------------------------------------
 let currentMode = "new_draft"; // or "existing_draft"
+let hasPatientRecords = false;
+let controlsRunning = false;
 
 const workflowUi = {
   new_draft: {
@@ -53,12 +55,14 @@ const workflowUi = {
   },
 };
 const uploadButtons = [...document.querySelectorAll(".draft-upload-btn")];
+const modeToggleButtons = [...document.querySelectorAll(".mode-btn[data-mode-toggle]")];
 
 function resetWorkflowCards() {
   Object.values(workflowUi).forEach((ui) => {
     ui.fileLabel.textContent = "No workbook selected";
     ui.sheetsLine.textContent = "—";
     ui.patientsLine.textContent = "0";
+    ui.section.classList.remove("loaded");
   });
 }
 
@@ -68,6 +72,22 @@ const MODE_HINTS = {
   existing_draft:
     'Column A of the template is the <strong>Transmittal No.</strong> of a draft that already exists in Beacon — this searches for it instead of creating one.',
 };
+
+// Keep the segmented toggle in step with currentMode.
+function syncModeToggle() {
+  modeToggleButtons.forEach((btn) => {
+    const active = btn.dataset.modeToggle === currentMode;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-pressed", String(active));
+  });
+}
+
+// hasPatientRecords drives whether Start Automation is available, so every
+// change goes through here to keep the button and its hint in sync.
+function setHasPatientRecords(value) {
+  hasPatientRecords = Boolean(value);
+  updateStartState();
+}
 
 function setMode(mode) {
   if (!workflowUi[mode]) return;
@@ -79,24 +99,64 @@ function setMode(mode) {
     ui.section.classList.toggle("active", active);
     ui.section.setAttribute("aria-current", active ? "step" : "false");
   });
+  syncModeToggle();
 
   // A workbook uploaded for one mode has the wrong meaning in column A
   // for the other (Member PIN vs. Transmittal No.), so switching modes
   // clears whatever was loaded rather than leaving stale/misleading data.
   resetWorkflowCards();
-  hasPatientRecords = false;
+  setHasPatientRecords(false);
   clearLog();
 }
 Object.entries(workflowUi).forEach(([mode, ui]) => {
   ui.section.classList.toggle("active", mode === currentMode);
   ui.section.setAttribute("aria-current", mode === currentMode ? "step" : "false");
 });
+syncModeToggle();
+
+// Switching modes throws away the loaded workbook, so ask first when one is
+// loaded. (Clear and the upload buttons call setMode directly — no prompt.)
+function confirmModeSwitch(next) {
+  const root = document.getElementById("modalRoot");
+  const label = next === "new_draft" ? "New Draft" : "Existing Draft";
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Switch to ${label}?</h3>
+        <p>Column A means something different in each workflow (Member PIN vs. Transmittal No.), so the loaded workbook will be cleared. You will need to upload a workbook for ${label}.</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="modeSwitchCancelBtn" type="button">Keep current</button>
+          <button class="solid-btn" id="modeSwitchConfirmBtn" type="button">Switch and clear</button>
+        </div>
+      </div>
+    </div>`;
+  const cancelBtn = document.getElementById("modeSwitchCancelBtn");
+  cancelBtn.addEventListener("click", () => { root.innerHTML = ""; });
+  document.getElementById("modeSwitchConfirmBtn").addEventListener("click", () => {
+    root.innerHTML = "";
+    setMode(next);
+  });
+  cancelBtn.focus();
+}
+
+modeToggleButtons.forEach((btn) => btn.addEventListener("click", () => {
+  const next = btn.dataset.modeToggle;
+  if (next === currentMode || controlsRunning) return;
+  if (hasPatientRecords) {
+    confirmModeSwitch(next);
+  } else {
+    setMode(next);
+  }
+}));
 
 // ---------------------------------------------------------------------------
 // Log panels
 // ---------------------------------------------------------------------------
 const summaryLogBox = document.getElementById("summaryLogPanel");
 const detailsLogBox = document.getElementById("detailsLogPanel");
+const logDrawer = document.getElementById("logDrawer");
+const logDrawerToggle = document.getElementById("logDrawerToggle");
+const logDrawerPreview = document.getElementById("logDrawerPreview");
 let logBox = summaryLogBox;
 let cf2RunActive = false;
 let cf2LogStopTimer = null;
@@ -107,6 +167,16 @@ let batchStatuses = new Map();
 const copyTransmittalsBtn = document.getElementById("copyTransmittalsBtn");
 const copyTransmittalsLabel = document.getElementById("copyTransmittalsLabel");
 let copyFeedbackTimer = null;
+
+// Collapsible automation-log drawer: the batch table stays visible above it.
+function setLogDrawer(open) {
+  logDrawer.classList.toggle("open", open);
+  logDrawerToggle.setAttribute("aria-expanded", String(open));
+  if (open) detailsLogBox.scrollTop = detailsLogBox.scrollHeight;
+}
+logDrawerToggle.addEventListener("click", () => {
+  setLogDrawer(!logDrawer.classList.contains("open"));
+});
 
 function getTransmittalNumbers() {
   return batchRecords
@@ -129,6 +199,8 @@ function log(text, level = "INFO", target = summaryLogBox) {
 function clearLog() {
   summaryLogBox.innerHTML = "";
   detailsLogBox.innerHTML = "";
+  logDrawerPreview.textContent = "";
+  logDrawer.classList.remove("has-error");
   batchRecords = [];
   batchStatuses = new Map();
   updateCopyTransmittalsButton();
@@ -148,6 +220,9 @@ function detailLog(text, level = "INFO") {
   lastDetailAt = now;
   log(text, level, detailsLogBox);
   detailsLogBox.scrollTop = detailsLogBox.scrollHeight;
+  // Latest line stays visible in the drawer header while it is collapsed.
+  logDrawerPreview.textContent = text;
+  if (level === "ERROR") logDrawer.classList.add("has-error");
 }
 
 function statusLabel(status) {
@@ -336,20 +411,6 @@ function resetBatchRowsForRun() {
   updateBatchHeader();
 }
 
-document.querySelectorAll(".log-tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".log-tab").forEach((item) => {
-      const active = item === tab;
-      item.classList.toggle("active", active);
-      item.setAttribute("aria-selected", String(active));
-    });
-    document.querySelectorAll(".log-panel").forEach((panel) => panel.classList.remove("active"));
-    logBox = document.getElementById(tab.dataset.logPanel);
-    logBox.classList.add("active");
-    scrollLogToEnd();
-  });
-});
-
 // ---------------------------------------------------------------------------
 // Optional raw server log hook for compatibility with older shells.
 // ---------------------------------------------------------------------------
@@ -367,8 +428,6 @@ webExcelInput.accept = ".xlsx,.xls,.xlsm";
 webExcelInput.hidden = true;
 document.body.appendChild(webExcelInput);
 
-let hasPatientRecords = false;
-
 async function handleWorkbookUpload(fileOrPath) {
   if (!fileOrPath) return;
 
@@ -377,7 +436,10 @@ async function handleWorkbookUpload(fileOrPath) {
   const filename = isWebFile ? fileOrPath.name : path.split(/[\\/]/).pop();
   const activeWorkflow = workflowUi[currentMode];
   activeWorkflow.fileLabel.textContent = `Selected: ${filename}`;
+  activeWorkflow.section.classList.remove("loaded");
   clearLog();
+  // Nothing is runnable until this workbook has been parsed successfully.
+  setHasPatientRecords(false);
   log("=========================================");
   log(" CF2");
   log("=========================================");
@@ -387,27 +449,31 @@ async function handleWorkbookUpload(fileOrPath) {
   log("");
 
   let result;
-  if (isWebFile) {
-    const formData = new FormData();
-    formData.append("file", fileOrPath);
-    formData.append("claim_year", claimYearSelect.value);
-    formData.append("claim_month", claimMonthSelect.value);
-    formData.append("mode", currentMode);
-    const res = await fetch(`${API_BASE}/api/cf2/upload`, {
-      method: "POST",
-      body: formData,
-    });
-    result = await res.json();
-  } else {
-    result = await fetchJSON("/api/cf2/upload", {
-      method: "POST",
-      body: JSON.stringify({
-        path,
-        claim_year: claimYearSelect.value,
-        claim_month: claimMonthSelect.value,
-        mode: currentMode,
-      }),
-    });
+  try {
+    if (isWebFile) {
+      const formData = new FormData();
+      formData.append("file", fileOrPath);
+      formData.append("claim_year", claimYearSelect.value);
+      formData.append("claim_month", claimMonthSelect.value);
+      formData.append("mode", currentMode);
+      const res = await fetch(`${API_BASE}/api/cf2/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      result = await res.json();
+    } else {
+      result = await fetchJSON("/api/cf2/upload", {
+        method: "POST",
+        body: JSON.stringify({
+          path,
+          claim_year: claimYearSelect.value,
+          claim_month: claimMonthSelect.value,
+          mode: currentMode,
+        }),
+      });
+    }
+  } catch (error) {
+    result = { error: `Unable to upload the workbook. ${error.message}` };
   }
 
   if (result.error) {
@@ -467,8 +533,9 @@ async function handleWorkbookUpload(fileOrPath) {
 
   activeWorkflow.sheetsLine.textContent = `${result.sheets.length} · ${result.sheets.join(", ")}`;
   activeWorkflow.patientsLine.textContent = String(result.patient_count);
-  hasPatientRecords = result.patient_count > 0;
-
+  setHasPatientRecords(result.patient_count > 0);
+  // A loaded workbook shrinks the drop zone so Start Automation leads.
+  activeWorkflow.section.classList.toggle("loaded", hasPatientRecords);
 }
 
 uploadButtons.forEach((uploadBtn) => uploadBtn.addEventListener("click", async () => {
@@ -480,6 +547,36 @@ uploadButtons.forEach((uploadBtn) => uploadBtn.addEventListener("click", async (
 webExcelInput.addEventListener("change", async () => {
   await handleWorkbookUpload(webExcelInput.files?.[0]);
 });
+
+// Drag and drop onto the drop zone (same path as the file picker).
+uploadButtons.forEach((uploadBtn) => {
+  ["dragenter", "dragover"].forEach((type) => uploadBtn.addEventListener(type, (event) => {
+    if (uploadBtn.disabled) return;
+    event.preventDefault();
+    uploadBtn.classList.add("dragover");
+  }));
+  ["dragleave", "dragend"].forEach((type) => uploadBtn.addEventListener(type, () => {
+    uploadBtn.classList.remove("dragover");
+  }));
+  uploadBtn.addEventListener("drop", async (event) => {
+    event.preventDefault();
+    uploadBtn.classList.remove("dragover");
+    if (uploadBtn.disabled) return;
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    if (!/\.(xlsx|xls|xlsm)$/i.test(file.name)) {
+      showModal("Unsupported File", "Please drop an Excel workbook (.xlsx, .xls or .xlsm).");
+      return;
+    }
+    setMode(uploadBtn.dataset.mode);
+    await handleWorkbookUpload(file);
+  });
+});
+
+// A file dropped outside the drop zone should never navigate the app away.
+["dragover", "drop"].forEach((type) => window.addEventListener(type, (event) => {
+  if (event.dataTransfer?.types?.includes("Files")) event.preventDefault();
+}));
 
 // ---------------------------------------------------------------------------
 // Download Excel Template
@@ -618,6 +715,7 @@ document.querySelectorAll("[data-guide-mode]").forEach((button) => button.addEve
 // ---------------------------------------------------------------------------
 const startBtn = document.getElementById("startBtn");
 const startBtnLabel = document.getElementById("startBtnLabel");
+const startHint = document.getElementById("startHint");
 const clearBtn = document.getElementById("clearBtn");
 const accountReceivableBtn = document.getElementById("accountReceivableBtn");
 const accountReceivable = { name: "", designation: "", number: "" };
@@ -695,16 +793,38 @@ copyTransmittalsBtn.addEventListener("click", async () => {
   }
 });
 
-function setControlsRunning(running) {
+// Start is disabled until a workbook with patients is loaded, and the hint
+// beside it says why (instead of the click silently doing nothing).
+function updateStartState() {
+  if (controlsRunning) {
+    startBtn.disabled = false;
+    startHint.textContent = cf2StopRequested
+      ? "Stopping…"
+      : "Running. Click Stop Automation to cancel.";
+    return;
+  }
+  if (!hasPatientRecords) {
+    startBtn.disabled = true;
+    startHint.textContent = "Upload a workbook first.";
+    return;
+  }
+  const count = batchRecords.length;
   startBtn.disabled = false;
+  startHint.textContent = `${count} patient${count === 1 ? "" : "s"} ready to run.`;
+}
+
+function setControlsRunning(running) {
+  controlsRunning = running;
   startBtnLabel.textContent = running
     ? (cf2StopRequested ? "Stopping..." : "Stop Automation")
     : "Start Automation";
   startBtn.classList.toggle("running", running);
   uploadButtons.forEach((button) => { button.disabled = running; });
+  modeToggleButtons.forEach((button) => { button.disabled = running; });
   claimYearSelect.disabled = running;
   claimMonthSelect.disabled = running;
   clearBtn.disabled = running;
+  updateStartState();
 }
 
 startBtn.addEventListener("click", async () => {
@@ -721,6 +841,9 @@ startBtn.addEventListener("click", async () => {
   cf2RunActive = true;
   cf2StopRequested = false;
   detailsLogBox.innerHTML = "";
+  logDrawerPreview.textContent = "";
+  logDrawer.classList.remove("has-error");
+  setLogDrawer(true);
   lastDetailLine = "";
   lastDetailAt = 0;
   resetBatchRowsForRun();
@@ -760,8 +883,9 @@ clearBtn.addEventListener("click", () => {
   resetWorkflowCards();
   claimYearSelect.value = String(new Date().getFullYear());
   claimMonthSelect.value = MONTH_NAMES[new Date().getMonth()];
-  hasPatientRecords = false;
   clearLog();
+  setHasPatientRecords(false);
+  setLogDrawer(false);
   updateBatchHeader();
 });
 
@@ -814,3 +938,6 @@ socket.on("cf2_done", (data) => {
     cf2LogStopTimer = null;
   }, 1200);
 });
+
+// Initial state: Start stays disabled until a workbook is loaded.
+updateStartState();
