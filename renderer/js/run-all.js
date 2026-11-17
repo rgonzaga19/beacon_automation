@@ -256,6 +256,7 @@ document.getElementById("copySuccessfulTransmittals").addEventListener("click", 
 
 function appendLog(message, level = "INFO") {
   if (!message) return;
+  logNode.querySelector(".log-empty")?.remove();
   const line = document.createElement("div");
   line.className = "log-line";
   const formattedMessage = String(message);
@@ -366,7 +367,10 @@ form.addEventListener("submit", async (event) => {
   document.getElementById("logCount").textContent = "0 lines";
   document.getElementById("logPreview").textContent = "";
   resultsBody.innerHTML = "<tr><td colspan=\"4\" class=\"help empty-note\">Checking files…</td></tr>";
-  logNode.replaceChildren();
+  logNode.replaceChildren(Object.assign(document.createElement("div"), {
+    className: "log-empty",
+    textContent: "Waiting for workflow activity…",
+  }));
   const payload = new FormData(form);
   try {
     setActive(true);

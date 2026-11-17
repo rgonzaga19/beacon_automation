@@ -148,9 +148,10 @@
   .log-drawer.open .ld-preview { visibility:hidden; }
   .ld-chev { color:var(--text-sec); transition:transform .15s ease; }
   .log-drawer.open .ld-chev { transform:rotate(180deg); }
-  #log { display:none; max-height:240px; overflow:auto; gap:5px; padding:12px 15px; border-top:1px solid var(--border); color:var(--text-sec); font:11px/1.5 var(--font-ui); background:#000; }
+  #log { display:none; min-height:calc(5 * 1.5em + 24px); max-height:240px; overflow:auto; gap:5px; align-content:start; padding:12px 15px; border-top:1px solid var(--border); color:var(--text-sec); font:11px/1.5 var(--font-ui); background:#000; }
   .log-drawer.open #log { display:grid; }
   .log-line { overflow-wrap:anywhere; }
+  .log-empty { align-self:center; color:var(--text-sec); opacity:.75; }
   .log-line.err { color:var(--error); }
   @media(prefers-reduced-motion:reduce) { .pipe li.running .dot,.rp-track.indeterminate .rp-fill { animation:none; } .rp-fill { transition:none; } }
   @media(max-width:900px) { .layout { grid-template-columns:1fr; } .summary { position:static; } }
@@ -225,7 +226,7 @@
 
   <section class="log-drawer open" id="logDrawer">
     <button class="log-drawer-head" id="logToggle" type="button" aria-expanded="true" aria-controls="log"><span class="ld-dot" aria-hidden="true"></span>Activity log<span class="ld-count" id="logCount">0 lines</span><span class="ld-preview" id="logPreview"></span><span class="ld-chev" aria-hidden="true">▾</span></button>
-    <div id="log" aria-live="polite"></div>
+    <div id="log" aria-live="polite"><div class="log-empty">Waiting for workflow activity…</div></div>
   </section>
 </main>
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
