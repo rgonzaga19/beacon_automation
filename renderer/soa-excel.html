@@ -57,8 +57,8 @@
       <footer class="individual-footer">
           <div id="summary" class="individual-summary" aria-live="polite"></div>
           <div class="side-actions">
-            <button id="clearBtn" class="quiet-btn" type="button">Clear Form</button>
-            <button id="generate" class="primary-btn" type="button">Generate Excel</button>
+            <button id="clearBtn" class="quiet-btn" type="button"><i data-lucide="eraser" data-icon-size="16" aria-hidden="true"></i> Clear Form</button>
+            <button id="generate" class="primary-btn" type="button"><i data-lucide="play" data-icon-size="16" aria-hidden="true"></i> Generate Excel</button>
           </div>
       </footer>
     </section>
@@ -67,7 +67,7 @@
       <section class="card batch-card">
         <div class="batch-header">
           <h2>Batch Generate</h2>
-          <button id="batchClearBtn" class="danger-btn" type="button"><span aria-hidden="true">x</span> Clear</button>
+          <button id="batchClearBtn" class="danger-btn" type="button"><i data-lucide="eraser" data-icon-size="16" aria-hidden="true"></i> Clear</button>
         </div>
         <div class="divider"></div>
         <p class="batch-copy">Upload an Excel file with one row per person to generate multiple SOAs in one go, packaged into a single .zip.</p>
@@ -90,13 +90,16 @@
         <div id="batchStatus" class="status-text" role="status"></div>
         <div id="batchWarnings" role="status" hidden></div>
         <div class="batch-actions">
-          <button id="downloadTemplate" class="quiet-btn" type="button">Download Template</button>
-          <button id="batchGenerate" class="primary-btn" type="button" disabled>Generate Batch (ZIP)</button>
+          <button id="downloadTemplate" class="quiet-btn" type="button"><i data-lucide="download" data-icon-size="16" aria-hidden="true"></i> Download Template</button>
+          <button id="batchGenerate" class="primary-btn" type="button" disabled><i data-lucide="archive" data-icon-size="16" aria-hidden="true"></i> Generate Batch (ZIP)</button>
         </div>
       </section>
     </section>
   </main>
 
+  <script src="vendor/lucide/lucide.min.js"></script>
+  <script src="js/icons.js"></script>
+  <script>BeabotsIcons.hydrate();</script>
   <script src="js/soa-excel.js"></script>
 </body>
 </html>

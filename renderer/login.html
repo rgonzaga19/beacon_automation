@@ -18,9 +18,12 @@
   .ambient { position:absolute; inset:0; pointer-events:none; background:radial-gradient(760px 420px at 50% -8%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 70%),radial-gradient(520px 360px at 12% 105%,rgba(56,120,214,.16),transparent 70%),radial-gradient(520px 360px at 92% 95%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 70%); }
   .ambient::before { content:""; position:absolute; inset:0; background-image:linear-gradient(color-mix(in srgb,var(--text-pri) 6%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--text-pri) 6%,transparent) 1px,transparent 1px); background-size:46px 46px; -webkit-mask-image:radial-gradient(ellipse at 50% 38%,#000 0%,transparent 68%); mask-image:radial-gradient(ellipse at 50% 38%,#000 0%,transparent 68%); }
   .topbar { position:absolute; z-index:2; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:22px clamp(20px,4vw,48px); }
-  .wordmark { display:inline-flex; align-items:center; gap:10px; color:var(--text-pri); font-size:13px; font-weight:800; letter-spacing:2px; text-decoration:none; }
+  .wordmark { display:inline-flex; align-items:center; gap:12px; color:var(--text-pri); font-size:13px; font-weight:800; letter-spacing:2px; text-decoration:none; }
   .wordmark .mark { display:grid; place-items:center; width:34px; height:34px; background:var(--bg-panel); border:1px solid var(--border); border-radius:10px; }
   .wordmark img { width:21px; height:21px; object-fit:contain; }
+  .wordmark .header-brand-copy { display:flex; flex-direction:column; align-items:flex-start; gap:4px; line-height:1; }
+  .wordmark .header-brand-copy > span:first-child { font-size:14px; font-weight:850; letter-spacing:1.3px; }
+  .wordmark .brand-tagline { color:var(--text-sec); font-size:9px; font-weight:600; letter-spacing:.8px; line-height:1.2; text-transform:uppercase; }
   .auth-theme-toggle { visibility:hidden; display:inline-flex; align-items:center; gap:7px; min-height:32px; padding:0 4px; color:var(--text-sec); background:transparent; border:0; border-radius:8px; font:600 11px var(--font-ui); cursor:pointer; }
   html.theme-ready .auth-theme-toggle { visibility:visible; }
   .auth-theme-toggle:hover { color:var(--text-pri); }
@@ -46,7 +49,7 @@
   .pw-checks li.ok::before { content:"✓"; color:#fff; background:var(--success); border-color:var(--success); }
   .login-form-tools { position:absolute; top:12px; right:14px; }
   .session-note { justify-content:center; margin:14px 0 0; text-align:center; }
-  @media (max-width:520px) { .shell { padding:20px 16px; } .login-card { border-radius:18px; } .wordmark span.txt { display:none; } }
+  @media (max-width:520px) { .shell { padding:20px 16px; } .login-card { border-radius:18px; } }
   @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
 
   .form-wrap { flex:1; display:flex; flex-direction:column; justify-content:center; width:min(100%,380px); margin:0 auto; padding:36px 0; }
@@ -154,7 +157,7 @@ body.login-success-transition .transition-caption { animation:copy-settle 400ms 
 <div class="shell">
   <div class="ambient" aria-hidden="true"></div>
   <div class="topbar">
-    <a class="wordmark" href="/" aria-label="Beabots home"><span class="mark"><img src="assets/bot.ico" alt=""></span><span class="txt">BEABOTS</span></a>
+    <a class="wordmark" href="/" aria-label="Beabots home"><span class="mark"><img src="assets/bot.ico" alt=""></span><span class="header-brand-copy"><span>BEABOTS</span><span class="brand-tagline">Beacon Automation</span></span></a>
   </div>
 
   <main class="login-card" aria-labelledby="authTitle">
