@@ -127,18 +127,16 @@ window.addEventListener("message", (event) => {
 document.addEventListener("visibilitychange", markChatReadIfVisible);
 
 attachButton.addEventListener("click", () => imageInput.click());
-imageInput.addEventListener("change", () => {
-  const image = imageInput.files?.[0];
-  if (!image) return;
+function selectImage(image) {
   if (!["image/png", "image/jpeg", "image/gif", "image/webp"].includes(image.type)) {
     chatError.textContent = "Choose a PNG, JPEG, GIF, or WebP image.";
     clearSelectedImage();
-    return;
+    return false;
   }
   if (image.size > 5 * 1024 * 1024) {
     chatError.textContent = "Images must be 5 MB or smaller.";
     clearSelectedImage();
-    return;
+    return false;
   }
   if (selectedImageUrl) URL.revokeObjectURL(selectedImageUrl);
   selectedImage = image;
@@ -147,6 +145,29 @@ imageInput.addEventListener("change", () => {
   attachmentName.textContent = image.name;
   attachmentPreview.hidden = false;
   chatError.textContent = "";
+  return true;
+}
+
+imageInput.addEventListener("change", () => {
+  const image = imageInput.files?.[0];
+  if (image) selectImage(image);
+});
+
+messageInput.addEventListener("paste", (event) => {
+  const clipboardItems = Array.from(event.clipboardData?.items || []);
+  const imageItem = clipboardItems.find((item) => item.kind === "file" && item.type.startsWith("image/"));
+  const image = imageItem?.getAsFile()
+    || Array.from(event.clipboardData?.files || []).find((file) => file.type.startsWith("image/"));
+  if (!image) return;
+
+  event.preventDefault();
+  const extension = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/gif": "gif",
+    "image/webp": "webp",
+  }[image.type] || "img";
+  selectImage(new File([image], `pasted-image-${Date.now()}.${extension}`, { type: image.type }));
 });
 removeAttachment.addEventListener("click", clearSelectedImage);
 
