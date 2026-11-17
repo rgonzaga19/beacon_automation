@@ -39,6 +39,7 @@
     .composer textarea { flex:1; min-width:0; min-height:42px; max-height:130px; resize:vertical; padding:10px 12px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:12px/1.45 var(--font-ui); }
     .composer textarea:focus { border-color:var(--accent); outline:2px solid var(--accent-soft); }
     .composer button { min-height:42px; padding:0 16px; color:#06121b; background:var(--accent); border:1px solid var(--accent); border-radius:var(--radius-md); font:750 11px var(--font-ui); cursor:pointer; }
+    .composer .attach-button,.composer #sendButton { width:42px; flex:0 0 42px; display:grid; place-items:center; padding:0; }
     .composer button:disabled { opacity:.5; cursor:not-allowed; }
     #chatError { min-height:17px; padding:0 13px 8px; color:var(--error); font-size:10px; }
     @media(max-width:520px) { .chat-page { padding:14px; } .chat-heading { padding-bottom:12px; } .chat-messages { padding:12px; } .message { max-width:90%; } .composer { gap:7px; padding:9px; } .composer button { padding:0 12px; } }
@@ -56,13 +57,16 @@
       <div class="attachment-preview" id="attachmentPreview" hidden><img id="attachmentThumbnail" alt="Selected image preview"><span id="attachmentName"></span><button id="removeAttachment" type="button">Remove image</button></div>
       <form class="composer" id="messageForm">
         <input id="imageInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
-        <button class="attach-button" id="attachButton" type="button" aria-label="Attach an image">＋ Image</button>
+        <button class="attach-button" id="attachButton" type="button" aria-label="Attach an image" title="Attach an image"><i class="chat-button-icon" data-lucide="image" data-icon-size="18" aria-hidden="true"></i></button>
         <textarea id="messageInput" maxlength="2000" rows="1" placeholder="Write to your team or paste an image…" aria-label="Message"></textarea>
-        <button id="sendButton" type="submit">Send</button>
+        <button id="sendButton" type="submit" aria-label="Send message" title="Send message"><i class="chat-button-icon" data-lucide="send" data-icon-size="18" aria-hidden="true"></i></button>
       </form>
     </section>
   </main>
   <script src="js/common.js"></script>
+  <script src="vendor/lucide/lucide.min.js"></script>
+  <script src="js/icons.js"></script>
+  <script>BeabotsIcons.hydrate();</script>
   <script src="js/team-chat.js"></script>
 </body>
 </html>

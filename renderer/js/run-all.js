@@ -8,6 +8,12 @@ const errorNode = document.getElementById("error");
 const resultsBody = document.getElementById("resultsBody");
 const copyTransmittalsStatus = document.getElementById("copyTransmittalsStatus");
 const logNode = document.getElementById("log");
+const logDrawer = document.getElementById("logDrawer");
+const runProgress = document.getElementById("runProgress");
+const rpTrack = document.getElementById("rpTrack");
+const rpFill = document.getElementById("rpFill");
+let lastProgress = null;
+let logLines = 0;
 const results = new Map();
 let active = false;
 let retryRunId = null;
@@ -57,10 +63,71 @@ function updateFileMeta(input, target, emptyTitle, emptyDescription, noun) {
 
 document.getElementById("workbook").addEventListener("change", (event) => {
   updateFileMeta(event.currentTarget, document.getElementById("workbookMeta"), "No workbook selected", "Choose the New Draft CF2 workbook.", "workbook");
+  updateSummary();
 });
 document.getElementById("soaFiles").addEventListener("change", (event) => {
-  updateFileMeta(event.currentTarget, document.getElementById("soaMeta"), "No SOA files selected", "Names will be checked against the workbook.", "SOA files");
+  updateFileMeta(event.currentTarget, document.getElementById("soaMeta"), "No SOA files selected", "Names will be checked against the workbook.", "SOA file");
+  updateSummary();
 });
+
+// Summary card, file chips, and readiness hint.
+function updateSummary() {
+  const workbook = document.getElementById("workbook").files[0];
+  const soaFiles = [...document.getElementById("soaFiles").files];
+  const mark = (id, ok, mark) => {
+    const li = document.getElementById(id);
+    li.classList.toggle("ok", ok);
+    li.querySelector(".sum-mark").textContent = ok ? "✓" : "·";
+  };
+  document.getElementById("workbookCard").classList.toggle("filled", Boolean(workbook));
+  document.getElementById("soaCard").classList.toggle("filled", soaFiles.length > 0);
+  document.getElementById("sumWorkbookText").textContent = workbook ? workbook.name : "No workbook yet";
+  mark("sumWorkbook", Boolean(workbook));
+  document.getElementById("sumSoaText").textContent = soaFiles.length ? `${soaFiles.length} SOA file${soaFiles.length === 1 ? "" : "s"}` : "No SOA files yet";
+  mark("sumSoa", soaFiles.length > 0);
+  const seen = new Set();
+  const dupes = new Set();
+  soaFiles.forEach((file) => {
+    const key = file.name.trim().toLowerCase();
+    if (seen.has(key)) dupes.add(key);
+    seen.add(key);
+  });
+  document.getElementById("sumSoaSub").textContent = dupes.size
+    ? `${dupes.size} duplicate filename${dupes.size === 1 ? "" : "s"}. Each patient needs a unique SOA.`
+    : soaFiles.length ? "Matched to workbook rows when the run starts." : "";
+  const chips = document.getElementById("soaChips");
+  chips.replaceChildren(...soaFiles.slice(0, 6).map((file) => {
+    const chip = document.createElement("span");
+    chip.className = `file-chip${dupes.has(file.name.trim().toLowerCase()) ? " dupe" : ""}`;
+    chip.textContent = file.name;
+    chip.title = file.name;
+    return chip;
+  }), ...(soaFiles.length > 6 ? [Object.assign(document.createElement("span"), { className: "file-chip", textContent: `+${soaFiles.length - 6} more` })] : []));
+  document.getElementById("sumPeriodText").textContent = `${monthSelect.value} ${yearSelect.value}`;
+  const hint = document.getElementById("startHint");
+  const missing = [!workbook && "the workbook", !soaFiles.length && "the SOA files"].filter(Boolean);
+  hint.textContent = active ? "" : missing.length ? `Add ${missing.join(" and ")} to start.` : `Ready: ${soaFiles.length} SOA file${soaFiles.length === 1 ? "" : "s"} for ${monthSelect.value} ${yearSelect.value}.`;
+}
+
+// Drag and drop onto the file boxes.
+function wireDrop(cardId, inputId, multiple) {
+  const card = document.getElementById(cardId);
+  const input = document.getElementById(inputId);
+  ["dragenter", "dragover"].forEach((name) => card.addEventListener(name, (event) => { event.preventDefault(); if (!active) card.classList.add("dragging"); }));
+  ["dragleave", "drop"].forEach((name) => card.addEventListener(name, () => card.classList.remove("dragging")));
+  card.addEventListener("drop", (event) => {
+    event.preventDefault();
+    if (active || !event.dataTransfer?.files?.length) return;
+    const transfer = new DataTransfer();
+    const accepted = [...event.dataTransfer.files].filter((file) => /\.(xlsx|xlsm|xls)$/i.test(file.name) && (inputId === "workbook" || !/\.xlsm$/i.test(file.name)));
+    (multiple ? accepted : accepted.slice(0, 1)).forEach((file) => transfer.items.add(file));
+    if (!transfer.files.length) return;
+    input.files = transfer.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+wireDrop("workbookCard", "workbook", false);
+wireDrop("soaCard", "soaFiles", true);
 
 const monthSelect = document.getElementById("claimMonth");
 monthNames.forEach((name, index) => {
@@ -78,6 +145,9 @@ for (let year = 2024; year <= 2035; year += 1) {
   option.selected = year === new Date().getFullYear();
   yearSelect.appendChild(option);
 }
+
+monthSelect.addEventListener("change", () => updateSummary());
+yearSelect.addEventListener("change", () => updateSummary());
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -102,25 +172,70 @@ function setCopyTransmittalsStatus(message, error = false) {
   copyTransmittalsStatus.classList.toggle("error", error);
 }
 
+const STAGES = [["cf2", "CF2"], ["soa", "SOA"], ["esoa", "eSOA"], ["cf4", "CF4"]];
+const STAGE_GLYPH = { success: "✓", skipped: "–", failed: "!", running: "", blocked: "", pending: "" };
+
+function stageState(value) {
+  return ["success", "skipped", "failed", "running", "blocked"].includes(value) ? value : "pending";
+}
+
+function pipelineMarkup(item) {
+  return `<ol class="pipe" aria-label="Workflow stages">${STAGES.map(([key, label]) => {
+    const state = stageState(key === "esoa" ? (item.esoa || (item.cf2 ? "skipped" : "pending")) : item[key]);
+    return `<li class="${state}" title="${label}: ${state}"><span class="dot" aria-hidden="true">${STAGE_GLYPH[state]}</span>${label}<span class="sr-state" style="position:absolute;width:1px;height:1px;overflow:hidden">${state}</span></li>`;
+  }).join("")}</ol>`;
+}
+
+function renderEmptyResults() {
+  resultsBody.innerHTML = `<tr class="ghost-row"><td><span class="ghost-bar"></span></td><td><span class="ghost-bar" style="width:70px"></span></td><td>${pipelineMarkup({})}</td><td class="stage-msg">Each patient moves through CF2 draft, SOA upload, eSOA generation, then CF4. Results appear here as the run progresses.</td></tr>`;
+  updateTally();
+}
+
+function updateTally() {
+  const items = [...results.values()];
+  const failed = (item) => [item.cf2, item.soa, item.esoa, item.cf4].includes("failed");
+  const running = (item) => [item.cf2, item.soa, item.esoa, item.cf4].includes("running");
+  document.getElementById("tDone").textContent = String(items.filter(completedSuccessfully).length);
+  document.getElementById("tRun").textContent = String(items.filter(running).length);
+  document.getElementById("tFail").textContent = String(items.filter(failed).length);
+}
+
+function updateRunProgress() {
+  if (!lastProgress) return;
+  const total = Number(lastProgress.total) || results.size || 1;
+  const finished = [...results.values()].filter((item) => completedSuccessfully(item) || [item.cf2, item.soa, item.esoa, item.cf4].includes("failed")).length;
+  rpTrack.classList.remove("indeterminate");
+  const value = Math.min(100, Math.round((finished / total) * 100));
+  rpFill.style.width = `${value}%`;
+  rpTrack.setAttribute("aria-valuenow", String(value));
+  document.getElementById("rpTitle").firstChild.textContent = active
+    ? `Patient ${Math.min(lastProgress.index || finished + 1, total)} of ${total} · ${lastProgress.name || ""}`
+    : `Run finished · ${finished} of ${total} patient${total === 1 ? "" : "s"} processed`;
+  document.getElementById("rpSub").textContent = active ? `Stage: ${lastProgress.stage || "starting"}` : "";
+}
+
 function renderResults() {
   if (!results.size) return;
   resultsBody.innerHTML = [...results.values()].map((item) => {
-    const isRunning = [item.cf2, item.soa, item.esoa, item.cf4].includes("running");
+    const states = [item.cf2, item.soa, item.esoa, item.cf4];
+    const isRunning = states.includes("running");
+    const isFailed = states.includes("failed");
     const isSuccessful = completedSuccessfully(item);
     const transmittal = item.transmittal
       ? `${escapeHtml(item.transmittal)}${isSuccessful ? `<button class="flat-copy-option transmittal-copy" type="button" data-transmittal="${escapeHtml(item.transmittal)}" title="Copy transmittal ${escapeHtml(item.transmittal)}" aria-label="Copy transmittal ${escapeHtml(item.transmittal)}">Copy</button>` : ""}`
       : "—";
+    const retry = retryRunId && item.cf2 === "success" && (item.soa !== "success" || !["success", "skipped"].includes(item.esoa) || item.cf4 !== "success")
+      ? `<div style="margin-top:7px"><button class="cyber-btn retry-stage" type="button" data-member-pin="${escapeHtml(item.member_pin)}" ${active ? "disabled" : ""}>Retry remaining stages</button></div>` : "";
     return `
-    <tr class="${isRunning ? "row-running" : ""}" aria-busy="${isRunning}">
+    <tr class="${isRunning ? "row-running" : isFailed ? "row-failed" : ""}" aria-busy="${isRunning}">
       <td>${escapeHtml(item.patient_name)}</td>
       <td>${transmittal}</td>
-      <td><span class="stage ${escapeHtml(item.cf2)}">${escapeHtml(item.cf2)}</span></td>
-      <td><span class="stage ${escapeHtml(item.soa)}">${escapeHtml(item.soa)}</span></td>
-      <td><span class="stage ${escapeHtml(item.esoa || "skipped")}">${escapeHtml(item.esoa || "skipped")}</span></td>
-      <td><span class="stage ${escapeHtml(item.cf4)}">${escapeHtml(item.cf4)}</span></td>
-      <td>${escapeHtml(item.message || "—")}${retryRunId && item.cf2 === "success" && (item.soa !== "success" || !["success", "skipped"].includes(item.esoa) || item.cf4 !== "success") ? `<div style="margin-top:7px"><button class="cyber-btn retry-stage" type="button" data-member-pin="${escapeHtml(item.member_pin)}" ${active ? "disabled" : ""}>Retry remaining stages</button></div>` : ""}</td>
+      <td>${pipelineMarkup(item)}</td>
+      <td class="stage-msg">${escapeHtml(item.message || "—")}${retry}</td>
     </tr>`;
   }).join("");
+  updateTally();
+  updateRunProgress();
 }
 
 document.getElementById("copySuccessfulTransmittals").addEventListener("click", async () => {
@@ -148,9 +263,25 @@ function appendLog(message, level = "INFO") {
   line.textContent = includesTimestampAndLevel
     ? formattedMessage
     : `[${level}] ${formattedMessage}`;
+  const isError = String(level).toUpperCase() === "ERROR" || /^\[[^\]]*\] \[ERROR\]/.test(formattedMessage);
+  if (isError) line.classList.add("err");
   logNode.appendChild(line);
   logNode.scrollTop = logNode.scrollHeight;
+  logLines += 1;
+  logDrawer.classList.add("has-lines");
+  document.getElementById("logCount").textContent = `${logLines} line${logLines === 1 ? "" : "s"}`;
+  document.getElementById("logPreview").textContent = line.textContent;
+  if (isError) {
+    logDrawer.classList.add("has-error");
+    setLogOpen(true);
+  }
 }
+
+function setLogOpen(open) {
+  logDrawer.classList.toggle("open", open);
+  document.getElementById("logToggle").setAttribute("aria-expanded", String(open));
+}
+document.getElementById("logToggle").addEventListener("click", () => setLogOpen(!logDrawer.classList.contains("open")));
 
 function setActive(value) {
   active = value;
@@ -158,6 +289,12 @@ function setActive(value) {
   clearFieldsBtn.disabled = value;
   stopBtn.classList.toggle("visible", value);
   statusNode.textContent = value ? "Running one patient at a time…" : statusNode.textContent;
+  runProgress.hidden = !value && !lastProgress;
+  if (value && !lastProgress) {
+    rpTrack.classList.add("indeterminate");
+    document.getElementById("rpTitle").firstChild.textContent = "Starting run…";
+  }
+  updateSummary();
   renderResults();
 }
 
@@ -178,11 +315,12 @@ clearFieldsBtn.addEventListener("click", () => {
     document.getElementById("soaMeta"),
     "No SOA files selected",
     "Names will be checked against the workbook.",
-    "SOA files"
+    "SOA file"
   );
   errorNode.textContent = "";
   errorNode.style.display = "none";
   statusNode.textContent = "Fields cleared. Ready when you are.";
+  updateSummary();
 });
 
 const socket = io(API_BASE);
@@ -191,6 +329,8 @@ socket.on("run_all_progress", (event) => {
   const item = event?.result;
   if (!item) return;
   results.set(item.member_pin, item);
+  lastProgress = { index: event.index, total: event.total, name: item.patient_name, stage: event.stage === "esoa" ? "SOA generation" : String(event.stage || "").toUpperCase() };
+  runProgress.hidden = false;
   renderResults();
   statusNode.textContent = `Patient ${event.index} of ${event.total}: ${item.patient_name} — ${event.stage === "esoa" ? "SOA generation" : event.stage.toUpperCase()}`;
 });
@@ -220,7 +360,12 @@ form.addEventListener("submit", async (event) => {
   setCopyTransmittalsStatus("");
   results.clear();
   retryRunId = null;
-  resultsBody.innerHTML = "<tr><td colspan=\"7\" class=\"help\">Checking files…</td></tr>";
+  lastProgress = null;
+  logLines = 0;
+  logDrawer.classList.remove("has-lines", "has-error");
+  document.getElementById("logCount").textContent = "0 lines";
+  document.getElementById("logPreview").textContent = "";
+  resultsBody.innerHTML = "<tr><td colspan=\"4\" class=\"help empty-note\">Checking files…</td></tr>";
   logNode.replaceChildren();
   const payload = new FormData(form);
   try {
@@ -233,7 +378,8 @@ form.addEventListener("submit", async (event) => {
     appendLog(`Preflight passed for ${result.patient_count} patient(s).`);
   } catch (error) {
     setActive(false);
-    resultsBody.innerHTML = "<tr><td colspan=\"7\" class=\"help\">No run started.</td></tr>";
+    runProgress.hidden = true;
+    renderEmptyResults();
     errorNode.textContent = error.message || String(error);
     errorNode.style.display = "block";
     statusNode.textContent = "Could not start the run.";
@@ -285,3 +431,6 @@ stopBtn.addEventListener("click", async () => {
     stopBtn.disabled = false;
   }
 });
+
+renderEmptyResults();
+updateSummary();
