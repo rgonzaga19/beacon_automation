@@ -48,7 +48,6 @@
           </section>
           <button class="workspace-nav-link" type="button" data-workspace="teamCollab" title="Team chat"><i class="workspace-nav-icon" data-lucide="messages-square" data-icon-size="20" aria-hidden="true"></i><span>Team Chat</span></button>
           <button class="workspace-nav-link" type="button" data-workspace="settings" title="Settings"><i class="workspace-nav-icon" data-lucide="settings" data-icon-size="20" aria-hidden="true"></i><span>Settings</span></button>
-          <button class="workspace-nav-link" id="workspaceUsersLink" type="button" data-workspace="users" title="User management" hidden><i class="workspace-nav-icon" data-lucide="users-round" data-icon-size="20" aria-hidden="true"></i><span>User Management</span></button>
         </nav>
         <div class="workspace-sidebar-footer">
           <button class="workspace-nav-link" type="button" data-workspace="about" data-about-section="about" title="About Beabots"><i class="workspace-nav-icon" data-lucide="info" data-icon-size="20" aria-hidden="true"></i><span>About Beabots</span></button>
@@ -70,6 +69,7 @@
             <kbd aria-label="Enter"><i class="workspace-header-icon" data-lucide="corner-down-left" data-icon-size="16" aria-hidden="true"></i></kbd>
           </form>
           <div class="workspace-header-spacer"></div>
+          <button class="workspace-notification-trigger" id="workspaceUsersLink" type="button" aria-label="User Management" title="User Management" hidden><i class="workspace-header-icon" data-lucide="users-round" data-icon-size="16" aria-hidden="true"></i></button>
           <div class="workspace-notifications">
         <button class="workspace-notification-trigger" id="workspaceNotificationTrigger" type="button" aria-expanded="false" aria-label="Notifications"><i class="workspace-header-icon" data-lucide="bell" data-icon-size="16" aria-hidden="true"></i><span id="workspaceUnreadBadge" hidden></span></button>
         <div class="workspace-notification-menu" id="workspaceNotificationMenu" hidden><strong>Messages</strong><button id="workspaceNotificationChat" type="button"><i class="workspace-menu-icon" data-lucide="messages-square" data-icon-size="16" aria-hidden="true"></i><span>Team Chat</span><span class="workspace-chat-unread" id="workspaceChatUnread" hidden></span></button></div>

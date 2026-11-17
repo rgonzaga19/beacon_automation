@@ -45,34 +45,142 @@ function escapeMetricText(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 }
 
+// ---------------------------------------------------------------------------
+// Dashboard charts (Chart.js, bundled in vendor/chart). Colors come from the
+// --c-* tokens defined in dashboard-home.html so dark and light are selected,
+// not flipped. Every chart degrades to its table when Chart.js is unavailable.
+// ---------------------------------------------------------------------------
+const chartInstances = {};
+const hiddenSeries = new Set();
+const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+let lastClaimAnalytics = null;
+let lastClaimBuckets = [];
+let lastRunDays = [];
+let selectedBucket = -1;
+let lastRunsTotal = null;
+const setupState = { metrics: false, claims: false };
+const workflowSlots = new Map();
+
+function cssToken(name) {
+  const root = document.querySelector(".home-content") || document.documentElement;
+  return getComputedStyle(root).getPropertyValue(name).trim() || "#888888";
+}
+function chartTheme() {
+  return {
+    text: cssToken("--text-sec"), primary: cssToken("--text-pri"), grid: cssToken("--c-grid"), axis: cssToken("--c-axis"),
+    surface: cssToken("--bg-panel"), card: cssToken("--bg-card"), border: cssToken("--border"), accent: cssToken("--accent"),
+    draft: cssToken("--c-draft"), transmitted: cssToken("--c-transmitted"), other: cssToken("--c-other"),
+  };
+}
+function withAlpha(hex, alpha) {
+  return /^#[0-9a-f]{6}$/i.test(hex) ? `${hex}${alpha}` : hex;
+}
+function destroyChart(key) {
+  if (chartInstances[key]) { chartInstances[key].destroy(); delete chartInstances[key]; }
+}
+function buildChart(key, canvasId, config) {
+  destroyChart(key);
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || typeof Chart === "undefined") return null;
+  config.options = config.options || {};
+  config.options.responsive = true;
+  config.options.maintainAspectRatio = false;
+  if (reducedMotion) config.options.animation = false;
+  chartInstances[key] = new Chart(canvas, config);
+  return chartInstances[key];
+}
+function tooltipStyle(theme) {
+  return {
+    backgroundColor: theme.card, titleColor: theme.primary, bodyColor: theme.primary, footerColor: theme.text,
+    borderColor: theme.border, borderWidth: 1, padding: 10, cornerRadius: 8, boxPadding: 4, usePointStyle: true,
+  };
+}
+const crosshairPlugin = {
+  id: "crosshair",
+  afterDatasetsDraw(chart) {
+    const active = chart.tooltip?.getActiveElements?.() || [];
+    if (!active.length || chart.config.type !== "line") return;
+    const { ctx, chartArea } = chart;
+    ctx.save();
+    ctx.strokeStyle = chart.options.plugins.crosshair?.color || "#888";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(active[0].element.x, chartArea.top);
+    ctx.lineTo(active[0].element.x, chartArea.bottom);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+function sparkMarkup(values, colorVar) {
+  if (!values || values.length < 2) return "";
+  const max = Math.max(...values), min = Math.min(...values), span = max - min || 1;
+  const points = values.map((value, index) => `${(index / (values.length - 1)) * 100},${24 - ((value - min) / span) * 20}`).join(" ");
+  return `<polyline points="${points}" style="stroke:var(${colorVar})" vector-effect="non-scaling-stroke"></polyline>`;
+}
+function renderSparks() {
+  const series = {
+    total: [lastClaimBuckets.map((b) => Number(b.total) || 0), "--accent"],
+    draft: [lastClaimBuckets.map((b) => Number(b.draft) || 0), "--c-draft"],
+    transmitted: [lastClaimBuckets.map((b) => Number(b.transmitted) || 0), "--c-transmitted"],
+    runs: [lastRunDays.map((d) => Number(d.count) || 0), "--accent"],
+  };
+  document.querySelectorAll("[data-spark]").forEach((svg) => {
+    const [values, color] = series[svg.dataset.spark] || [[], "--accent"];
+    svg.innerHTML = sparkMarkup(values, color);
+  });
+}
+
 function renderDailyRunsChart(days = []) {
-  const root = document.getElementById("dailyRunsChart");
+  lastRunDays = days;
+  const empty = document.getElementById("dailyRunsEmpty");
+  const canvas = document.getElementById("dailyRunsCanvas");
+  const table = document.getElementById("dailyRunsTable");
+  table.replaceChildren(...days.map((day) => {
+    const row = document.createElement("tr");
+    const a = document.createElement("td"); a.textContent = day.date;
+    const b = document.createElement("td"); b.textContent = String(Number(day.count) || 0);
+    row.append(a, b);
+    return row;
+  }));
+  renderSparks();
   if (!days.some((day) => day.count)) {
-    root.innerHTML = '<div class="activity-empty">Operation history will appear here after your next activity.</div>';
+    destroyChart("daily");
+    canvas.hidden = true;
+    empty.hidden = false;
     return;
   }
-  const values = days.map((day) => Number(day.count) || 0);
-  const max = Math.max(1, ...values);
-  const width = 600, height = 150, left = 30, right = 14, top = 10, bottom = 30;
-  const chartHeight = height - top - bottom;
-  const points = values.map((value, index) => ({
-    x: left + index * ((width - left - right) / Math.max(1, values.length - 1)),
-    y: top + chartHeight - (value / max) * chartHeight,
-  }));
-  const line = points.map((point) => `${point.x},${point.y}`).join(" ");
-  const area = `${left},${top + chartHeight} ${line} ${points.at(-1).x},${top + chartHeight}`;
-  const grid = [0, 1, 2].map((step) => {
-    const y = top + step * (chartHeight / 2);
-    const label = Math.ceil(max * (1 - step / 2));
-    return `<line class="gridline" x1="${left}" y1="${y}" x2="${width - right}" y2="${y}"/><text x="0" y="${y + 3}">${label}</text>`;
-  }).join("");
-  const dates = days.map((day, index) => {
-    const point = points[index];
+  canvas.hidden = false;
+  empty.hidden = true;
+  const theme = chartTheme();
+  const labels = days.map((day) => {
     const date = new Date(`${day.date}T12:00:00`);
-    const label = Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString([], { weekday: "short" });
-    return `<circle class="dot" cx="${point.x}" cy="${point.y}" r="4"><title>${day.count} run${day.count === 1 ? "" : "s"} · ${escapeMetricText(day.date)}</title></circle><text text-anchor="middle" x="${point.x}" y="${height - 5}">${label}</text>`;
-  }).join("");
-  root.innerHTML = `<svg class="runs-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">${grid}<polygon class="area" points="${area}"/><polyline class="line" points="${line}"/>${dates}</svg>`;
+    return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString([], { weekday: "short" });
+  });
+  buildChart("daily", "dailyRunsCanvas", {
+    type: "line",
+    plugins: [crosshairPlugin],
+    data: { labels, datasets: [{
+      label: "Operations", data: days.map((day) => Number(day.count) || 0),
+      borderColor: theme.accent, backgroundColor: withAlpha(theme.accent, "1a"), fill: true, borderWidth: 2, tension: 0.25,
+      pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: theme.accent, pointBorderColor: theme.surface, pointBorderWidth: 2, pointHitRadius: 18,
+    }] },
+    options: {
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        x: { grid: { display: false }, border: { color: theme.axis }, ticks: { color: theme.text, font: { size: 10 } } },
+        y: { beginAtZero: true, grace: "10%", border: { display: false }, grid: { color: theme.grid }, ticks: { color: theme.text, precision: 0, maxTicksLimit: 4, font: { size: 10 } } },
+      },
+      plugins: {
+        legend: { display: false },
+        crosshair: { color: theme.axis },
+        tooltip: { ...tooltipStyle(theme), callbacks: {
+          title: (items) => days[items[0].dataIndex]?.date || "",
+          label: (item) => ` ${item.parsed.y} operation${item.parsed.y === 1 ? "" : "s"}`,
+        } },
+      },
+    },
+  });
 }
 
 function renderWorkflowChart(workflows = []) {
@@ -83,11 +191,141 @@ function renderWorkflowChart(workflows = []) {
   }
   const max = Math.max(1, ...workflows.map((item) => Number(item.count) || 0));
   root.innerHTML = workflows.map((item) => {
+    if (!workflowSlots.has(item.workflow)) workflowSlots.set(item.workflow, workflowSlots.size);
+    const slot = workflowSlots.get(item.workflow);
+    const color = slot < 8 ? `var(--c-s${slot + 1})` : "var(--c-other)";
     const count = Number(item.count) || 0;
     const width = Math.max(count ? 3 : 0, (count / max) * 100);
-    return `<div class="workflow-row"><span>${escapeMetricText(item.workflow)}</span><div class="workflow-track"><div class="workflow-fill" style="width:${width}%"></div></div><strong class="workflow-number">${count}</strong></div>`;
+    return `<div class="workflow-row"><span>${escapeMetricText(item.workflow)}</span><div class="workflow-track"><div class="workflow-fill" style="--lc:${color};width:${width}%"></div></div><strong class="workflow-number">${count}</strong></div>`;
   }).join("");
 }
+
+function setSelectedBucket(index) {
+  selectedBucket = index === selectedBucket ? -1 : index;
+  const chip = document.getElementById("claimSelection");
+  const bucket = lastClaimBuckets[selectedBucket];
+  chip.hidden = !bucket;
+  if (bucket) chip.textContent = `${bucket.label} · ${Number(bucket.total) || 0} claims`;
+  highlightSelectedRow();
+  chartInstances.claims?.update(reducedMotion ? "none" : undefined);
+}
+function highlightSelectedRow() {
+  [...document.querySelectorAll("#claimAnalyticsTableBody tr")].forEach((row, i) => row.classList.toggle("is-selected", i === selectedBucket));
+}
+
+function renderClaimAnalyticsChart(buckets) {
+  lastClaimBuckets = buckets;
+  const empty = document.getElementById("claimChartEmpty");
+  const canvas = document.getElementById("claimPipelineCanvas");
+  renderSparks();
+  if (!buckets.length) {
+    destroyChart("claims");
+    canvas.hidden = true;
+    empty.hidden = false;
+    return;
+  }
+  canvas.hidden = false;
+  empty.hidden = true;
+  const theme = chartTheme();
+  const names = [["draft", "Draft"], ["transmitted", "Transmitted"], ["other", "Other status"]];
+  buildChart("claims", "claimPipelineCanvas", {
+    type: "bar",
+    data: { labels: buckets.map((b) => b.label), datasets: names.map(([key, label]) => ({
+      label, hidden: hiddenSeries.has(key), data: buckets.map((b) => Number(b[key]) || 0),
+      backgroundColor: (ctx) => (selectedBucket >= 0 && ctx.dataIndex !== selectedBucket ? withAlpha(theme[key], "55") : theme[key]),
+      borderColor: theme.surface, borderWidth: 2, borderRadius: 4, borderSkipped: false, maxBarThickness: 24,
+    })) },
+    options: {
+      interaction: { mode: "index", intersect: false },
+      onClick: (event, elements, chart) => {
+        const hit = chart.getElementsAtEventForMode(event, "index", { intersect: false }, false);
+        if (hit.length) setSelectedBucket(hit[0].index);
+      },
+      onHover: (event, elements) => { event.native.target.style.cursor = elements.length ? "pointer" : "default"; },
+      scales: {
+        x: { stacked: true, grid: { display: false }, border: { color: theme.axis }, ticks: { color: theme.text, font: { size: 10 }, maxRotation: 0, autoSkip: true } },
+        y: { stacked: true, beginAtZero: true, border: { display: false }, grid: { color: theme.grid }, ticks: { color: theme.text, precision: 0, maxTicksLimit: 5, font: { size: 10 } } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...tooltipStyle(theme), callbacks: {
+          footer: (items) => `Total ${items.reduce((sum, item) => sum + item.parsed.y, 0)}`,
+        } },
+      },
+    },
+  });
+}
+
+function renderClaimMix(analytics) {
+  if (!analytics) return;
+  const theme = chartTheme();
+  const counts = {
+    draft: Number(analytics.draft_claims) || 0,
+    transmitted: Number(analytics.transmitted_claims) || 0,
+    other: Number(analytics.other_claims) || 0,
+  };
+  document.querySelector('[data-mix="draft"]').textContent = String(counts.draft);
+  document.querySelector('[data-mix="transmitted"]').textContent = String(counts.transmitted);
+  const keys = ["draft", "transmitted", "other"];
+  const shown = keys.map((key) => (hiddenSeries.has(key) ? 0 : counts[key]));
+  document.getElementById("mixTotal").textContent = String(shown.reduce((a, b) => a + b, 0));
+  buildChart("mix", "claimMixCanvas", {
+    type: "doughnut",
+    data: { labels: ["Draft", "Transmitted", "Other status"], datasets: [{
+      data: shown, backgroundColor: keys.map((key) => theme[key]), borderColor: theme.surface, borderWidth: 2, hoverOffset: 4,
+    }] },
+    options: {
+      cutout: "68%",
+      plugins: { legend: { display: false }, tooltip: { ...tooltipStyle(theme), callbacks: { label: (item) => ` ${item.label}: ${item.parsed}` } } },
+    },
+  });
+}
+
+function renderClaimShares(analytics) {
+  const total = Number(analytics?.total_claims) || 0;
+  for (const key of ["draft", "transmitted"]) {
+    const note = document.querySelector(`[data-share="${key}"]`);
+    if (note) note.textContent = total ? `${Math.round(((Number(analytics[`${key}_claims`]) || 0) / total) * 100)}% of total` : "";
+  }
+}
+
+function toggleSeries(name) {
+  if (hiddenSeries.has(name)) hiddenSeries.delete(name); else hiddenSeries.add(name);
+  document.querySelectorAll(`[data-series="${name}"]`).forEach((el) => el.setAttribute("aria-pressed", String(!hiddenSeries.has(name))));
+  if (lastClaimBuckets.length) renderClaimAnalyticsChart(lastClaimBuckets);
+  renderClaimMix(lastClaimAnalytics);
+}
+document.querySelectorAll("button[data-series]:not(:disabled)").forEach((button) => button.addEventListener("click", () => toggleSeries(button.dataset.series)));
+
+function rerenderCharts() {
+  renderDailyRunsChart(lastRunDays);
+  if (lastClaimBuckets.length) renderClaimAnalyticsChart(lastClaimBuckets);
+  renderClaimMix(lastClaimAnalytics);
+}
+new MutationObserver(rerenderCharts).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function updateSetupChecklist() {
+  const panel = document.getElementById("setupChecklist");
+  if (!panel) return;
+  let beaconKnown = false, beacon = false;
+  try { beaconKnown = Boolean(heartbeatController?.lastConnectionState); beacon = heartbeatController?.lastConnectionState?.connected === true; } catch { /* not ready yet */ }
+  const done = { beacon, claims: claimAnalyticsHasData, run: Number(lastRunsTotal) > 0 };
+  for (const [step, value] of Object.entries(done)) {
+    const el = panel.querySelector(`[data-step="${step}"]`);
+    el.classList.toggle("done", value);
+    el.querySelector(".check-mark").textContent = value ? "✓" : ({ beacon: "1", claims: "2", run: "3" })[step];
+  }
+  let dismissed = false;
+  try { dismissed = localStorage.getItem("beabots-checklist-dismissed") === "1"; } catch { /* optional */ }
+  const ready = beaconKnown && setupState.metrics && setupState.claims;
+  panel.hidden = !ready || dismissed || Object.values(done).every(Boolean);
+}
+document.getElementById("dismissChecklist").addEventListener("click", () => {
+  try { localStorage.setItem("beabots-checklist-dismissed", "1"); } catch { /* optional */ }
+  updateSetupChecklist();
+});
+document.getElementById("checklistFetch").addEventListener("click", () => confirmClaimAnalyticsRefresh());
+document.getElementById("homeDate").textContent = new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 
 function renderRecentRuns(runs = []) {
   const body = document.getElementById("recentRunsBody");
@@ -151,7 +389,17 @@ function renderOnlineUsers(users = []) {
   root.innerHTML = users.map((user) => `<span class="online-user">${escapeMetricText(user.name)}</span>`).join("");
 }
 
+function updateBeaconDataAccount(settings) {
+  const accountName = document.getElementById("beaconDataAccountName");
+  const username = String(settings.username || "").trim();
+  const server = settings.server === "s2" ? "S2" : "S4";
+  const label = username ? `${username} (${server})` : "Not configured";
+  if (accountName.textContent !== label) accountName.textContent = label;
+}
+
 async function refreshDashboardMetrics() {
+  const staleBoxes = [...document.querySelectorAll(".chart-box")];
+  staleBoxes.forEach((box) => box.classList.add("is-stale"));
   try {
     const metrics = await fetchJSON("/api/dashboard/metrics");
     dashboardUptimeSeconds = Number(metrics.server_uptime_seconds) || 0;
@@ -160,6 +408,11 @@ async function refreshDashboardMetrics() {
     renderOnlineUsers(metrics.online_user_list || []);
     document.getElementById("metricRuns").textContent = String(Number(metrics.runs_30_days) || 0);
     document.getElementById("metricSuccess").textContent = metrics.success_rate == null ? "—" : `${metrics.success_rate}%`;
+    const rate = Math.max(0, Math.min(100, Number(metrics.success_rate) || 0));
+    document.getElementById("successRing").setAttribute("stroke-dasharray", `${(rate / 100) * 113.1} 113.1`);
+    document.getElementById("successRing").style.display = metrics.success_rate == null ? "none" : "";
+    lastRunsTotal = Number(metrics.runs_30_days) || 0;
+    setupState.metrics = true;
     renderDailyRunsChart(metrics.daily_runs || []);
     renderWorkflowChart(metrics.workflow_runs || []);
     await loadRunHistory();
@@ -167,6 +420,9 @@ async function refreshDashboardMetrics() {
   } catch {
     document.getElementById("recentRunsBody").innerHTML = '<tr><td class="activity-empty" colspan="6">Dashboard metrics could not be loaded. Refresh to try again.</td></tr>';
     document.getElementById("metricUptime").textContent = "Unavailable";
+  } finally {
+    staleBoxes.forEach((box) => box.classList.remove("is-stale"));
+    updateSetupChecklist();
   }
 }
 
@@ -176,24 +432,6 @@ function updateDashboardUptime() {
   document.getElementById("metricUptime").textContent = formatUptime(dashboardUptimeSeconds + elapsed);
 }
 
-function renderClaimAnalyticsChart(buckets) {
-  const root = document.getElementById("claimAnalyticsChart");
-  if (!buckets.length) {
-    root.innerHTML = '<div class="activity-empty">No periods in the selected date range.</div>';
-    return;
-  }
-  const maxTotal = Math.max(1, ...buckets.map((bucket) => Number(bucket.total) || 0));
-  root.innerHTML = buckets.map((bucket) => {
-    const total = Number(bucket.total) || 0;
-    const segment = (name) => {
-      const count = Number(bucket[name]) || 0;
-      const width = total ? (count / total) * 100 : 0;
-      return `<span class="analytics-bar-${name}" style="width:${width}%" title="${count} ${name}"></span>`;
-    };
-    return `<div class="analytics-chart-row"><span class="analytics-chart-label">${escapeMetricText(bucket.label)}</span><div class="analytics-bar-track" role="img" aria-label="${escapeMetricText(bucket.label)}: ${total} claims"><div class="analytics-bar" style="width:${(total / maxTotal) * 100}%">${segment("draft")}${segment("transmitted")}${segment("other")}</div></div><strong>${total}</strong></div>`;
-  }).join("");
-}
-
 function renderClaimAnalyticsTable(buckets) {
   const body = document.getElementById("claimAnalyticsTableBody");
   if (!buckets.length) {
@@ -201,6 +439,7 @@ function renderClaimAnalyticsTable(buckets) {
     return;
   }
   body.innerHTML = buckets.map((bucket) => `<tr><td>${escapeMetricText(bucket.label)}</td><td>${Number(bucket.draft) || 0}</td><td>${Number(bucket.transmitted) || 0}</td><td>${Number(bucket.other) || 0}</td><td><strong>${Number(bucket.total) || 0}</strong></td></tr>`).join("");
+  highlightSelectedRow();
 }
 
 function currentPhilippineMonth() {
@@ -286,7 +525,12 @@ function renderClaimAnalytics(analytics, month, group, filterMonth) {
   document.getElementById("claimMetricTransmitted").textContent = String(Number(analytics.transmitted_claims) || 0);
   document.getElementById("claimMetricOther").textContent = String(Number(analytics.other_claims) || 0);
   document.getElementById("claimMetricTotal").textContent = String(Number(analytics.total_claims) || 0);
+  lastClaimAnalytics = analytics;
+  selectedBucket = -1;
+  document.getElementById("claimSelection").hidden = true;
   renderClaimAnalyticsChart(analytics.buckets || []);
+  renderClaimMix(analytics);
+  renderClaimShares(analytics);
   const rows = [...(analytics.buckets || [])];
   if (Number(analytics.unassigned?.total) > 0) rows.push(analytics.unassigned);
   renderClaimAnalyticsTable(rows);
@@ -311,6 +555,9 @@ function renderClaimAnalytics(analytics, month, group, filterMonth) {
 
 function setClaimAnalyticsView(hasData) {
   claimAnalyticsHasData = hasData;
+  document.querySelector(".home-content").classList.toggle("no-claims", !hasData);
+  setupState.claims = true;
+  updateSetupChecklist();
   document.getElementById("claimAnalyticsControls").hidden = !hasData;
   document.getElementById("claimAnalyticsResults").hidden = !hasData;
   document.getElementById("claimAnalyticsFetchPrompt").hidden = hasData || claimAnalyticsSyncing;
@@ -515,36 +762,34 @@ document.getElementById("billingWeekRows").addEventListener("input", () => {
 });
 refreshClaimAnalytics();
 
-document.getElementById("refreshMetrics").addEventListener("click", refreshDashboardMetrics);
 loadRunHistory();
 refreshDashboardMetrics();
 setInterval(updateDashboardUptime, 30000);
 
 const dashboardColumns = document.getElementById("dashboardColumns");
 const dashboardLayoutButtons = [...document.querySelectorAll("[data-dashboard-layout]")];
+const dashboardLayouts = ["overview", "claims", "operations"];
 function setDashboardLayout(layout, persist = false) {
-  if (!["workflow", "operations"].includes(layout)) layout = "workflow";
+  if (!dashboardLayouts.includes(layout)) layout = "overview";
   dashboardColumns.dataset.layout = layout;
   dashboardLayoutButtons.forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.dashboardLayout === layout));
   });
+  Object.values(chartInstances).forEach((chart) => chart.resize());
   if (persist) {
     try { localStorage.setItem("beabots-dashboard-layout", layout); }
     catch { /* The dashboard works without a saved layout preference. */ }
   }
 }
 dashboardLayoutButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    const selectedLayout = button.dataset.dashboardLayout;
-    setDashboardLayout(selectedLayout, true);
-  });
+  button.addEventListener("click", () => setDashboardLayout(button.dataset.dashboardLayout, true));
 });
 try {
   const savedLayout = localStorage.getItem("beabots-dashboard-layout");
-  const layout = savedLayout === "operations" ? "operations" : "workflow";
-  setDashboardLayout(layout, savedLayout === "split" || !savedLayout);
+  // Older builds stored "workflow" (claims analytics) or "split".
+  setDashboardLayout(savedLayout === "workflow" ? "claims" : savedLayout, false);
 }
-catch { setDashboardLayout("workflow"); }
+catch { setDashboardLayout("overview"); }
 
 function readChatCursors() {
   if (!chatReadStateKey) return null;
@@ -907,6 +1152,10 @@ document.getElementById("notificationTeamChat").addEventListener("click", () => 
   closeNotificationMenu();
   openWorkspace("teamCollab");
 });
+document.getElementById("siteUsers").addEventListener("click", () => {
+  closeAccountMenu();
+  openWorkspace("users");
+});
 document.getElementById("accountLogout").addEventListener("click", () => window.beabots?.logout());
 
 async function loadSignedInProfile() {
@@ -982,6 +1231,7 @@ window.addEventListener("message", (event) => {
   }
   if (event.data?.type === "settings-beacon-updated") {
     refreshClaimAnalytics();
+    heartbeatController?.pollConnectionStatus();
     return;
   }
   if (event.data?.type === "settings-upgrade-request") {
@@ -1042,10 +1292,6 @@ document.getElementById("btnCollaborationChat").addEventListener("click", () => 
 });
 document.getElementById("btnSettings").addEventListener("click", () => {
   openWorkspace("settings");
-});
-document.getElementById("siteUsers").addEventListener("click", () => {
-  closeAccountMenu();
-  openWorkspace("users");
 });
 // ---------------------------------------------------------------------------
 // Heartbeat Controller - monitors Beacon connection and automation activity
@@ -1135,6 +1381,7 @@ class HeartbeatController {
       const responseTime = performance.now() - start;
       const connected = settings.beacon_connected === true;
       const slow = responseTime > this.slowThresholdMs;
+      updateBeaconDataAccount(settings);
       this.lastConnectionState = { connected, slow, responseTime };
       this.updateHeartbeat();
     } catch (error) {
@@ -1174,6 +1421,18 @@ class HeartbeatController {
   updateHeartbeat() {
     const { connected = false, slow = false } = this.lastConnectionState || {};
     const automationActive = this.activeAutomations.size > 0;
+    const chip = document.getElementById("beaconChip");
+    if (chip) {
+      const state = !this.lastConnectionState ? "checking" : !connected ? "disconnected" : slow ? "slow" : "connected";
+      chip.dataset.state = state;
+      document.getElementById("beaconChipText").textContent = ({
+        checking: "Checking Beacon…",
+        disconnected: "Beacon disconnected",
+        slow: "Beacon connected · slow",
+        connected: automationActive ? "Beacon connected · automation running" : "Beacon connected",
+      })[state];
+    }
+    updateSetupChecklist();
     if (window.parent !== window) {
       window.parent.postMessage({
         type: "beacon-heartbeat-update",

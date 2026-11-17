@@ -290,6 +290,9 @@ document.getElementById("workspaceNotificationChat").addEventListener("click", (
   closeNotificationMenu();
   activateWorkspace("teamCollab");
 });
+document.getElementById("workspaceUsersLink").addEventListener("click", () => {
+  activateWorkspace("users");
+});
 document.addEventListener("click", (event) => {
   if (!notificationMenu.hidden && !notificationMenu.contains(event.target) && !notificationTrigger.contains(event.target)) closeNotificationMenu();
   if (!accountMenu.hidden && !accountMenu.contains(event.target) && !accountTrigger.contains(event.target)) closeAccountMenu();
