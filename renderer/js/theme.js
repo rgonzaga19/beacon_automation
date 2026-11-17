@@ -33,7 +33,14 @@
     const actionLabel = isLight ? "Switch to dark mode" : "Switch to light mode";
 
     if (icon) {
-      icon.textContent = isLight ? "☀" : "🌙";
+      if (window.BeabotsIcons) {
+        BeabotsIcons.replace(icon, isLight ? "sun" : "moon", {
+          size: 15,
+          className: "theme-switch-icon",
+        });
+      } else {
+        icon.textContent = isLight ? "☀" : "🌙";
+      }
       if (label) label.textContent = isLight ? "Light" : "Dark";
       btn.setAttribute("aria-label", actionLabel);
     } else {
