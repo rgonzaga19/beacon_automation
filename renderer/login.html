@@ -14,26 +14,19 @@
   html,body { min-height:100%; margin:0; }
   body.auth-page { min-height:100vh; color:var(--text-pri); background:var(--bg-dark); font-family:var(--font-ui); -webkit-font-smoothing:antialiased; }
 
-  .shell { position:relative; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:88px 20px 64px; overflow:hidden; }
+  .shell { position:relative; min-height:100vh; min-height:100svh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 20px; overflow-x:hidden; overflow-y:auto; }
   .ambient { position:absolute; inset:0; pointer-events:none; background:radial-gradient(760px 420px at 50% -8%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 70%),radial-gradient(520px 360px at 12% 105%,rgba(56,120,214,.16),transparent 70%),radial-gradient(520px 360px at 92% 95%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 70%); }
   .ambient::before { content:""; position:absolute; inset:0; background-image:linear-gradient(color-mix(in srgb,var(--text-pri) 6%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--text-pri) 6%,transparent) 1px,transparent 1px); background-size:46px 46px; -webkit-mask-image:radial-gradient(ellipse at 50% 38%,#000 0%,transparent 68%); mask-image:radial-gradient(ellipse at 50% 38%,#000 0%,transparent 68%); }
   .topbar { position:absolute; z-index:2; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:22px clamp(20px,4vw,48px); }
   .wordmark { display:inline-flex; align-items:center; gap:10px; color:var(--text-pri); font-size:13px; font-weight:800; letter-spacing:2px; text-decoration:none; }
   .wordmark .mark { display:grid; place-items:center; width:34px; height:34px; background:var(--bg-panel); border:1px solid var(--border); border-radius:10px; }
   .wordmark img { width:21px; height:21px; object-fit:contain; }
-  .top-actions { display:flex; align-items:center; gap:8px; }
-  .auth-theme-toggle { visibility:hidden; display:inline-flex; align-items:center; gap:7px; min-height:32px; padding:0 10px; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; font:600 11px var(--font-ui); cursor:pointer; }
+  .auth-theme-toggle { visibility:hidden; display:inline-flex; align-items:center; gap:7px; min-height:32px; padding:0 4px; color:var(--text-sec); background:transparent; border:0; border-radius:8px; font:600 11px var(--font-ui); cursor:pointer; }
   html.theme-ready .auth-theme-toggle { visibility:visible; }
-  .auth-theme-toggle:hover { color:var(--text-pri); border-color:var(--accent); }
+  .auth-theme-toggle:hover { color:var(--text-pri); }
   .theme-switch-icon { display:block; width:15px; height:15px; color:var(--accent); }
-  .auth-back-link { position:relative; top:-15px; display:inline-flex; align-items:center; gap:8px; min-height:36px; margin:calc(14px - clamp(26px,4vw,38px)) 0 24px calc(14px - clamp(26px,4vw,38px)); padding:0 12px; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:9px; font-size:12px; font-weight:650; text-decoration:none; transition:color .16s ease,border-color .16s ease,background .16s ease; }
-  .auth-back-link:hover { color:var(--text-pri); background:var(--bg-card); border-color:var(--accent); }
-  .auth-back-link:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
-  .auth-back-icon { display:block; width:16px; height:16px; color:var(--accent); transition:transform .16s ease; }
-  .auth-back-link:hover .auth-back-icon { transform:translateX(-2px); }
-  .auth-back-icon svg { display:block; width:100%; height:100%; }
   .wordmark:focus-visible,.auth-theme-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-  .login-card { position:relative; z-index:1; width:min(100%,424px); padding:clamp(26px,4vw,38px); background:color-mix(in srgb,var(--bg-panel) 88%,transparent); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border:1px solid var(--border); border-radius:22px; box-shadow:var(--shadow-md),0 0 0 1px color-mix(in srgb,var(--accent) 6%,transparent); }
+  .login-card { position:relative; z-index:1; width:min(100%,424px); margin-block:auto; padding:clamp(26px,4vw,38px); background:color-mix(in srgb,var(--bg-panel) 88%,transparent); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border:1px solid var(--border); border-radius:22px; box-shadow:var(--shadow-md),0 0 0 1px color-mix(in srgb,var(--accent) 6%,transparent); }
   .card-mark { display:grid; place-items:center; width:54px; height:54px; margin:0 auto 18px; background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 35%,transparent); border-radius:16px; box-shadow:0 0 30px var(--accent-soft-strong); }
   .card-mark img { width:32px; height:32px; object-fit:contain; }
   .auth-heading { text-align:center; }
@@ -51,8 +44,9 @@
   .pw-checks li::before { content:""; display:grid; place-items:center; width:14px; height:14px; flex:none; box-sizing:border-box; border:1.5px solid var(--border); border-radius:50%; font-size:9px; font-weight:800; line-height:1; transition:background .15s ease,border-color .15s ease; }
   .pw-checks li.ok { color:var(--text-pri); }
   .pw-checks li.ok::before { content:"✓"; color:#fff; background:var(--success); border-color:var(--success); }
+  .login-form-tools { position:absolute; top:12px; right:14px; }
   .session-note { justify-content:center; margin:14px 0 0; text-align:center; }
-  @media (max-width:520px) { .shell { padding-top:76px; } .login-card { border-radius:18px; } .wordmark span.txt { display:none; } }
+  @media (max-width:520px) { .shell { padding:20px 16px; } .login-card { border-radius:18px; } .wordmark span.txt { display:none; } }
   @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
 
   .form-wrap { flex:1; display:flex; flex-direction:column; justify-content:center; width:min(100%,380px); margin:0 auto; padding:36px 0; }
@@ -129,6 +123,23 @@ body.login-success-transition .transition-caption { animation:copy-settle 400ms 
 @keyframes logo-light { 0%,100% { filter:drop-shadow(0 2px 8px rgba(11,89,85,.18)); } 45% { filter:drop-shadow(0 0 17px rgba(255,255,255,.95)); } }
 @keyframes rule-draw { to { width:128px; } }
 @keyframes copy-settle { to { opacity:1; transform:translateY(0); } }
+@media (max-height:720px) {
+  .shell { padding-top:16px; padding-bottom:16px; }
+  .login-card { padding:20px; }
+  .card-mark { width:44px; height:44px; margin-bottom:12px; border-radius:13px; }
+  .card-mark img { width:27px; height:27px; }
+  .auth-heading h2 { margin:10px 0 6px; }
+  .auth-heading .intro { margin-bottom:16px; }
+  .auth-switch { margin-bottom:16px; }
+  .login-field { margin-bottom:12px; }
+  .input-shell { height:44px; }
+  .session-note { margin-top:10px; }
+  .form-foot { display:none; }
+}
+@media (max-height:560px) {
+  .shell { justify-content:flex-start; }
+  .login-card { margin-block:0; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .transition-light,.transition-light::after,.transition-halo,.transition-mark,.transition-mark img,.transition-title,.transition-caption,.transition-rule { animation:none !important; }
@@ -144,13 +155,9 @@ body.login-success-transition .transition-caption { animation:copy-settle 400ms 
   <div class="ambient" aria-hidden="true"></div>
   <div class="topbar">
     <a class="wordmark" href="/" aria-label="Beabots home"><span class="mark"><img src="assets/bot.ico" alt=""></span><span class="txt">BEABOTS</span></a>
-    <div class="top-actions">
-      <button class="auth-theme-toggle" id="btnThemeToggle" type="button" aria-label="Switch theme" title="Switch theme"><span class="theme-switch-icon" aria-hidden="true"></span><span class="theme-switch-label">Light</span></button>
-    </div>
   </div>
 
   <main class="login-card" aria-labelledby="authTitle">
-    <a class="auth-back-link" href="/"><span class="auth-back-icon" data-lucide="arrow-left" data-icon-size="16" aria-hidden="true"></span>Back to home</a>
     <div class="card-mark" aria-hidden="true"><img src="assets/bot.ico" alt=""></div>
     <div class="auth-heading">
       <span class="form-eyebrow" id="formEyebrow">YOUR WORKSPACE</span>
@@ -162,6 +169,9 @@ body.login-success-transition .transition-caption { animation:copy-settle 400ms 
       <button class="auth-tab" id="createAccountTab" type="button" role="tab" aria-selected="false" aria-controls="loginForm">Create account</button>
     </div>
     <form id="loginForm" novalidate>
+        <div class="login-form-tools">
+          <button class="auth-theme-toggle" id="btnThemeToggle" type="button" aria-label="Switch theme" title="Switch theme"><span class="theme-switch-icon" aria-hidden="true"></span><span class="theme-switch-label">Light</span></button>
+        </div>
         <div class="login-field">
           <div class="field-label-row"><label for="username">Email address</label></div>
           <div class="input-shell"><span class="input-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2"></rect><path d="m3.5 5.5 6.5 5 6.5-5"></path></svg></span><input type="email" id="username" name="email" autocomplete="email" placeholder="you@example.com" required /></div>
