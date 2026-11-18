@@ -14,7 +14,9 @@ htmlcov/
 .pyre/
 .ruff_cache/
 *.egg-info/
-/tests/
+/tests/*
+!/tests/test_auth_idle_timeout.py
+!/tests/test_run_all_status.py
 
 ###############################################################################
 # Virtual Environment

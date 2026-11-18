@@ -158,3 +158,53 @@ class AutomationRun(db.Model):
     runner_name = db.Column(db.String(120), nullable=True)
     started_at = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
     finished_at = db.Column(db.DateTime(timezone=True), nullable=False)
+
+
+class RunAllTaskSnapshot(db.Model):
+    """Latest Run All progress/results, retained so a user can reconnect."""
+
+    __tablename__ = "run_all_task_snapshots"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    snapshot = db.Column(db.JSON, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class Cf2TaskSnapshot(db.Model):
+    """Latest CF2 batch state so its page can reconnect after sign-in."""
+
+    __tablename__ = "cf2_task_snapshots"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    snapshot = db.Column(db.JSON, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class SoaTaskSnapshot(db.Model):
+    """Latest SOA upload progress so its page can reconnect after sign-in."""
+
+    __tablename__ = "soa_task_snapshots"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    snapshot = db.Column(db.JSON, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class Cf4TransmittalTaskSnapshot(db.Model):
+    """Latest CF4 transmittal automation progress for reconnecting to its task."""
+
+    __tablename__ = "beacon_task_snapshots"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    snapshot = db.Column(db.JSON, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class DocumentTaskSnapshot(db.Model):
+    """Latest document upload progress for reconnecting to the task."""
+
+    __tablename__ = "document_task_snapshots"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    snapshot = db.Column(db.JSON, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)

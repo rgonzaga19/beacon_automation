@@ -376,7 +376,7 @@ const avatarFiles = {
     const response = await fetch("/api/auth/me", { cache: "no-store" });
     const data = await response.json();
     if (!response.ok || !data.authenticated) {
-      window.location.replace("/login");
+      redirectToLogin();
       return;
     }
 
@@ -391,6 +391,6 @@ const avatarFiles = {
     if (initialKey === "aboutContact") activateWorkspace("about", { aboutSection: "contact" });
     else activateWorkspace(initialKey);
   } catch {
-    window.location.replace("/login");
+    redirectToLogin();
   }
 })();

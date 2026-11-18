@@ -19,9 +19,12 @@ let active = false;
 let retryRunId = null;
 let canRunAll = null;
 let accessCheckFailed = false;
+let currentRunId = null;
+let latestStatusSequence = 0;
+let runStatusReady = Promise.resolve();
 const runAllAccessReady = fetchJSON("/api/auth/me").then((payload) => {
   if (!payload.authenticated) {
-    window.location.replace("/login");
+    redirectToLogin();
     canRunAll = false;
     return;
   }
@@ -299,6 +302,103 @@ function setActive(value) {
   renderResults();
 }
 
+function finishedRunMessage(state) {
+  const complete = [...results.values()].filter((item) => item.cf2 === "success"
+    && item.soa === "success"
+    && ["success", "skipped"].includes(item.esoa)
+    && item.cf4 === "success").length;
+  if (state.stopped) {
+    return `Stopped safely. ${complete} patient${complete === 1 ? "" : "s"} completed all stages.`;
+  }
+  if (state.failed) {
+    return `Run ended with issues. ${complete} patient${complete === 1 ? "" : "s"} completed all stages.`;
+  }
+  return `Run complete. ${complete} of ${results.size} patient${results.size === 1 ? "" : "s"} completed all stages.`;
+}
+
+function applyRunSnapshot(state) {
+  if (!state?.run_id) return;
+  const sequence = Number(state.sequence) || 0;
+  const sameRun = state.run_id === currentRunId;
+
+  if (currentRunId && !sameRun && sequence < latestStatusSequence) return;
+  if (sameRun && sequence < latestStatusSequence) {
+    (state.results || []).forEach((item) => {
+      if (!results.has(item.member_pin)) results.set(item.member_pin, item);
+    });
+    renderResults();
+    return;
+  }
+
+  if (!sameRun) lastProgress = null;
+  results.clear();
+  currentRunId = state.run_id;
+  latestStatusSequence = sequence;
+  (state.results || []).forEach((item) => results.set(item.member_pin, item));
+  retryRunId = state.retry_run_id || null;
+
+  const index = Number(state.index) || 0;
+  const total = Number(state.total) || results.size;
+  const currentItem = (state.results || [])[index - 1];
+  const stageLabel = state.stage === "esoa"
+    ? "SOA generation"
+    : String(state.stage || "").toUpperCase();
+  lastProgress = index && currentItem
+    ? {
+      index,
+      total,
+      name: currentItem.patient_name,
+      stage: stageLabel,
+    }
+    : null;
+
+  setActive(Boolean(state.running));
+  statusNode.textContent = state.running
+    ? (currentItem
+      ? `Patient ${index} of ${total}: ${currentItem.patient_name} — ${stageLabel}`
+      : (state.message || "Run in progress."))
+    : state.done
+      ? finishedRunMessage(state)
+      : (state.message || "Ready to run.");
+  if (!state.running && lastProgress) updateRunProgress();
+}
+
+function applyRunProgress(event) {
+  if (!event?.run_id || !event.result) return;
+  const sequence = Number(event.sequence) || 0;
+  if (currentRunId && event.run_id !== currentRunId && sequence <= latestStatusSequence) return;
+  if (event.run_id !== currentRunId) {
+    results.clear();
+    lastProgress = null;
+    retryRunId = null;
+    currentRunId = event.run_id;
+  }
+  if (sequence && sequence < latestStatusSequence) return;
+  latestStatusSequence = Math.max(latestStatusSequence, sequence);
+
+  const item = event.result;
+  results.set(item.member_pin, item);
+  lastProgress = {
+    index: event.index,
+    total: event.total,
+    name: item.patient_name,
+    stage: event.stage === "esoa" ? "SOA generation" : String(event.stage || "").toUpperCase(),
+  };
+  setActive(event.running !== false);
+  statusNode.textContent = `Patient ${event.index} of ${event.total}: ${item.patient_name} — ${event.stage === "esoa" ? "SOA generation" : event.stage.toUpperCase()}`;
+}
+
+async function restoreRunAllStatus() {
+  await runAllAccessReady;
+  if (!canRunAll) return;
+  try {
+    const result = await fetchJSON("/api/run-all/status");
+    if (result.run) applyRunSnapshot(result.run);
+  } catch (error) {
+    console.error("Could not restore the latest Run All status.", error);
+  }
+}
+
 clearFieldsBtn.addEventListener("click", () => {
   if (active) return;
   form.reset();
@@ -326,30 +426,18 @@ clearFieldsBtn.addEventListener("click", () => {
 
 const socket = io(API_BASE);
 socket.on("log", (entry) => appendLog(entry?.message, entry?.level));
-socket.on("run_all_progress", (event) => {
-  const item = event?.result;
-  if (!item) return;
-  results.set(item.member_pin, item);
-  lastProgress = { index: event.index, total: event.total, name: item.patient_name, stage: event.stage === "esoa" ? "SOA generation" : String(event.stage || "").toUpperCase() };
-  runProgress.hidden = false;
-  renderResults();
-  statusNode.textContent = `Patient ${event.index} of ${event.total}: ${item.patient_name} — ${event.stage === "esoa" ? "SOA generation" : event.stage.toUpperCase()}`;
-});
+socket.on("run_all_progress", applyRunProgress);
 socket.on("run_all_done", (event) => {
-  setActive(false);
-  retryRunId = event?.retry_run_id || null;
-  if (event?.results) {
-    event.results.forEach((item) => results.set(item.member_pin, item));
-    renderResults();
-  }
-  const complete = [...results.values()].filter((item) => item.cf2 === "success" && item.soa === "success" && ["success", "skipped"].includes(item.esoa) && item.cf4 === "success").length;
-  statusNode.textContent = event?.stopped
-    ? `Stopped safely. ${complete} patient${complete === 1 ? "" : "s"} completed all stages.`
-    : `Run complete. ${complete} of ${results.size} patient${results.size === 1 ? "" : "s"} completed all stages.`;
+  applyRunSnapshot(event);
 });
+socket.on("connect", () => {
+  runStatusReady = restoreRunAllStatus();
+});
+runStatusReady = restoreRunAllStatus();
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  await runStatusReady;
   if (active) return;
   if (canRunAll === null) await runAllAccessReady;
   if (!canRunAll) {
@@ -360,6 +448,8 @@ form.addEventListener("submit", async (event) => {
   errorNode.textContent = "";
   setCopyTransmittalsStatus("");
   results.clear();
+  currentRunId = null;
+  latestStatusSequence = 0;
   retryRunId = null;
   lastProgress = null;
   logLines = 0;
@@ -378,6 +468,7 @@ form.addEventListener("submit", async (event) => {
     const response = await fetch(`${API_BASE}/api/run-all/start`, { method: "POST", body: payload });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Could not start the combined automation.");
+    currentRunId = result.run_id || currentRunId;
     statusNode.textContent = `Started. ${result.patient_count} patient${result.patient_count === 1 ? "" : "s"} queued.`;
     appendLog(`Preflight passed for ${result.patient_count} patient(s).`);
   } catch (error) {
@@ -414,6 +505,7 @@ resultsBody.addEventListener("click", async (event) => {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Could not retry the incomplete stage.");
+    currentRunId = result.run_id || currentRunId;
     appendLog(`Retry started at ${result.stage.toUpperCase()} for this existing draft.`);
   } catch (error) {
     setActive(false);

@@ -1162,7 +1162,7 @@ async function loadSignedInProfile() {
   try {
     const result = await fetchJSON("/api/auth/me");
     if (!result.authenticated) {
-      window.location.replace("/login");
+      redirectToLogin();
       return;
     }
     const user = result.user || {};
@@ -1191,7 +1191,7 @@ async function loadSignedInProfile() {
     updateDashboardProfile(user);
     updateChatUnreadIndicator();
   } catch {
-    window.location.replace("/login");
+    redirectToLogin();
   }
 }
 

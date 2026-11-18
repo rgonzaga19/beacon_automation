@@ -939,5 +939,44 @@ socket.on("cf2_done", (data) => {
   }, 1200);
 });
 
+async function restoreCf2Status() {
+  try {
+    const response = await fetchJSON("/api/cf2/status");
+    const run = response.run;
+    if (!run?.records?.length) return;
+
+    if (run.mode && run.mode !== currentMode) setMode(run.mode);
+    renderBatchTable(run.records);
+    const progress = Object.values(run.progress || {});
+    progress.forEach(updateBatchRow);
+    const activeWorkflow = workflowUi[currentMode];
+    activeWorkflow.patientsLine.textContent = String(run.records.length);
+    activeWorkflow.section.classList.add("loaded");
+    setHasPatientRecords(true);
+    cf2RunActive = Boolean(run.running);
+    setControlsRunning(cf2RunActive);
+
+    if (run.running) {
+      setLogDrawer(true);
+      updateBatchHeader({
+        status: "running",
+        current: run.current,
+        total: run.total || run.records.length,
+        patient_name: progress.find((item) => item.status === "running")?.patient_name,
+        phase: progress.find((item) => item.status === "running")?.phase || "Processing",
+      });
+      detailLog("Reconnected to the running CF2 automation. Earlier detail logs are not retained.", "INFO");
+    } else if (run.done) {
+      detailLog(run.message || "CF2 automation finished.", run.failed ? "WARNING" : "INFO");
+      updateBatchHeader();
+    }
+  } catch (error) {
+    console.error("Could not restore CF2 status.", error);
+  }
+}
+
+socket.on("connect", restoreCf2Status);
+restoreCf2Status();
+
 // Initial state: Start stays disabled until a workbook is loaded.
 updateStartState();

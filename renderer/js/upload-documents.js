@@ -78,10 +78,41 @@ document.getElementById("clear").addEventListener("click", () => {
   transmittals.value = "";
   document.getElementById("count").textContent = "0 transmittals";
   logs.textContent = "Ready.";
+  fetchJSON("/api/documents/status", { method: "DELETE" }).catch(() => {});
 });
 
 const socket = io(API_BASE);
 socket.on("documents_log", (data) => log(data.message || "", data.level || "INFO"));
+function applyDocumentProgress(progress) {
+  if (!progress?.transmittal) return;
+  const label = progress.status === "running" ? "Processing" : String(progress.status || "").toUpperCase();
+  log(`${progress.transmittal}: ${label}${progress.current && progress.total ? ` (${progress.current}/${progress.total})` : ""}.`, progress.status === "failed" ? "ERROR" : "INFO");
+}
+
+async function restoreDocumentStatus() {
+  try {
+    const response = await fetchJSON("/api/documents/status");
+    const run = response.run;
+    if (!run?.transmittals?.length) return;
+    transmittals.value = run.transmittals.join("\n");
+    document.getElementById("count").textContent = `${run.transmittals.length} transmittal${run.transmittals.length === 1 ? "" : "s"}`;
+    logs.textContent = "";
+    Object.values(run.progress || {}).forEach(applyDocumentProgress);
+    running = Boolean(run.running);
+    setRunning(running);
+    if (running) {
+      log("Reconnected to the running document upload. Earlier detail logs and selected files are not restored.");
+    } else if (run.done) {
+      log(run.message || "Document upload finished.", run.failed ? "ERROR" : "INFO");
+    }
+  } catch (error) {
+    console.error("Could not restore document upload status.", error);
+  }
+}
+
+socket.on("documents_progress", (progress) => {
+  if (progress?.transmittal) applyDocumentProgress(progress);
+});
 socket.on("documents_done", (data) => {
   const total = data?.results?.length || 0;
   const success = (data?.results || []).filter((item) => item.status === "success").length;
@@ -89,3 +120,6 @@ socket.on("documents_done", (data) => {
   setRunning(false);
   startButton.disabled = false;
 });
+
+socket.on("connect", restoreDocumentStatus);
+restoreDocumentStatus();

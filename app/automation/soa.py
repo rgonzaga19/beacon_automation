@@ -856,7 +856,7 @@ class SOAAutomation:
 
         return result
 
-    def run(self, transmittals, should_stop=None):
+    def run(self, transmittals, should_stop=None, progress_callback=None):
         """
         Run all transmittals with the existing retry semantics.
 
@@ -878,6 +878,8 @@ class SOAAutomation:
                     break
 
                 transmittal_no = str(transmittal_no).strip()
+                if progress_callback:
+                    progress_callback(idx + 1, len(transmittals), transmittal_no, "running")
                 max_attempts = self.max_retries + 1
 
                 for attempt_number in range(1, max_attempts + 1):
@@ -909,6 +911,8 @@ class SOAAutomation:
 
                     if result["status"] == "success":
                         self.results.append(result)
+                        if progress_callback:
+                            progress_callback(idx + 1, len(transmittals), transmittal_no, "success")
                         logger.success(
                             f"TRANSMITTAL SUCCESS: '{transmittal_no}' "
                             f"completed successfully on attempt "
@@ -918,6 +922,8 @@ class SOAAutomation:
 
                     if result["status"] == "skipped":
                         self.results.append(result)
+                        if progress_callback:
+                            progress_callback(idx + 1, len(transmittals), transmittal_no, "skipped")
                         logger.warning(
                             f"Transmittal '{transmittal_no}' was skipped."
                         )
@@ -925,6 +931,8 @@ class SOAAutomation:
 
                     if attempt_number >= max_attempts:
                         self.results.append(result)
+                        if progress_callback:
+                            progress_callback(idx + 1, len(transmittals), transmittal_no, "failed")
                         logger.error(
                             f"Transmittal '{transmittal_no}' FAILED "
                             f"after {max_attempts} attempt(s). "

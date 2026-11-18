@@ -498,7 +498,52 @@ socket.on("soa_done", (data) => {
   setControlsRunning(false);
 });
 
+function applySoaProgress(progress) {
+  const suggestedIndex = Number(progress?.current) - 1;
+  const index = soaRows[suggestedIndex]
+    && String(soaRows[suggestedIndex].transmittal) === String(progress?.transmittal)
+    ? suggestedIndex
+    : soaRows.findIndex((row) => String(row.transmittal) === String(progress?.transmittal));
+  if (index < 0) return;
+  currentProcessingIndex = Math.max(0, Number(progress.current) - 1);
+  updateSoaRow(index, progress.status || "waiting");
+}
+
+async function restoreSoaStatus() {
+  try {
+    const response = await fetchJSON("/api/soa/status");
+    const run = response.run;
+    if (!run?.transmittals?.length) return;
+
+    transmittalsInput.value = run.transmittals.join("\n");
+    updateCount();
+    setSoaRows(run.transmittals);
+    soaSummary.running = Boolean(run.running);
+    soaSummary.total = run.total || run.transmittals.length;
+    Object.values(run.progress || {}).forEach(applySoaProgress);
+    soaSummary.success = soaRows.filter((row) => row.status === "success").length;
+    soaSummary.warning = soaRows.filter((row) => row.status === "skipped").length;
+    soaSummary.error = soaRows.filter((row) => row.status === "failed").length;
+    soaRunActive = Boolean(run.running);
+    setControlsRunning(soaRunActive);
+    renderSummary();
+
+    if (run.running) {
+      setLogDrawer(true);
+      writeLog("Reconnected to the running SOA upload. Earlier detail logs are not retained.", "INFO");
+    } else if (run.done) {
+      writeLog(run.message || "SOA upload finished.", run.failed ? "WARNING" : "INFO");
+    }
+  } catch (error) {
+    console.error("Could not restore SOA status.", error);
+  }
+}
+
+socket.on("soa_progress", applySoaProgress);
+socket.on("connect", restoreSoaStatus);
+
 // Initial state
 renderSummary();
 updateCount();
 renderSoaFiles();
+restoreSoaStatus();

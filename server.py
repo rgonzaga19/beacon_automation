@@ -40,9 +40,14 @@ from app.core.database import db
 import app.models  # noqa: F401 - imported so SQLAlchemy registers the tables
 from app.models import (
     AutomationRun,
+    Cf4TransmittalTaskSnapshot,
     BeaconClaimAnalyticsCache,
     BeaconClaimAnalyticsSync,
     ClaimBillingSchedule,
+    Cf2TaskSnapshot,
+    DocumentTaskSnapshot,
+    RunAllTaskSnapshot,
+    SoaTaskSnapshot,
     TeamChatMessage,
     UpgradeRequest,
     User,
@@ -121,11 +126,18 @@ _state = {
 _emit_room = ContextVar("beabots_emit_room", default=None)
 _cf2_states = {}
 _cf2_runs = {}
+_cf2_snapshot_lock = threading.RLock()
 _soa_runs = {}
+_soa_snapshot_lock = threading.RLock()
 _document_runs = {}
-_beacon_runs = {}
+_document_snapshot_lock = threading.RLock()
+_cf4_transmittal_runs = {}
+_cf4_transmittal_snapshot_lock = threading.RLock()
 _run_all_runs = {}
 _run_all_retry_states = {}
+_run_all_status = {}
+_run_all_status_lock = threading.RLock()
+_server_instance_id = uuid.uuid4().hex
 _dashboard_socket_lock = threading.RLock()
 _dashboard_sockets = {}
 _server_started_at = utc_now()
@@ -521,6 +533,14 @@ def init_database():
 def current_user():
     user_id = session.get("user_id")
     if not user_id:
+        return None
+    try:
+        last_activity_at = float(session.get("last_activity_at"))
+    except (TypeError, ValueError):
+        session.clear()
+        return None
+    if time.time() - last_activity_at >= app.permanent_session_lifetime.total_seconds():
+        session.clear()
         return None
     return db.session.get(User, user_id)
 
@@ -1245,7 +1265,24 @@ def auth_me():
     user = current_user()
     if not user or not user.is_active:
         return jsonify({"authenticated": False})
-    return jsonify({"authenticated": True, "user": user_payload(user)})
+    expires_in = app.permanent_session_lifetime.total_seconds() - (
+        time.time() - float(session["last_activity_at"])
+    )
+    return jsonify({
+        "authenticated": True,
+        "user": user_payload(user),
+        "expires_in_seconds": max(0, int(expires_in)),
+    })
+
+
+@app.route("/api/auth/activity", methods=["POST"])
+@login_required
+def auth_activity():
+    session["last_activity_at"] = time.time()
+    return jsonify({
+        "authenticated": True,
+        "expires_in_seconds": int(app.permanent_session_lifetime.total_seconds()),
+    })
 
 
 @app.route("/api/chat/latest", methods=["GET"])
@@ -1528,6 +1565,7 @@ def auth_register():
 
     session.clear()
     session["user_id"] = user.id
+    session["last_activity_at"] = time.time()
     session.permanent = True
     return jsonify({"user": user_payload(user)}), 201
 
@@ -1544,6 +1582,7 @@ def auth_login():
 
     session.clear()
     session["user_id"] = user.id
+    session["last_activity_at"] = time.time()
     session.permanent = True
     return jsonify({"user": user_payload(user)})
 
@@ -2870,6 +2909,64 @@ def _record_to_dict(record, cf2, mode="new_draft"):
     }
 
 
+def _write_cf2_snapshot(user_id, snapshot):
+    with _cf2_snapshot_lock:
+        with app.app_context():
+            try:
+                row = db.session.get(Cf2TaskSnapshot, user_id)
+                if row is None:
+                    row = Cf2TaskSnapshot(user_id=user_id, snapshot=dict(snapshot))
+                    db.session.add(row)
+                else:
+                    row.snapshot = dict(snapshot)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                logger.exception("Could not persist CF2 status for user %s", user_id)
+
+
+def _cf2_resume_record(record, mode):
+    return {
+        "identifier_label": "Transmittal No." if mode == "existing_draft" else "Member PIN",
+        "identifier": record.transmittal if mode == "existing_draft" else record.member_pin,
+        "excel_row": record.source_row,
+        "patient_name": record.patient_name,
+    }
+
+
+def _update_cf2_snapshot(user_id, **updates):
+    with _cf2_snapshot_lock:
+        with app.app_context():
+            try:
+                row = db.session.get(Cf2TaskSnapshot, user_id)
+                if row is None:
+                    return None
+                snapshot = dict(row.snapshot or {})
+                progress_item = updates.pop("progress_item", None)
+                if progress_item:
+                    progress = dict(snapshot.get("progress") or {})
+                    item_result = progress_item.get("result") or {}
+                    progress[str(progress_item.get("excel_row"))] = {
+                        key: progress_item.get(key)
+                        for key in (
+                            "mode", "current", "total", "excel_row", "identifier_label",
+                            "identifier", "patient_name", "status", "phase", "message",
+                        )
+                    }
+                    if item_result.get("transmittal"):
+                        progress[str(progress_item.get("excel_row"))]["transmittal"] = item_result["transmittal"]
+                    snapshot["progress"] = progress
+                snapshot.update(updates)
+                snapshot["updated_at"] = utc_now().isoformat()
+                row.snapshot = snapshot
+                db.session.commit()
+                return dict(snapshot)
+            except Exception:
+                db.session.rollback()
+                logger.exception("Could not update CF2 status for user %s", user_id)
+                return None
+
+
 @app.route("/api/cf2/upload", methods=["POST"])
 @login_required
 def cf2_upload():
@@ -2910,11 +3007,47 @@ def cf2_upload():
 
     payload_records = [_record_to_dict(r, build_cf2_data(r), mode) for r in records]
 
+    _write_cf2_snapshot(user.id, {
+        "run_id": uuid.uuid4().hex,
+        "server_instance": _server_instance_id,
+        "mode": mode,
+        "records": [_cf2_resume_record(record, mode) for record in records],
+        "progress": {},
+        "running": False,
+        "done": False,
+        "message": "Workbook ready.",
+        "updated_at": utc_now().isoformat(),
+    })
+
     return jsonify({
         "sheets": sheet_names,
         "patient_count": len(records),
         "records": payload_records,
     })
+
+
+@app.route("/api/cf2/status", methods=["GET"])
+@login_required
+def cf2_status():
+    user = current_user()
+    row = db.session.get(Cf2TaskSnapshot, user.id)
+    snapshot = dict(row.snapshot) if row and row.snapshot else None
+    if snapshot and snapshot.get("running") and snapshot.get("server_instance") != _server_instance_id:
+        progress = dict(snapshot.get("progress") or {})
+        for item in progress.values():
+            if item.get("status") == "running":
+                item.update({"status": "failed", "phase": "Interrupted by server restart"})
+        snapshot.update({
+            "running": False,
+            "done": True,
+            "failed": True,
+            "message": "The server restarted while this automation was active. Saved results are shown.",
+            "progress": progress,
+            "server_instance": _server_instance_id,
+            "updated_at": utc_now().isoformat(),
+        })
+        _write_cf2_snapshot(user.id, snapshot)
+    return jsonify({"run": snapshot})
 
 
 @app.route("/api/cf2/download-template", methods=["GET"])
@@ -2955,7 +3088,7 @@ def _run_cf2_automation(user_id, beacon_settings, state, stop_event):
         def emit_progress(record, current, status, phase="", message="", result=None):
             identifier_label = "Transmittal No." if mode == "existing_draft" else "Member PIN"
             identifier = record.transmittal if mode == "existing_draft" else record.member_pin
-            emit_to_current_room("cf2_progress", {
+            progress = {
                 "mode": mode,
                 "current": current,
                 "total": total,
@@ -2967,7 +3100,9 @@ def _run_cf2_automation(user_id, beacon_settings, state, stop_event):
                 "phase": phase,
                 "message": message,
                 "result": result,
-            })
+            }
+            _update_cf2_snapshot(user_id, progress_item=progress, current=current, total=total, message=message)
+            emit_to_current_room("cf2_progress", progress)
 
         auth_key = browser_session.auth_context_key(
             beacon_settings,
@@ -3045,6 +3180,25 @@ def _run_cf2_automation(user_id, beacon_settings, state, stop_event):
                 })
 
         results = automation.get_summary() if automation is not None else []
+        if failed or stopped:
+            with app.app_context():
+                row = db.session.get(Cf2TaskSnapshot, user_id)
+                progress = dict((row.snapshot or {}).get("progress") or {}) if row else {}
+            for item in progress.values():
+                if item.get("status") == "running":
+                    item.update({
+                        "status": "failed" if failed else "skipped",
+                        "phase": "Automation ended before this row completed",
+                    })
+            _update_cf2_snapshot(user_id, progress=progress)
+        _update_cf2_snapshot(
+            user_id,
+            running=False,
+            done=True,
+            stopped=stopped,
+            failed=failed,
+            message="Automation stopped." if stopped else "Automation finished with errors." if failed else "Automation complete.",
+        )
         _record_automation_run(user_id, "CF2", run_started_at, _automation_outcome(results, stopped, failed), len(results))
         _cf2_runs.pop(user_id, None)
         emit_to_current_room("cf2_done", {"results": results, "stopped": stopped})
@@ -3068,6 +3222,28 @@ def cf2_start():
     state["account_receivable_name"] = str(settings.get("account_receivable_name") or "").strip()
     state["account_receivable_designation"] = str(settings.get("account_receivable_designation") or "").strip()
     state["account_receivable_number"] = str(settings.get("account_receivable_number") or "").strip()
+
+    existing_row = db.session.get(Cf2TaskSnapshot, user.id)
+    snapshot = dict(existing_row.snapshot) if existing_row and existing_row.snapshot else {}
+    snapshot.update({
+        "run_id": uuid.uuid4().hex,
+        "server_instance": _server_instance_id,
+        "mode": state["cf2_mode"],
+        "records": snapshot.get("records") or [
+            _cf2_resume_record(record, state["cf2_mode"])
+            for record in state["patient_records"]
+        ],
+        "progress": {},
+        "running": True,
+        "done": False,
+        "failed": False,
+        "stopped": False,
+        "current": 0,
+        "total": len(state["patient_records"]),
+        "message": "Starting automation.",
+        "updated_at": utc_now().isoformat(),
+    })
+    _write_cf2_snapshot(user.id, snapshot)
 
     stop_event = threading.Event()
     _cf2_runs[user.id] = {"stop_event": stop_event}
@@ -3098,7 +3274,47 @@ def cf2_stop():
 # SOA upload automation worker. The browser handles its own controls while
 # this runs.
 # ---------------------------------------------------------------------------
-def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop_event):
+def _write_soa_snapshot(user_id, snapshot):
+    with _soa_snapshot_lock:
+        with app.app_context():
+            try:
+                row = db.session.get(SoaTaskSnapshot, user_id)
+                if row is None:
+                    row = SoaTaskSnapshot(user_id=user_id, snapshot=dict(snapshot))
+                    db.session.add(row)
+                else:
+                    row.snapshot = dict(snapshot)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                logger.exception("Could not persist SOA status for user %s", user_id)
+
+
+def _update_soa_snapshot(user_id, **updates):
+    with _soa_snapshot_lock:
+        with app.app_context():
+            try:
+                row = db.session.get(SoaTaskSnapshot, user_id)
+                if row is None:
+                    return None
+                snapshot = dict(row.snapshot or {})
+                progress_item = updates.pop("progress_item", None)
+                if progress_item:
+                    progress = dict(snapshot.get("progress") or {})
+                    progress[str(progress_item.get("current"))] = dict(progress_item)
+                    snapshot["progress"] = progress
+                snapshot.update(updates)
+                snapshot["updated_at"] = utc_now().isoformat()
+                row.snapshot = snapshot
+                db.session.commit()
+                return dict(snapshot)
+            except Exception:
+                db.session.rollback()
+                logger.exception("Could not update SOA status for user %s", user_id)
+                return None
+
+
+def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop_event, run_id):
     run_started_at = utc_now()
     soa_automation = None
     stopped = False
@@ -3113,13 +3329,35 @@ def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             soa_automation = SOAAutomation(soa_folder=soa_folder)
-            soa_automation.run(transmittals, should_stop=stop_event.is_set)
+            def publish_progress(current, total, transmittal, status):
+                progress = {
+                    "current": current,
+                    "total": total,
+                    "transmittal": transmittal,
+                    "status": status,
+                }
+                _update_soa_snapshot(user_id, progress_item=progress, current=current, total=total)
+                emit_to_current_room("soa_progress", {"run_id": run_id, "running": True, **progress})
+
+            soa_automation.run(
+                transmittals,
+                should_stop=stop_event.is_set,
+                progress_callback=publish_progress,
+            )
             stopped = stop_event.is_set()
     except Exception as ex:
         failed = True
         emit_to_current_room("log", {"message": f"FATAL ERROR: {ex}", "level": "ERROR"})
     finally:
         results = soa_automation.get_results() if soa_automation is not None else []
+        _update_soa_snapshot(
+            user_id,
+            running=False,
+            done=True,
+            stopped=stopped,
+            failed=failed,
+            message="SOA upload stopped." if stopped else "SOA upload finished with errors." if failed else "SOA upload complete.",
+        )
         _record_automation_run(user_id, "SOA Upload", run_started_at, _automation_outcome(results, stopped, failed), len(results))
         shutil.rmtree(soa_folder, ignore_errors=True)
         _soa_runs.pop(user_id, None)
@@ -3127,7 +3365,47 @@ def _run_soa_automation(user_id, beacon_settings, soa_folder, transmittals, stop
         _emit_room.reset(room_token)
 
 
-def _run_document_automation(user_id, beacon_settings, files_root, relative_paths, transmittals, stop_event):
+def _write_document_snapshot(user_id, snapshot):
+    with _document_snapshot_lock:
+        with app.app_context():
+            try:
+                row = db.session.get(DocumentTaskSnapshot, user_id)
+                if row is None:
+                    row = DocumentTaskSnapshot(user_id=user_id, snapshot=dict(snapshot))
+                    db.session.add(row)
+                else:
+                    row.snapshot = dict(snapshot)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                logger.exception("Could not persist document upload status for user %s", user_id)
+
+
+def _update_document_snapshot(user_id, **updates):
+    with _document_snapshot_lock:
+        with app.app_context():
+            try:
+                row = db.session.get(DocumentTaskSnapshot, user_id)
+                if row is None:
+                    return None
+                snapshot = dict(row.snapshot or {})
+                progress_item = updates.pop("progress_item", None)
+                if progress_item:
+                    progress = dict(snapshot.get("progress") or {})
+                    progress[str(progress_item.get("current"))] = dict(progress_item)
+                    snapshot["progress"] = progress
+                snapshot.update(updates)
+                snapshot["updated_at"] = utc_now().isoformat()
+                row.snapshot = snapshot
+                db.session.commit()
+                return dict(snapshot)
+            except Exception:
+                db.session.rollback()
+                logger.exception("Could not update document upload status for user %s", user_id)
+                return None
+
+
+def _run_document_automation(user_id, beacon_settings, files_root, relative_paths, transmittals, stop_event, run_id):
     run_started_at = utc_now()
     room_token = _emit_room.set(user_room(user_id))
     socketio.emit("documents_progress", {"status": "running"}, room=user_room(user_id))
@@ -3138,9 +3416,12 @@ def _run_document_automation(user_id, beacon_settings, files_root, relative_path
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             facility_ids = soa_api.get_client_ids()
-            for number in transmittals:
+            for current, number in enumerate(transmittals, start=1):
                 if stop_event.is_set():
                     break
+                progress = {"current": current, "total": len(transmittals), "transmittal": number, "status": "running"}
+                _update_document_snapshot(user_id, progress_item=progress, current=current, total=len(transmittals))
+                socketio.emit("documents_progress", {"run_id": run_id, "running": True, **progress}, room=user_room(user_id))
                 try:
                     transmittal = None
                     for facility_id in facility_ids:
@@ -3303,10 +3584,30 @@ def _run_document_automation(user_id, beacon_settings, files_root, relative_path
                     result = {"transmittal": number, "status": "failed", "message": str(exc)}
                     socketio.emit("documents_log", {"message": f"{number}: {exc}", "level": "ERROR"}, room=user_room(user_id))
                 results.append(result)
+                progress["status"] = result["status"]
+                _update_document_snapshot(user_id, progress_item=progress)
+                socketio.emit("documents_progress", {"run_id": run_id, "running": True, **progress}, room=user_room(user_id))
     except Exception as exc:
         failed = True
         socketio.emit("documents_log", {"message": f"FATAL ERROR: {exc}", "level": "ERROR"}, room=user_room(user_id))
     finally:
+        if failed or stop_event.is_set():
+            with app.app_context():
+                row = db.session.get(DocumentTaskSnapshot, user_id)
+                progress_rows = dict((row.snapshot or {}).get("progress") or {}) if row else {}
+            for item in progress_rows.values():
+                if item.get("status") == "running":
+                    item["status"] = "failed" if failed else "skipped"
+            _update_document_snapshot(user_id, progress=progress_rows)
+        _update_document_snapshot(
+            user_id,
+            running=False,
+            done=True,
+            stopped=stop_event.is_set(),
+            failed=failed,
+            results=[{"transmittal": item.get("transmittal"), "status": item.get("status")} for item in results],
+            message="Document upload stopped." if stop_event.is_set() else "Document upload finished with errors." if failed else "Document upload complete.",
+        )
         _record_automation_run(user_id, "Document Upload", run_started_at, _automation_outcome(results, stop_event.is_set(), failed), len(results))
         shutil.rmtree(files_root, ignore_errors=True)
         _document_runs.pop(user_id, None)
@@ -3360,10 +3661,55 @@ def documents_start():
     if not kept_paths:
         shutil.rmtree(root, ignore_errors=True)
         return jsonify({"error": "No supported documents found. Use PDF or image files."}), 400
+    run_id = uuid.uuid4().hex
+    _write_document_snapshot(user.id, {
+        "run_id": run_id,
+        "server_instance": _server_instance_id,
+        "transmittals": transmittals,
+        "progress": {},
+        "current": 0,
+        "total": len(transmittals),
+        "running": True,
+        "done": False,
+        "failed": False,
+        "stopped": False,
+        "message": "Starting document upload.",
+        "updated_at": utc_now().isoformat(),
+    })
     stop_event = threading.Event()
     _document_runs[user.id] = {"stop_event": stop_event}
-    threading.Thread(target=_run_document_automation, args=(user.id, beacon_settings, str(root), kept_paths, transmittals, stop_event), daemon=True).start()
+    threading.Thread(target=_run_document_automation, args=(user.id, beacon_settings, str(root), kept_paths, transmittals, stop_event, run_id), daemon=True).start()
     return jsonify({"started": True})
+
+
+@app.route("/api/documents/status", methods=["GET", "DELETE"])
+@login_required
+def documents_status():
+    user = current_user()
+    if request.method == "DELETE":
+        row = db.session.get(DocumentTaskSnapshot, user.id)
+        if row:
+            db.session.delete(row)
+            db.session.commit()
+        return jsonify({"cleared": True})
+    row = db.session.get(DocumentTaskSnapshot, user.id)
+    snapshot = dict(row.snapshot) if row and row.snapshot else None
+    if snapshot and snapshot.get("running") and snapshot.get("server_instance") != _server_instance_id:
+        progress = dict(snapshot.get("progress") or {})
+        for item in progress.values():
+            if item.get("status") == "running":
+                item["status"] = "failed"
+        snapshot.update({
+            "running": False,
+            "done": True,
+            "failed": True,
+            "message": "The server restarted while this upload was active. Saved results are shown.",
+            "progress": progress,
+            "server_instance": _server_instance_id,
+            "updated_at": utc_now().isoformat(),
+        })
+        _write_document_snapshot(user.id, snapshot)
+    return jsonify({"run": snapshot})
 
 
 @app.route("/api/documents/stop", methods=["POST"])
@@ -3403,14 +3749,53 @@ def soa_start():
         shutil.rmtree(soa_folder_path, ignore_errors=True)
         return jsonify({"error": "Automation already running."}), 409
 
+    run_id = uuid.uuid4().hex
+    _write_soa_snapshot(user.id, {
+        "run_id": run_id,
+        "server_instance": _server_instance_id,
+        "transmittals": transmittals,
+        "progress": {},
+        "current": 0,
+        "total": len(transmittals),
+        "running": True,
+        "done": False,
+        "failed": False,
+        "stopped": False,
+        "message": "Starting SOA upload.",
+        "updated_at": utc_now().isoformat(),
+    })
     stop_event = threading.Event()
     _soa_runs[user.id] = {"stop_event": stop_event}
     threading.Thread(
         target=_run_soa_automation,
-        args=(user.id, beacon_settings, soa_folder, transmittals, stop_event),
+        args=(user.id, beacon_settings, soa_folder, transmittals, stop_event, run_id),
         daemon=True,
     ).start()
     return jsonify({"started": True})
+
+
+@app.route("/api/soa/status", methods=["GET"])
+@login_required
+def soa_status():
+    user = current_user()
+    row = db.session.get(SoaTaskSnapshot, user.id)
+    snapshot = dict(row.snapshot) if row and row.snapshot else None
+    if snapshot and snapshot.get("running") and snapshot.get("server_instance") != _server_instance_id:
+        progress = dict(snapshot.get("progress") or {})
+        for item in progress.values():
+            if item.get("status") == "running":
+                item.update({"status": "failed"})
+        snapshot.update({
+            "running": False,
+            "done": True,
+            "failed": True,
+            "message": "The server restarted while this upload was active. Saved results are shown.",
+            "progress": progress,
+            "server_instance": _server_instance_id,
+            "updated_at": utc_now().isoformat(),
+        })
+        _write_soa_snapshot(user.id, snapshot)
+    return jsonify({"run": snapshot})
 
 
 @app.route("/api/soa/stop", methods=["POST"])
@@ -3429,12 +3814,50 @@ def soa_stop():
 
 
 # ---------------------------------------------------------------------------
-# Main dashboard automation (beacon.run() + reports.report) — the flow
-# ui.py's start_automation()/run_automation() drove. Distinct from the CF2
-# and SOA automations above: this is the original "Move to CF2" precursor
-# run against a plain list of transmittals.
+# CF4 Transmittal Automation, an API-only run over a supplied list of
+# transmittals. The route keeps its legacy /api/beacon URL for compatibility.
 # ---------------------------------------------------------------------------
-def _run_beacon_automation(user_id, beacon_settings, transmittals, auto_encode_cf4, cf4_settings, stop_event):
+def _write_cf4_transmittal_snapshot(user_id, snapshot):
+    with _cf4_transmittal_snapshot_lock:
+        with app.app_context():
+            try:
+                row = db.session.get(Cf4TransmittalTaskSnapshot, user_id)
+                if row is None:
+                    row = Cf4TransmittalTaskSnapshot(user_id=user_id, snapshot=dict(snapshot))
+                    db.session.add(row)
+                else:
+                    row.snapshot = dict(snapshot)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                logger.exception("Could not persist CF4 transmittal status for user %s", user_id)
+
+
+def _update_cf4_transmittal_snapshot(user_id, **updates):
+    with _cf4_transmittal_snapshot_lock:
+        with app.app_context():
+            try:
+                row = db.session.get(Cf4TransmittalTaskSnapshot, user_id)
+                if row is None:
+                    return None
+                snapshot = dict(row.snapshot or {})
+                progress_item = updates.pop("progress_item", None)
+                if progress_item:
+                    progress = dict(snapshot.get("progress") or {})
+                    progress[str(progress_item.get("current"))] = dict(progress_item)
+                    snapshot["progress"] = progress
+                snapshot.update(updates)
+                snapshot["updated_at"] = utc_now().isoformat()
+                row.snapshot = snapshot
+                db.session.commit()
+                return dict(snapshot)
+            except Exception:
+                db.session.rollback()
+                logger.exception("Could not update CF4 transmittal status for user %s", user_id)
+                return None
+
+
+def _run_cf4_transmittal_automation(user_id, beacon_settings, transmittals, auto_encode_cf4, cf4_settings, stop_event, run_id):
     run_started_at = utc_now()
     stopped = False
     failed = False
@@ -3448,27 +3871,59 @@ def _run_beacon_automation(user_id, beacon_settings, transmittals, auto_encode_c
         )
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
+            def publish_progress(current, total, transmittal, status):
+                progress = {
+                    "current": current,
+                    "total": total,
+                    "transmittal": transmittal,
+                    "status": str(status).lower(),
+                }
+                _update_cf4_transmittal_snapshot(user_id, progress_item=progress, current=current, total=total)
+                emit_to_current_room("beacon_progress", {"run_id": run_id, "running": True, **progress})
+
             results = beacon_run(
                 transmittals,
                 auto_encode_cf4=auto_encode_cf4,
                 cf4_data=cf4_settings,
                 should_stop=stop_event.is_set,
+                progress_callback=publish_progress,
             )
             stopped = stop_event.is_set()
     except Exception as ex:
         failed = True
         emit_to_current_room("log", {"message": f"ERROR: {ex}", "level": "ERROR"})
     finally:
-        _record_automation_run(user_id, "CF4", run_started_at, _automation_outcome(results, stopped, failed), len(results))
-        _beacon_runs.pop(user_id, None)
+        if stopped or failed:
+            with app.app_context():
+                row = db.session.get(Cf4TransmittalTaskSnapshot, user_id)
+                progress = dict((row.snapshot or {}).get("progress") or {}) if row else {}
+            for item in progress.values():
+                if item.get("status") == "running":
+                    item["status"] = "failed" if failed else "skipped"
+            _update_cf4_transmittal_snapshot(user_id, progress=progress)
+        _update_cf4_transmittal_snapshot(
+            user_id,
+            running=False,
+            done=True,
+            stopped=stopped,
+            failed=failed,
+            results=[
+                {"transmittal": item.get("transmittal"), "status": str(item.get("status", "FAILED")).lower()}
+                for item in results
+            ],
+            message="CF4 transmittal automation stopped." if stopped else "CF4 transmittal automation finished with errors." if failed else "CF4 transmittal automation complete.",
+        )
+        _record_automation_run(user_id, "CF4 Transmittal Automation", run_started_at, _automation_outcome(results, stopped, failed), len(results))
+        _cf4_transmittal_runs.pop(user_id, None)
         emit_to_current_room("beacon_done", {"results": results, "stopped": stopped})
         _emit_room.reset(room_token)
 
 
+@app.route("/api/cf4-transmittal/start", methods=["POST"])
 @app.route("/api/beacon/start", methods=["POST"])
 @login_required
 @serialize_job_start
-def beacon_start():
+def cf4_transmittal_start():
     user, beacon_settings, error_response = require_beacon_connection()
     if error_response:
         return error_response
@@ -3478,31 +3933,75 @@ def beacon_start():
 
     if not transmittals:
         return jsonify({"error": "Please paste at least one transmittal number."}), 400
-    if user.id in _beacon_runs:
+    if user.id in _cf4_transmittal_runs:
         return jsonify({"error": "Automation already running."}), 409
 
     # Read whatever was last saved on the CF4 screen (falls back to
     # DEFAULT_CF4_SETTINGS for anything never saved) — this is what makes
-    # the checkbox on the dashboard use the *current* CF4 defaults rather
+    # the Auto Encode CF4 option use the *current* CF4 defaults rather
     # than whatever was hardcoded in beacon.py at build time.
     user_settings = get_or_create_user_settings(user)
     cf4_settings = {**DEFAULT_CF4_SETTINGS, **(user_settings.cf4_settings or {})}
 
+    run_id = uuid.uuid4().hex
+    _write_cf4_transmittal_snapshot(user.id, {
+        "run_id": run_id,
+        "server_instance": _server_instance_id,
+        "transmittals": [str(value).strip() for value in transmittals],
+        "auto_encode_cf4": auto_encode_cf4,
+        "progress": {},
+        "results": [],
+        "current": 0,
+        "total": len(transmittals),
+        "running": True,
+        "done": False,
+        "failed": False,
+        "stopped": False,
+        "message": "Starting CF4 automation.",
+        "updated_at": utc_now().isoformat(),
+    })
+
     stop_event = threading.Event()
-    _beacon_runs[user.id] = {"stop_event": stop_event}
+    _cf4_transmittal_runs[user.id] = {"stop_event": stop_event}
     threading.Thread(
-        target=_run_beacon_automation,
-        args=(user.id, beacon_settings, transmittals, auto_encode_cf4, cf4_settings, stop_event),
+        target=_run_cf4_transmittal_automation,
+        args=(user.id, beacon_settings, transmittals, auto_encode_cf4, cf4_settings, stop_event, run_id),
         daemon=True,
     ).start()
     return jsonify({"started": True})
 
 
+@app.route("/api/cf4-transmittal/status", methods=["GET"])
+@app.route("/api/beacon/status", methods=["GET"])
+@login_required
+def cf4_transmittal_status():
+    user = current_user()
+    row = db.session.get(Cf4TransmittalTaskSnapshot, user.id)
+    snapshot = dict(row.snapshot) if row and row.snapshot else None
+    if snapshot and snapshot.get("running") and snapshot.get("server_instance") != _server_instance_id:
+        progress = dict(snapshot.get("progress") or {})
+        for item in progress.values():
+            if item.get("status") == "running":
+                item["status"] = "failed"
+        snapshot.update({
+            "running": False,
+            "done": True,
+            "failed": True,
+            "message": "The server restarted while this automation was active. Saved results are shown.",
+            "progress": progress,
+            "server_instance": _server_instance_id,
+            "updated_at": utc_now().isoformat(),
+        })
+        _write_cf4_transmittal_snapshot(user.id, snapshot)
+    return jsonify({"run": snapshot})
+
+
+@app.route("/api/cf4-transmittal/stop", methods=["POST"])
 @app.route("/api/beacon/stop", methods=["POST"])
 @login_required
-def beacon_stop():
+def cf4_transmittal_stop():
     user = current_user()
-    run = _beacon_runs.get(user.id)
+    run = _cf4_transmittal_runs.get(user.id)
     if not run:
         return jsonify({"stopped": False, "running": False})
     run["stop_event"].set()
@@ -3522,6 +4021,81 @@ def _expire_run_all_retry_state(user_id, run_id):
     if state and state.get("run_id") == run_id:
         _run_all_retry_states.pop(user_id, None)
         shutil.rmtree(state["soa_folder"], ignore_errors=True)
+
+
+def _copy_run_all_status(state):
+    snapshot = dict(state)
+    snapshot["results"] = [dict(result) for result in state.get("results", [])]
+    return snapshot
+
+
+def _persist_run_all_status(user_id, state):
+    """Keep one latest snapshot per user so Run All can restore after reconnects."""
+    with app.app_context():
+        try:
+            row = db.session.get(RunAllTaskSnapshot, user_id)
+            if row is None:
+                row = RunAllTaskSnapshot(user_id=user_id, snapshot=_copy_run_all_status(state))
+                db.session.add(row)
+            else:
+                row.snapshot = _copy_run_all_status(state)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.exception("Could not persist Run All status for user %s", user_id)
+
+
+def _start_run_all_status(user_id, run_id, total, results=None, stage="starting", message=""):
+    with _run_all_status_lock:
+        previous = _run_all_status.get(user_id)
+        sequence = (previous.get("sequence", 0) if previous else 0) + 1
+        state = {
+            "run_id": run_id,
+            "running": True,
+            "done": False,
+            "index": 0,
+            "total": total,
+            "stage": stage,
+            "message": message,
+            "results": [dict(result) for result in (results or [])],
+            "retry_run_id": None,
+            "stopped": False,
+            "failed": False,
+            "sequence": sequence,
+            "updated_at": utc_now().isoformat(),
+            "server_instance": _server_instance_id,
+        }
+        _run_all_status[user_id] = state
+        _persist_run_all_status(user_id, state)
+        return _copy_run_all_status(state)
+
+
+def _update_run_all_status(user_id, run_id, **updates):
+    with _run_all_status_lock:
+        state = _run_all_status.get(user_id)
+        if not state or state["run_id"] != run_id:
+            return None
+        if "results" in updates:
+            updates["results"] = [dict(result) for result in updates["results"]]
+        state.update(updates)
+        state["sequence"] += 1
+        state["updated_at"] = utc_now().isoformat()
+        state["server_instance"] = _server_instance_id
+        _persist_run_all_status(user_id, state)
+        return _copy_run_all_status(state)
+
+
+def _expire_run_all_status(user_id, run_id):
+    with _run_all_status_lock:
+        state = _run_all_status.get(user_id)
+        if state and state["run_id"] == run_id and not state["running"]:
+            _run_all_status.pop(user_id, None)
+
+
+def _schedule_run_all_status_expiry(user_id, run_id):
+    expiry_timer = threading.Timer(3600, _expire_run_all_status, args=(user_id, run_id))
+    expiry_timer.daemon = True
+    expiry_timer.start()
 
 
 def _run_all_generate_esoa(transmittal_number):
@@ -3577,7 +4151,20 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
                         item[stage] = status
                         if message:
                             item["message"] = message
+                        status_snapshot = _update_run_all_status(
+                            user_id,
+                            run_id,
+                            index=index,
+                            total=len(records),
+                            stage=stage,
+                            message=item.get("message", ""),
+                            results=results,
+                        )
                         emit_to_current_room("run_all_progress", {
+                            "run_id": run_id,
+                            "sequence": status_snapshot["sequence"] if status_snapshot else None,
+                            "updated_at": status_snapshot["updated_at"] if status_snapshot else None,
+                            "running": True,
                             "index": index,
                             "total": len(records),
                             "result": dict(item),
@@ -3692,8 +4279,41 @@ def _run_all_automation(user_id, beacon_settings, records, soa_folder, cf2_setti
         else:
             shutil.rmtree(soa_folder, ignore_errors=True)
         _run_all_runs.pop(user_id, None)
+        final_status = _update_run_all_status(
+            user_id,
+            run_id,
+            running=False,
+            done=True,
+            index=len(results),
+            total=len(records),
+            stage="complete",
+            message=(
+                "Run stopped safely."
+                if stopped else "Run failed."
+                if failed else "Run complete."
+            ),
+            results=results,
+            stopped=stopped,
+            failed=failed,
+            retry_run_id=retry_run_id,
+        )
         _record_automation_run(user_id, "Full Workflow", run_started_at, _automation_outcome(results, stopped, failed), len(results))
-        emit_to_current_room("run_all_done", {"results": results, "stopped": stopped, "retry_run_id": retry_run_id})
+        emit_to_current_room("run_all_done", {
+            "run_id": run_id,
+            "sequence": final_status["sequence"] if final_status else None,
+            "updated_at": final_status["updated_at"] if final_status else None,
+            "running": False,
+            "done": True,
+            "index": len(results),
+            "total": len(records),
+            "stage": "complete",
+            "message": final_status["message"] if final_status else "",
+            "results": results,
+            "stopped": stopped,
+            "failed": failed,
+            "retry_run_id": retry_run_id,
+        })
+        _schedule_run_all_status_expiry(user_id, run_id)
         _emit_room.reset(room_token)
 
 
@@ -3709,7 +4329,20 @@ def _run_all_retry_automation(user_id, retry_state, item, start_at, stop_event):
         item[stage] = status
         if message:
             item["message"] = message
+        status_snapshot = _update_run_all_status(
+            user_id,
+            run_id,
+            index=retry_state["results"].index(item) + 1,
+            total=len(retry_state["results"]),
+            stage=stage,
+            message=item.get("message", ""),
+            results=retry_state["results"],
+        )
         emit_to_current_room("run_all_progress", {
+            "run_id": run_id,
+            "sequence": status_snapshot["sequence"] if status_snapshot else None,
+            "updated_at": status_snapshot["updated_at"] if status_snapshot else None,
+            "running": True,
             "index": retry_state["results"].index(item) + 1,
             "total": len(retry_state["results"]),
             "result": dict(item),
@@ -3770,12 +4403,36 @@ def _run_all_retry_automation(user_id, retry_state, item, start_at, stop_event):
         if all_done:
             _expire_run_all_retry_state(user_id, run_id)
         _run_all_runs.pop(user_id, None)
+        final_status = _update_run_all_status(
+            user_id,
+            run_id,
+            running=False,
+            done=True,
+            index=len(retry_state["results"]),
+            total=len(retry_state["results"]),
+            stage="complete",
+            message="Retry complete." if all_done else "Retry finished; some stages remain incomplete.",
+            results=retry_state["results"],
+            stopped=stop_event.is_set(),
+            failed=not all_done,
+            retry_run_id=None if all_done else run_id,
+        )
         _record_automation_run(user_id, "Full Workflow Retry", run_started_at, _automation_outcome([item], stop_event.is_set()), 1)
         emit_to_current_room("run_all_done", {
+            "run_id": run_id,
+            "sequence": final_status["sequence"] if final_status else None,
+            "updated_at": final_status["updated_at"] if final_status else None,
+            "running": False,
+            "done": True,
+            "index": len(retry_state["results"]),
+            "total": len(retry_state["results"]),
+            "stage": "complete",
+            "message": final_status["message"] if final_status else "",
             "results": retry_state["results"],
             "stopped": stop_event.is_set(),
             "retry_run_id": None if all_done else run_id,
         })
+        _schedule_run_all_status_expiry(user_id, run_id)
         _emit_room.reset(room_token)
 
 
@@ -3871,7 +4528,7 @@ def run_all_start():
     finally:
         _emit_room.reset(match_token)
 
-    active_runs = (_cf2_runs, _soa_runs, _document_runs, _beacon_runs, _run_all_runs)
+    active_runs = (_cf2_runs, _soa_runs, _document_runs, _cf4_transmittal_runs, _run_all_runs)
     if any(user.id in runs for runs in active_runs):
         shutil.rmtree(soa_folder_path, ignore_errors=True)
         return jsonify({"error": "Another automation is already running for this account."}), 409
@@ -3889,13 +4546,20 @@ def run_all_start():
     if old_retry_state:
         _expire_run_all_retry_state(user.id, old_retry_state["run_id"])
     run_id = uuid.uuid4().hex
+    _start_run_all_status(
+        user.id,
+        run_id,
+        total=len(records),
+        stage="queued",
+        message="Run queued.",
+    )
     _run_all_runs[user.id] = {"stop_event": stop_event}
     threading.Thread(
         target=_run_all_automation,
         args=(user.id, beacon_settings, records, soa_folder_path, ar_values, cf4_settings, generate_soa, stop_event, run_id),
         daemon=True,
     ).start()
-    return jsonify({"started": True, "patient_count": len(records)})
+    return jsonify({"started": True, "patient_count": len(records), "run_id": run_id})
 
 
 @app.route("/api/run-all/retry", methods=["POST"])
@@ -3924,13 +4588,67 @@ def run_all_retry():
         return jsonify({"error": "All stages for this claim are already complete."}), 409
 
     stop_event = threading.Event()
+    status_snapshot = _update_run_all_status(
+        user.id,
+        retry_state["run_id"],
+        running=True,
+        done=False,
+        index=retry_state["results"].index(item) + 1,
+        total=len(retry_state["results"]),
+        stage=start_at,
+        message="Retry queued.",
+        results=retry_state["results"],
+        retry_run_id=retry_state["run_id"],
+    )
+    if not status_snapshot:
+        _start_run_all_status(
+            user.id,
+            retry_state["run_id"],
+            total=len(retry_state["results"]),
+            results=retry_state["results"],
+            stage=start_at,
+            message="Retry queued.",
+        )
     _run_all_runs[user.id] = {"stop_event": stop_event}
     threading.Thread(
         target=_run_all_retry_automation,
         args=(user.id, retry_state, item, start_at, stop_event),
         daemon=True,
     ).start()
-    return jsonify({"started": True, "stage": start_at})
+    return jsonify({"started": True, "stage": start_at, "run_id": retry_state["run_id"]})
+
+
+@app.route("/api/run-all/status", methods=["GET"])
+@login_required
+def run_all_status():
+    user = current_user()
+    if not (user.is_admin or user.role == "subscriber"):
+        return jsonify({"error": "Run All is available to Subscriber and Admin accounts only."}), 403
+    with _run_all_status_lock:
+        state = _run_all_status.get(user.id)
+        if state is None:
+            try:
+                row = db.session.get(RunAllTaskSnapshot, user.id)
+                state = _copy_run_all_status(row.snapshot) if row and row.snapshot else None
+                if state and state.get("running") and state.get("server_instance") != _server_instance_id:
+                    state.update({
+                        "running": False,
+                        "done": True,
+                        "failed": True,
+                        "message": "The server restarted while this run was active. Saved results are shown; start a new run to continue.",
+                        "retry_run_id": None,
+                        "server_instance": _server_instance_id,
+                        "updated_at": utc_now().isoformat(),
+                    })
+                    _persist_run_all_status(user.id, state)
+                if state:
+                    _run_all_status[user.id] = state
+            except Exception:
+                db.session.rollback()
+                logger.exception("Could not restore Run All status for user %s", user.id)
+                state = None
+        snapshot = _copy_run_all_status(state) if state else None
+    return jsonify({"run": snapshot})
 
 
 @app.route("/api/run-all/stop", methods=["POST"])

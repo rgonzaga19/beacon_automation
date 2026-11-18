@@ -22,6 +22,20 @@ let authMode = "login";
 
 let requestInProgress = false;
 
+function postLoginDestination() {
+  const requested = new URLSearchParams(window.location.search).get("next");
+  if (!requested) return "/workspace.html";
+  try {
+    const destination = new URL(requested, window.location.origin);
+    if (destination.origin === window.location.origin && destination.pathname === "/workspace.html") {
+      return `${destination.pathname}${destination.search}${destination.hash}`;
+    }
+  } catch {
+    // Ignore malformed return paths and use the default workspace.
+  }
+  return "/workspace.html";
+}
+
 function clearStatus() {
   loginStatus.textContent = "";
   loginStatus.className = "login-status";
@@ -111,7 +125,7 @@ for (const input of [usernameInput, passwordInput, confirmPasswordInput]) {
 (async function redirectIfLoggedIn() {
   try {
     const sessionInfo = await fetchJSON("/api/auth/me");
-    if (sessionInfo.authenticated) window.beabots?.goToDashboard();
+    if (sessionInfo.authenticated) window.location.replace(postLoginDestination());
   } catch {
     // Stay on the login page if the authentication endpoint is unavailable.
   }
@@ -168,7 +182,7 @@ loginForm.addEventListener("submit", async (event) => {
     loginStatus.className = "login-status success";
     document.body.classList.add("login-success-transition");
     const transitionDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 80 : 760;
-    setTimeout(() => window.beabots?.goToDashboard(), transitionDelay);
+    setTimeout(() => window.location.replace(postLoginDestination()), transitionDelay);
   } catch (error) {
     setBusy(false);
     submitLabel.textContent = registering ? "Create account" : "Sign in";

@@ -61,12 +61,29 @@ if (!window.beabots) {
 
 const API_BASE = window.beabots.apiBase || window.location.origin;
 
+function redirectToLogin() {
+  const topWindow = window.top || window;
+  if (topWindow.location.pathname === "/login") return;
+  const loginUrl = new URL("/login", topWindow.location.origin);
+  if (topWindow.location.pathname === "/workspace.html") {
+    loginUrl.searchParams.set(
+      "next",
+      `${topWindow.location.pathname}${topWindow.location.search}${topWindow.location.hash}`,
+    );
+  }
+  topWindow.location.replace(`${loginUrl.pathname}${loginUrl.search}`);
+}
+
 async function fetchJSON(path, options) {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
     ...options,
   });
+  if (res.status === 401 && path !== "/api/auth/login" && path !== "/api/auth/register") {
+    redirectToLogin();
+    throw new Error("Your session has expired. Please sign in again.");
+  }
   const body = await res.text();
   try {
     return JSON.parse(body);
@@ -75,6 +92,130 @@ async function fetchJSON(path, options) {
     throw new Error(`The server returned a non-JSON response${detail}. Restart the app server and reload the page.`);
   }
 }
+
+const SESSION_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+const SESSION_ACTIVITY_MESSAGE = "beabots-user-activity";
+const SESSION_ACTIVITY_EVENT_NAMES = [
+  "pointerdown",
+  "pointermove",
+  "keydown",
+  "input",
+  "scroll",
+  "touchstart",
+];
+
+function initializeSessionActivityTracking() {
+  const topLevel = window.top === window;
+  let recordActivity = () => {};
+  let lastEventAt = 0;
+  const trackedDocuments = new WeakSet();
+
+  const notifyActivity = () => {
+    const now = Date.now();
+    if (now - lastEventAt < 500) return;
+    lastEventAt = now;
+    if (topLevel) {
+      recordActivity();
+    } else {
+      window.top.postMessage({ type: SESSION_ACTIVITY_MESSAGE }, window.location.origin);
+    }
+  };
+
+  const attachToDocument = (targetDocument) => {
+    if (!targetDocument || trackedDocuments.has(targetDocument)) return;
+    trackedDocuments.add(targetDocument);
+    SESSION_ACTIVITY_EVENT_NAMES.forEach((eventName) => {
+      targetDocument.addEventListener(eventName, notifyActivity, { passive: true });
+    });
+  };
+
+  const attachToWorkspaceFrames = (targetDocument) => {
+    targetDocument.querySelectorAll("iframe.workspace-frame").forEach((frame) => {
+      const attachFrameDocument = () => attachToDocument(frame.contentDocument);
+      frame.addEventListener("load", attachFrameDocument);
+      attachFrameDocument();
+    });
+  };
+
+  attachToDocument(document);
+  attachToWorkspaceFrames(document);
+
+  if (!topLevel) return;
+
+  window.addEventListener("message", (event) => {
+    if (
+      event.origin === window.location.origin
+      && event.data?.type === SESSION_ACTIVITY_MESSAGE
+    ) {
+      recordActivity();
+    }
+  });
+
+  fetchJSON("/api/auth/me")
+    .then((result) => {
+      if (!result.authenticated) {
+        if (window.location.pathname === "/workspace.html") redirectToLogin();
+        return;
+      }
+
+      const storageKey = `beabots-last-activity:${result.user.id}`;
+      const now = Date.now();
+      const serverLastActivity = now - (
+        SESSION_IDLE_TIMEOUT_MS - result.expires_in_seconds * 1000
+      );
+      const sharedLastActivity = Number(localStorage.getItem(storageKey)) || 0;
+      let lastActivityAt = Math.max(serverLastActivity, Math.min(sharedLastActivity, now));
+      let lastHeartbeatAt = 0;
+      let logoutTimer;
+      let loggingOut = false;
+
+      const scheduleLogout = () => {
+        window.clearTimeout(logoutTimer);
+        const remaining = SESSION_IDLE_TIMEOUT_MS - (Date.now() - lastActivityAt);
+        logoutTimer = window.setTimeout(() => {
+          if (Date.now() - lastActivityAt < SESSION_IDLE_TIMEOUT_MS) {
+            scheduleLogout();
+            return;
+          }
+          if (loggingOut) return;
+          loggingOut = true;
+          fetch(`${API_BASE}/api/auth/logout`, { method: "POST", keepalive: true })
+            .catch((error) => console.warn("Could not clear the expired session cookie.", error))
+            .finally(redirectToLogin);
+        }, Math.max(0, remaining));
+      };
+
+      recordActivity = () => {
+        if (loggingOut) return;
+        const activityTime = Date.now();
+        lastActivityAt = activityTime;
+        localStorage.setItem(storageKey, String(activityTime));
+        scheduleLogout();
+
+        if (activityTime - lastHeartbeatAt < 5000) return;
+        lastHeartbeatAt = activityTime;
+        fetchJSON("/api/auth/activity", { method: "POST" }).catch((error) => {
+          console.error("Could not record account activity.", error);
+        });
+      };
+
+      window.addEventListener("storage", (event) => {
+        if (event.key !== storageKey || !event.newValue) return;
+        const sharedActivity = Number(event.newValue);
+        if (Number.isFinite(sharedActivity) && sharedActivity > lastActivityAt) {
+          lastActivityAt = Math.min(sharedActivity, Date.now());
+          scheduleLogout();
+        }
+      });
+
+      scheduleLogout();
+    })
+    .catch((error) => {
+      console.error("Could not initialize session inactivity monitoring.", error);
+    });
+}
+
+initializeSessionActivityTracking();
 
 /** Renders a simple OK-dismissable modal (replaces messagebox.showinfo/showerror/showwarning). */
 function showModal(title, bodyText, { onOk } = {}) {

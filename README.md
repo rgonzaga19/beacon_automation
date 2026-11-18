@@ -19,7 +19,7 @@ Local data uses SQLite under the current user's application data directory by de
 
 The repository includes a Render Blueprint. It uses Gunicorn with one threaded worker and PostgreSQL; provide `DATABASE_URL` and retain stable `SECRET_KEY` and `FIELD_ENCRYPTION_KEY` values. `SESSION_COOKIE_SECURE=true` is set for the HTTPS hosted service. For local HTTP/LAN operation, leave that variable unset.
 
-The Flask/Socket.IO process owns active automation jobs and progress state. A process restart ends active jobs, so deployment services must be configured to allow long-running requests.
+The Flask/Socket.IO process owns active automation jobs and progress state. Run All status and results can be restored for one hour after completion while the process remains running. A process restart ends active jobs and clears these in-memory snapshots, so deployment services must be configured to allow long-running requests.
 
 ## Configuration
 
@@ -29,6 +29,8 @@ The Flask/Socket.IO process owns active automation jobs and progress state. A pr
 - `FIELD_ENCRYPTION_KEY` encrypts saved Beacon passwords.
 - `BEABOTS_UPLOAD_DIR` selects temporary upload storage.
 - `BEABOTS_MAX_UPLOAD_MB` sets the upload limit (default `100`).
+
+Web sessions expire after 15 minutes without user activity. Normal background requests do not extend the session.
 
 Keep the session and encryption keys stable after users save credentials.
 

@@ -97,7 +97,7 @@ async function loadMessages(initial = false) {
     if (!initial) params.set("after_id", String(newestMessageId));
     const result = await fetchJSON(`${messageApi}?${params}`);
     if (result.error) {
-      if (result.error === "Authentication required.") window.top.location.replace("/login");
+      if (result.error === "Authentication required.") redirectToLogin();
       throw new Error(result.error);
     }
     for (const message of result.messages || []) appendMessage(message, result.current_user_id);
@@ -207,7 +207,7 @@ async function initializeChat() {
   try {
     const auth = await fetchJSON("/api/auth/me");
     if (!auth.authenticated) {
-      window.top.location.replace("/login");
+      redirectToLogin();
       return;
     }
     await loadMessages(true);

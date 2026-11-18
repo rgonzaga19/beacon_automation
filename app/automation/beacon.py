@@ -799,7 +799,7 @@ def _process_transmittal(
     )
 
 
-def run(transmittals, auto_encode_cf4=False, cf4_data=None, should_stop=None):
+def run(transmittals, auto_encode_cf4=False, cf4_data=None, should_stop=None, progress_callback=None):
     """Run CF4 automation for all transmittals using API calls only."""
     cf4_data = {**DEFAULT_CF4_DATA, **(cf4_data or {})}
     should_stop = should_stop or (lambda: False)
@@ -816,6 +816,8 @@ def run(transmittals, auto_encode_cf4=False, cf4_data=None, should_stop=None):
             break
 
         transmittal_no = str(transmittal_no).strip()
+        if progress_callback:
+            progress_callback(idx + 1, len(transmittals), transmittal_no, "running")
         attempt = 0
         last_error = None
 
@@ -873,6 +875,18 @@ def run(transmittals, auto_encode_cf4=False, cf4_data=None, should_stop=None):
             run_report.failed(
                 transmittal=transmittal_no,
                 remarks=str(last_error),
+            )
+
+        if progress_callback:
+            result = next(
+                (item for item in reversed(run_report.results) if item["transmittal"] == transmittal_no),
+                None,
+            )
+            progress_callback(
+                idx + 1,
+                len(transmittals),
+                transmittal_no,
+                (result or {}).get("status", "FAILED").lower(),
             )
 
     summary = run_report.summary()

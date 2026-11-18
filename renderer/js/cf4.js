@@ -7,7 +7,7 @@
  * Course in the Ward order text). They're persisted through server.py's
  * /api/cf4/settings endpoint (stored in the signed-in user account
  * under a "cf4" key) and read back by server.py right before it kicks off
- * /api/beacon/start, so beacon.run(..., cf4_data=...) always gets
+ * /api/cf4-transmittal/start, so beacon.run(..., cf4_data=...) always gets
  * whatever was last saved here instead of a fixed string in the script.
  *
  * The "Pertinent Signs and Symptoms" and "Physical Examination" sections
@@ -919,7 +919,7 @@ startBtn.addEventListener("click", async () => {
   if (cf4Running) {
     cf4StopRequested = true;
     setControlsRunning(true);
-    await fetchJSON("/api/beacon/stop", { method: "POST" });
+    await fetchJSON("/api/cf4-transmittal/stop", { method: "POST" });
     return;
   }
 
@@ -942,7 +942,7 @@ startBtn.addEventListener("click", async () => {
 
   let result;
   try {
-    result = await fetchJSON("/api/beacon/start", {
+    result = await fetchJSON("/api/cf4-transmittal/start", {
       method: "POST",
       body: JSON.stringify({
         transmittals,
@@ -997,9 +997,47 @@ socket.on("beacon_done", (data) => {
   setControlsRunning(false);
 });
 
+function applyBeaconProgress(progress) {
+  const index = Number(progress?.current) - 1;
+  if (index < 0 || index >= cf4Rows.length) return;
+  if (String(cf4Rows[index].transmittal) !== String(progress.transmittal)) return;
+  updateCf4Row(index, String(progress.status || "waiting").toLowerCase());
+}
+
+async function restoreBeaconStatus() {
+  try {
+    const response = await fetchJSON("/api/cf4-transmittal/status");
+    const run = response.run;
+    if (!run?.transmittals?.length) return;
+
+    transmittalsInput.value = run.transmittals.join("\n");
+    document.getElementById("autoEncodeCf4").checked = Boolean(run.auto_encode_cf4);
+    updateCount();
+    setCf4Rows(run.transmittals);
+    cf4Running = Boolean(run.running);
+    Object.values(run.progress || {}).forEach(applyBeaconProgress);
+    if (!cf4Running && run.results?.length) applyCf4Results(run.results);
+    setControlsRunning(cf4Running);
+    showReport();
+
+    if (run.running) {
+      setLogDrawer(true);
+      writeLog("Reconnected to the running CF4 automation. Earlier detail logs are not retained.");
+    } else if (run.done) {
+      writeLog(run.message || "CF4 automation finished.", run.failed ? "ERROR" : "INFO");
+    }
+  } catch (error) {
+    console.error("Could not restore CF4 status.", error);
+  }
+}
+
+socket.on("beacon_progress", applyBeaconProgress);
+socket.on("connect", restoreBeaconStatus);
+
 // Initialize counts on load
 showReport([]);
 updateCount();
 updateStartState();
 refreshSettingsState();
 updateAutoEncodeSummary();
+restoreBeaconStatus();
