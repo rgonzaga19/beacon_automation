@@ -85,7 +85,7 @@ html,body { width:100%; min-width:320px; height:100%; min-height:100%; margin:0;
 .workspace-group-trigger > span:nth-child(2) { flex:1; }
 .workspace-group-chevron { display:block; width:16px; height:16px; flex:none; margin-left:auto; color:var(--text-sec); fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
 .workspace-group-trigger[aria-expanded="true"] .workspace-group-chevron { color:var(--accent); }
-.workspace-subnav { display:flex; flex-direction:column; gap:5px; margin-left:15px; padding-left:8px; border-left:1px solid color-mix(in srgb,var(--accent) 38%,var(--border)); }
+.workspace-subnav { display:flex; flex-direction:column; gap:5px; margin:0; padding:6px; background:var(--bg-card); border:0; border-radius:10px; }
 .workspace-subnav[hidden] { display:none; }
 .workspace-subnav .workspace-nav-link { min-height:40px; gap:11px; padding:7px 10px 7px 6px; font-size:11px; }
 .workspace-subnav .workspace-nav-icon { width:20px; min-width:20px; height:20px; }
