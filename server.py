@@ -26,6 +26,9 @@ from functools import wraps
 
 import requests
 from flask import Flask, request, jsonify, send_file, send_from_directory, session
+from flask_limiter import Limiter
+from flask_limiter.errors import RateLimitExceeded
+from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO, join_room
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -102,6 +105,42 @@ app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("BEABOTS_MAX_UPLOAD_MB", "
 db.init_app(app)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+
+
+def _rate_limit_client_ip():
+    """Use the client address forwarded by Render, falling back to the socket address."""
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    return get_remote_address()
+
+
+def _rate_limit_key():
+    """Group authenticated API limits by account and unauthenticated limits by client IP."""
+    user_id = session.get("user_id")
+    return f"user:{user_id}" if user_id else f"ip:{_rate_limit_client_ip()}"
+
+
+limiter = Limiter(
+    key_func=_rate_limit_key,
+    app=app,
+    storage_uri=os.environ.get("REDIS_URL") or "memory://",
+    default_limits=[],
+    headers_enabled=True,
+)
+
+
+@app.errorhandler(RateLimitExceeded)
+def handle_rate_limit_exceeded(error):
+    response = jsonify({
+        "error": "rate_limit_exceeded",
+        "message": "Too many requests. Please wait a moment and try again.",
+    })
+    response.status_code = 429
+    retry_after = error.get_response().headers.get("Retry-After")
+    if retry_after:
+        response.headers["Retry-After"] = retry_after
+    return response
 
 
 @app.after_request
@@ -1538,6 +1577,7 @@ def admin_delete_user(user_id):
 
 
 @app.route("/api/auth/register", methods=["POST"])
+@limiter.limit("5 per hour", key_func=_rate_limit_client_ip)
 def auth_register():
     data = request.get_json(force=True)
     email = str(data.get("email", "")).strip().lower()
@@ -1571,6 +1611,7 @@ def auth_register():
 
 
 @app.route("/api/auth/login", methods=["POST"])
+@limiter.limit("5 per minute", key_func=_rate_limit_client_ip)
 def auth_login():
     data = request.get_json(force=True)
     email = str(data.get("email", "")).strip().lower()
@@ -3206,6 +3247,7 @@ def _run_cf2_automation(user_id, beacon_settings, state, stop_event):
 
 
 @app.route("/api/cf2/start", methods=["POST"])
+@limiter.limit("5 per minute")
 @login_required
 @serialize_job_start
 def cf2_start():
@@ -3616,6 +3658,7 @@ def _run_document_automation(user_id, beacon_settings, files_root, relative_path
 
 
 @app.route("/api/documents/start", methods=["POST"])
+@limiter.limit("5 per minute")
 @login_required
 @serialize_job_start
 def documents_start():
@@ -3723,6 +3766,7 @@ def documents_stop():
 
 
 @app.route("/api/soa/start", methods=["POST"])
+@limiter.limit("5 per minute")
 @login_required
 @serialize_job_start
 def soa_start():
@@ -3921,6 +3965,7 @@ def _run_cf4_transmittal_automation(user_id, beacon_settings, transmittals, auto
 
 @app.route("/api/cf4-transmittal/start", methods=["POST"])
 @app.route("/api/beacon/start", methods=["POST"])
+@limiter.limit("5 per minute")
 @login_required
 @serialize_job_start
 def cf4_transmittal_start():
@@ -4437,6 +4482,7 @@ def _run_all_retry_automation(user_id, retry_state, item, start_at, stop_event):
 
 
 @app.route("/api/run-all/start", methods=["POST"])
+@limiter.limit("3 per minute")
 @login_required
 @serialize_job_start
 def run_all_start():
