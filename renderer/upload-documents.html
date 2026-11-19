@@ -58,7 +58,7 @@
     .log-heading-copy { flex:1; }
     .live-badge { display:inline-flex; align-items:center; gap:7px; padding:5px 8px; color:var(--success); background:color-mix(in srgb,var(--success) 9%,transparent); border:1px solid color-mix(in srgb,var(--success) 26%,var(--border)); border-radius:999px; font-size:9px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; }
     .live-badge::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
-    .logs { flex:1; min-height:120px; overflow:auto; padding:12px 14px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:11px/1.75 Consolas,"SFMono-Regular",monospace; }
+    .logs { flex:1; min-height:120px; max-height:min(360px,36dvh); overflow:auto; padding:12px 14px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:11px/1.75 Consolas,"SFMono-Regular",monospace; }
     .logs > div { overflow-wrap:anywhere; }
     .logs > div + div { border-top:1px solid color-mix(in srgb,var(--border) 65%,transparent); }
     .logs > div.SUCCESS { color:var(--success); } .logs > div.ERROR { color:var(--error); } .logs > div.WARNING { color:var(--warning); }
