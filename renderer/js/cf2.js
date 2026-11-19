@@ -725,7 +725,7 @@ fetchJSON("/api/cf2/account-receivable").then((saved) => {
   accountReceivable.number = saved.number || "";
   const summary = document.getElementById("arSummary");
   summary.textContent = accountReceivable.name
-    ? `${accountReceivable.name}${accountReceivable.designation ? ` / ${accountReceivable.designation}` : ""}`
+    ? accountReceivable.name
     : "No details saved for this session.";
 }).catch(() => {});
 accountReceivableBtn.addEventListener("click", () => {
@@ -766,7 +766,7 @@ accountReceivableBtn.addEventListener("click", () => {
     }
     const summary = document.getElementById("arSummary");
     summary.textContent = accountReceivable.name
-      ? `${accountReceivable.name}${accountReceivable.designation ? ` / ${accountReceivable.designation}` : ""}`
+      ? accountReceivable.name
       : "No details saved for this session.";
     root.innerHTML = "";
   });

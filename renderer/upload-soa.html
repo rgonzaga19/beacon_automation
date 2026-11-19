@@ -142,7 +142,7 @@
   #transmittalsInput:disabled { opacity: 0.6; }
 
   /* ---------- Review & Run ---------- */
-  .review-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .review-stage { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
   #summaryLogPanel { flex: 1; min-height: 0; display: block; white-space: normal; }
   .log-line.ERROR { color: var(--error, #ff6b6b); }
 
@@ -180,7 +180,7 @@
   @media (max-width: 1100px) { .soa-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
   /* Empty state (rendered by upload-soa.js when nothing is queued) */
-  .soa-empty { height: 100%; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
+  .soa-empty { height: 100%; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
   .es-icon { width: 48px; height: 48px; color: var(--accent); background: var(--accent-soft); border-radius: 50%; }
   .es-icon svg { width: 24px; height: 24px; }
   .es-title { color: var(--text-pri); font-size: 15px; font-weight: 700; }
@@ -190,7 +190,8 @@
   .es-steps li span { width: 22px; height: 22px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: 50%; font-size: 11px; font-weight: 800; }
 
   /* ---------- Log drawer ---------- */
-  .log-drawer { flex: none; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .log-drawer { flex: 1 1 0; min-height:0; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .log-drawer:not(.open) { flex:0 0 auto; }
   .log-drawer-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: transparent; color: var(--text-pri); border: 0; font: 700 12px var(--font-ui); text-align: left; cursor: pointer; }
   .log-drawer-head:hover { background: var(--accent-soft); }
   .ld-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-sec); opacity: 0.6; }
@@ -199,7 +200,7 @@
   .log-drawer.open .ld-preview { visibility: hidden; }
   .ld-chev { color: var(--text-sec); transition: transform 0.15s ease; }
   .log-drawer.open .ld-chev { transform: rotate(180deg); }
-  .log-drawer #automationLogPanel { display: none; height: 220px; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: var(--bg-card); color: var(--text-pri); white-space: pre-wrap; }
+  .log-drawer #automationLogPanel { display: none; flex:1; min-height:0; height:auto; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: var(--bg-card); color: var(--text-pri); white-space: pre-wrap; }
   .log-drawer.open #automationLogPanel { display: block; }
   #automationLogPanel .log-line.INFO { color: var(--text-pri); }
   #automationLogPanel .log-line.SUCCESS { color: var(--success); }
@@ -236,8 +237,11 @@
     .review-col { height: 680px; min-height: 680px; }
   }
   @media (max-width: 620px) {
+    .main-row { display:flex; flex-direction:column; align-items:stretch; gap:14px; padding:12px; }
+    .setup-col, .review-col { width:100%; flex:none; }
     .page-header { align-items: flex-start; flex-direction: column; }
     .guide-button { width: 100%; }
+    .review-col { height:min(680px,70dvh); min-height:420px; }
     #automateBtn { width: 100%; }
     .start-hint { flex-basis: 100%; order: 3; }
     .action-sep { display: none; }
@@ -335,7 +339,7 @@
             <span class="ld-preview" id="logDrawerPreview"></span>
             <span class="ld-chev icon-flat"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></span>
           </button>
-          <div class="log-box" id="automationLogPanel" role="log" aria-label="Automation log"></div>
+          <div class="log-box automation-log" id="automationLogPanel" role="log" aria-label="Automation log"></div>
         </div>
 
         <div class="action-bar">

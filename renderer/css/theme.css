@@ -358,6 +358,27 @@ html[data-theme="light"] .log-line.err { color: #b42318; }
 html[data-theme="light"] .log-line.DIM,
 html[data-theme="light"] .log-empty { color: #526176; }
 
+/* Automation logs keep a black terminal surface in both color themes. */
+.automation-log {
+  color:#e5e7eb !important;
+  background:#000 !important;
+  border-color:#303846 !important;
+  scrollbar-color:#596273 #000;
+}
+.automation-log .log-line.INFO,
+.automation-log > div:not(.SUCCESS):not(.WARNING):not(.ERROR):not(.err):not(.log-empty) { color:#e5e7eb !important; }
+.automation-log .log-line.SUCCESS,
+.automation-log > div.SUCCESS { color:#4ade80 !important; }
+.automation-log .log-line.WARNING,
+.automation-log > div.WARNING { color:#fbbf24 !important; }
+.automation-log .log-line.ERROR,
+.automation-log .log-line.err,
+.automation-log > div.ERROR,
+.automation-log > div.err { color:#ff6b6b !important; }
+.automation-log .log-line.DIM,
+.automation-log .log-empty,
+.automation-log:empty::before { color:#a1a1aa !important; }
+
 /* ---------- Status dot ---------- */
 .status-dot {
   width: 9px;

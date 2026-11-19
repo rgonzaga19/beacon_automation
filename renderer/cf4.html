@@ -124,7 +124,7 @@
   .link-btn { align-self: flex-start; padding: 2px 0; color: var(--accent); background: transparent; border: 0; font: 600 12px var(--font-ui); cursor: pointer; }
   .link-btn:hover { color: var(--text-pri); text-decoration: underline; text-underline-offset: 3px; }
 
-  .review-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .review-stage { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
   #reportBox { flex: 1; min-height: 0; display: block; white-space: normal; overflow: auto; }
   .log-line.ERROR { color: var(--error, #ff6b6b); }
 
@@ -155,7 +155,7 @@
   @keyframes cf4-row-pulse { 0%, 100% { opacity: .35; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.12); } }
   @media (max-width: 1100px) { .cf4-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-  .cf4-empty { height: 100%; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
+  .cf4-empty { height: 100%; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
   .es-icon { width: 48px; height: 48px; color: var(--accent); background: var(--accent-soft); border-radius: 50%; }
   .es-icon svg { width: 24px; height: 24px; }
   .es-title { color: var(--text-pri); font-size: 15px; font-weight: 700; }
@@ -165,7 +165,8 @@
   .es-steps li span { width: 22px; height: 22px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: 50%; font-size: 11px; font-weight: 800; }
 
   /* Log drawer */
-  .log-drawer { flex: none; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .log-drawer { flex: 1 1 0; min-height:0; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .log-drawer:not(.open) { flex:0 0 auto; }
   .log-drawer-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: transparent; color: var(--text-pri); border: 0; font: 700 12px var(--font-ui); text-align: left; cursor: pointer; }
   .log-drawer-head:hover { background: var(--accent-soft); }
   .ld-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-sec); opacity: 0.6; }
@@ -174,7 +175,7 @@
   .log-drawer.open .ld-preview { visibility: hidden; }
   .ld-chev { color: var(--text-sec); transition: transform 0.15s ease; }
   .log-drawer.open .ld-chev { transform: rotate(180deg); }
-  .log-drawer #logBox { display: none; height: 220px; margin: 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: var(--bg-card); color: var(--text-pri); overflow-y: auto; }
+  .log-drawer #logBox { display: none; flex:1; min-height:0; height:auto; margin: 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: var(--bg-card); color: var(--text-pri); overflow-y: auto; }
   .log-drawer.open #logBox { display: block; }
   #logBox:empty::before { content: "Live automation steps appear here once the run starts."; color: var(--text-sec); }
 
@@ -264,8 +265,11 @@
     .settings-nav-btn.active { border-bottom-color: var(--accent); }
   }
   @media (max-width: 620px) {
+    .main-row { display:flex; flex-direction:column; align-items:stretch; gap:14px; padding:12px; }
+    .setup-col, .review-col { width:100%; flex:none; }
     .page-header { align-items: flex-start; flex-direction: column; }
     .guide-button { width: 100%; }
+    .review-col { height:min(680px,70dvh); min-height:420px; }
     #startBtn { width: 100%; }
     .start-hint { flex-basis: 100%; order: 3; }
     .action-sep { display: none; }
@@ -389,7 +393,7 @@
               <span class="ld-preview" id="logDrawerPreview"></span>
               <span class="ld-chev icon-flat"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></span>
             </button>
-            <div class="log-box" id="logBox" role="log" aria-label="Automation log"></div>
+            <div class="log-box automation-log" id="logBox" role="log" aria-label="Automation log"></div>
           </div>
 
           <div class="action-bar">

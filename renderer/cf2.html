@@ -105,6 +105,16 @@
   .ar-label { color: var(--text-sec); font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
   .ar-summary { color: var(--accent); font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ar-edit-btn { flex: none; border: 0; background: transparent; }
+  .setup-settings { display:grid; grid-template-columns:minmax(0, 1fr); align-items:center; gap:10px; padding:10px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); }
+  .setup-settings .sb-period { min-width:0; gap:8px; }
+  .setup-settings .field-group { flex:1; min-width:0; }
+  .setup-settings .field-group label { white-space:nowrap; }
+  .setup-settings .field-group select { min-width:0; }
+  .setup-settings .ar-copy { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; column-gap:10px; }
+  .setup-settings .ar-label { grid-column:1; grid-row:1; }
+  .setup-settings .ar-summary { display:block; grid-column:1; grid-row:2; max-width:100%; }
+  .setup-settings .ar-edit-btn { grid-column:2; grid-row:1 / span 2; }
+  .setup-settings .ar-edit-btn { padding:8px 10px; white-space:nowrap; }
 
   /* ---------- Main row ---------- */
   .main-row {
@@ -121,7 +131,7 @@
   .section-label span { font-size: 11px; }
 
   /* ---------- Setup card ---------- */
-  .setup-card { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; padding: 14px; }
+  .setup-card { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; padding: 14px; background:var(--bg-card); }
 
   /* Segmented toggle: solid fill = selected */
   .mode-toggle {
@@ -186,7 +196,7 @@
 
   /* ---------- Drop zone: the primary element before upload ---------- */
   .dropzone {
-    width: 100%; min-height: 152px; padding: 18px 14px;
+    width: 100%; min-height: 112px; padding: 12px 14px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
     text-align: center; color: var(--text-pri);
     background: var(--accent-soft); border: 2px dashed var(--accent); border-radius: var(--radius-lg);
@@ -196,8 +206,8 @@
   .dropzone * { pointer-events: none; }
   .dropzone:hover:not(:disabled), .dropzone.dragover { background: var(--accent-soft-strong); border-style: solid; }
   .dropzone:disabled { opacity: 0.5; cursor: not-allowed; }
-  .dz-icon { width: 44px; height: 44px; color: var(--accent); background: var(--bg-panel); border-radius: 50%; }
-  .dz-icon svg { width: 22px; height: 22px; }
+  .dz-icon { width: 36px; height: 36px; color: var(--accent); background: var(--bg-panel); border-radius: 50%; }
+  .dz-icon svg { width: 19px; height: 19px; }
   .dz-text { display: flex; flex-direction: column; gap: 2px; }
   .dz-title { font-size: 14px; font-weight: 700; }
   .dz-sub { color: var(--text-sec); font-size: 11.5px; }
@@ -232,7 +242,7 @@
   .stat-line strong { min-width: 0; color: var(--text-pri); font-size: 12px; text-align: right; overflow-wrap: anywhere; }
 
   /* ---------- Review & Run ---------- */
-  .review-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .review-stage { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
   #summaryLogPanel { flex: 1; min-height: 0; display: block; }
   .log-line.ERROR { color: var(--error, #ff6b6b); }
 
@@ -306,7 +316,8 @@
   @media (max-width: 1100px) { .cf2-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
   /* ---------- Log drawer (collapsible, keeps the table visible) ---------- */
-  .log-drawer { flex: none; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .log-drawer { flex: 1 1 0; min-height:0; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .log-drawer:not(.open) { flex:0 0 auto; }
   .log-drawer-head {
     width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px;
     background: transparent; color: var(--text-pri); border: 0;
@@ -320,7 +331,7 @@
   .ld-chev { color: var(--text-sec); transition: transform 0.15s ease; }
   .log-drawer.open .ld-chev { transform: rotate(180deg); }
   .log-drawer #detailsLogPanel {
-    display: none; height: 220px; border: 0; border-top: 1px solid var(--border);
+    display: none; flex:1; min-height:0; height:auto; border: 0; border-top: 1px solid var(--border);
     border-radius: 0; background: var(--bg-card); color: var(--text-pri);
   }
   .log-drawer.open #detailsLogPanel { display: block; }
@@ -377,9 +388,16 @@
     .review-col { height: 680px; min-height: 680px; }
   }
   @media (max-width: 620px) {
-    .sb-divider { display: none; }
-    .sb-period, .ar-chip { width: 100%; }
-    .sb-period .field-group { flex: 1; }
+    .main-row { display:flex; flex-direction:column; align-items:stretch; gap:14px; padding:12px; }
+    .setup-col, .review-col { width:100%; flex:none; }
+    .setup-card { gap:12px; padding:12px; }
+    .setup-settings { gap:8px; padding:8px; }
+    .setup-settings .sb-period { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; gap:8px; }
+    .setup-settings .field-group { min-width:0; }
+    .setup-settings .field-group select { width:100%; padding:8px 7px; font-size:12px; }
+    .setup-settings .ar-copy { column-gap:6px; }
+    .setup-settings .ar-edit-btn { padding:7px 8px; font-size:11px; }
+    .review-col { height:min(680px,70dvh); min-height:420px; }
     #startBtn { width: 100%; }
     .start-hint { flex-basis: 100%; order: 3; }
     .action-sep { display: none; }
@@ -424,29 +442,24 @@
       </div>
     </div>
 
-    <!-- ===== Settings bar: set once per session ===== -->
-    <section class="settings-bar" aria-label="Claim period and signatory">
-      <div class="sb-period">
-        <div class="field-group"><label for="claimYear">Claim Year</label><select id="claimYear"></select></div>
-        <div class="field-group"><label for="claimMonth">Claim Month</label><select id="claimMonth"></select></div>
-      </div>
-      <div class="sb-divider" aria-hidden="true"></div>
-      <div class="ar-chip">
-        <span class="ar-card-mark" aria-hidden="true">AR</span>
-        <div class="ar-copy">
-          <span class="ar-label">Account receivable</span>
-          <span class="ar-summary" id="arSummary">No details saved for this session.</span>
-        </div>
-        <button class="cyber-btn ar-edit-btn" id="accountReceivableBtn" type="button"><span class="icon-flat"><i data-lucide="pencil" data-icon-size="14" aria-hidden="true"></i></span> Edit details</button>
-      </div>
-    </section>
-
     <div class="main-row">
 
       <!-- ===== Setup: one workflow at a time ===== -->
       <div class="setup-col">
         <div class="section-label"><span>SETUP</span></div>
         <div class="panel setup-card">
+
+          <div class="setup-settings" aria-label="Claim period and account receivable">
+            <div class="sb-period">
+              <div class="field-group"><label for="claimYear">Claim Year</label><select id="claimYear"></select></div>
+              <div class="field-group"><label for="claimMonth">Claim Month</label><select id="claimMonth"></select></div>
+            </div>
+            <div class="ar-copy">
+              <span class="ar-label">Account receivable</span>
+              <span class="ar-summary" id="arSummary">No details saved for this session.</span>
+              <button class="cyber-btn ar-edit-btn" id="accountReceivableBtn" type="button"><span class="icon-flat"><i data-lucide="pencil" data-icon-size="14" aria-hidden="true"></i></span> Edit</button>
+            </div>
+          </div>
 
           <div class="mode-toggle" role="group" aria-label="Draft workflow">
             <button class="mode-btn active" type="button" data-mode-toggle="new_draft" aria-pressed="true"><span class="mode-num">01</span>New Draft</button>
@@ -530,7 +543,7 @@
             <span class="ld-preview" id="logDrawerPreview"></span>
             <span class="ld-chev icon-flat"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></span>
           </button>
-          <div class="log-box" id="detailsLogPanel" role="log" aria-label="Automation log"></div>
+          <div class="log-box automation-log" id="detailsLogPanel" role="log" aria-label="Automation log"></div>
         </div>
 
         <div class="action-bar">
