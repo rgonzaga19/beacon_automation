@@ -199,14 +199,14 @@
   .log-drawer.open .ld-preview { visibility: hidden; }
   .ld-chev { color: var(--text-sec); transition: transform 0.15s ease; }
   .log-drawer.open .ld-chev { transform: rotate(180deg); }
-  .log-drawer #automationLogPanel { display: none; height: 220px; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: #000; color: #eef2f6; white-space: pre-wrap; }
+  .log-drawer #automationLogPanel { display: none; height: 220px; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: var(--bg-card); color: var(--text-pri); white-space: pre-wrap; }
   .log-drawer.open #automationLogPanel { display: block; }
-  #automationLogPanel .log-line.INFO { color: #eef2f6; }
-  #automationLogPanel .log-line.SUCCESS { color: #34d399; }
-  #automationLogPanel .log-line.WARNING { color: #fbbf24; }
-  #automationLogPanel .log-line.ERROR { color: #f87171; }
+  #automationLogPanel .log-line.INFO { color: var(--text-pri); }
+  #automationLogPanel .log-line.SUCCESS { color: var(--success); }
+  #automationLogPanel .log-line.WARNING { color: var(--warning); }
+  #automationLogPanel .log-line.ERROR { color: var(--error); }
   #automationLogPanel .log-line.DIM,
-  #automationLogPanel:empty::before { color: #a4b1c3; }
+  #automationLogPanel:empty::before { color: var(--text-sec); }
   #automationLogPanel:empty::before { content: "Live automation steps appear here once the upload starts."; }
 
   /* ---------- Action bar ---------- */

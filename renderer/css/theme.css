@@ -327,6 +327,8 @@ textarea:focus, input:focus {
   overflow-y: auto;
   white-space: pre-wrap;
   user-select: text;
+  color: var(--text-pri);
+  scrollbar-color: var(--border) transparent;
 }
 
 .log-line.INFO { color: var(--text-pri); }
@@ -334,6 +336,27 @@ textarea:focus, input:focus {
 .log-line.WARNING { color: var(--warning); }
 .log-line.ERROR { color: var(--error); }
 .log-line.DIM { color: var(--text-sec); }
+
+/* Automation output stays legible when pages use their own log containers. */
+html[data-theme="light"] .log-box,
+html[data-theme="light"] .logs,
+html[data-theme="light"] #log {
+  color: #263247;
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+html[data-theme="light"] .log-line.INFO,
+html[data-theme="light"] .logs > div:not(.SUCCESS):not(.WARNING):not(.ERROR) { color: #263247; }
+html[data-theme="light"] .log-line.SUCCESS,
+html[data-theme="light"] .logs > div.SUCCESS { color: #067647; }
+html[data-theme="light"] .log-line.WARNING,
+html[data-theme="light"] .logs > div.WARNING { color: #92400e; }
+html[data-theme="light"] .log-line.ERROR,
+html[data-theme="light"] .logs > div.ERROR,
+html[data-theme="light"] .log-line.err { color: #b42318; }
+html[data-theme="light"] .log-line.DIM,
+html[data-theme="light"] .log-empty { color: #526176; }
 
 /* ---------- Status dot ---------- */
 .status-dot {
