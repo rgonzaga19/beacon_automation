@@ -6,7 +6,9 @@ const claimsBody = document.getElementById("claimsBody");
 const claimsSort = document.getElementById("claimsSort");
 const selectAllClaims = document.getElementById("selectAllClaims");
 const selectedCount = document.getElementById("selectedCount");
-const batchActionButtons = Array.from(document.querySelectorAll(".page-toolbar .solid-btn"));
+const stopAutomationButton = document.getElementById("stopAutomationButton");
+const batchActionButtons = Array.from(document.querySelectorAll(".page-toolbar .solid-btn"))
+  .filter((button) => button !== stopAutomationButton);
 const claimEditor = document.getElementById("claimEditor");
 const editorSubtitle = document.getElementById("editorSubtitle");
 const transmitAllButton = document.getElementById("transmitAllButton");
@@ -17,6 +19,7 @@ let courseInWardRowIndex = 0;
 let editorDirty = false;
 let editorLoading = false;
 let editorLoaded = false;
+let batchStopRequested = false;
 window.addEventListener("message", (event) => {
   if (event.origin !== window.location.origin || event.source !== window.parent || event.data?.type !== "workspace-claim-search") return;
   const query = String(event.data.query || "").trim();
@@ -82,11 +85,24 @@ function lockClaimsToolbar(activeButton) {
   const buttons = Array.from(document.querySelectorAll(".page-toolbar button"));
   const previousStates = buttons.map((button) => button.disabled);
   buttons.forEach((button) => { button.disabled = true; });
+  batchStopRequested = false;
+  stopAutomationButton.hidden = false;
+  stopAutomationButton.disabled = false;
   activeButton?.setAttribute("aria-busy", "true");
   return () => {
     buttons.forEach((button, index) => { button.disabled = previousStates[index]; });
+    stopAutomationButton.disabled = true;
+    stopAutomationButton.hidden = true;
+    batchStopRequested = false;
   };
 }
+
+stopAutomationButton.addEventListener("click", () => {
+  if (stopAutomationButton.disabled) return;
+  batchStopRequested = true;
+  stopAutomationButton.disabled = true;
+  setTransmitAllStatus("Stop requested. The current Beacon action will finish before the batch stops.");
+});
 
 const EDIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 const TRANSMIT_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
@@ -934,7 +950,7 @@ async function runDeleteClaims() {
   });
   setToolbarLoading(button, true);
   try {
-    for (let index = 0; index < rows.length; index += 1) {
+    for (let index = 0; index < rows.length && !batchStopRequested; index += 1) {
       const row = rows[index];
       const claimAction = row.querySelector('[data-action="edit-claim"]');
       const { transmittalId, claimId } = claimAction.dataset;
@@ -954,6 +970,7 @@ async function runDeleteClaims() {
 
     let transmittalIndex = 0;
     for (const [transmittalId, transmittal] of transmittals) {
+      if (batchStopRequested) break;
       transmittalIndex += 1;
       if (transmittal.failed) {
         keptTransmittals += 1;
@@ -997,7 +1014,8 @@ async function runDeleteClaims() {
     const errors = failed + keptTransmittals;
     setTransmitAllStatus(
       `Deleted ${deleted} claim${deleted === 1 ? "" : "s"} and ${deletedTransmittals} empty DRAFT transmittal${deletedTransmittals === 1 ? "" : "s"}; ${failed} claim${failed === 1 ? "" : "s"} failed and ${keptTransmittals} transmittal${keptTransmittals === 1 ? "" : "s"} kept.`
-      + (transmittalMessages.length ? ` ${transmittalMessages.join("; ")}` : ""),
+      + (transmittalMessages.length ? ` ${transmittalMessages.join("; ")}` : "")
+      + (batchStopRequested ? " Batch stopped by request." : ""),
       errors > 0,
     );
   } finally {
@@ -1085,7 +1103,7 @@ async function runGenerateCf4All() {
   transmitAllButton.disabled = true;
   setToolbarLoading(button, true);
   try {
-    for (let index = 0; index < rows.length; index += 1) {
+    for (let index = 0; index < rows.length && !batchStopRequested; index += 1) {
       const row = rows[index];
       const claimAction = row.querySelector('[data-action="edit-claim"]');
       const { transmittalId, claimId } = claimAction.dataset;
@@ -1102,9 +1120,10 @@ async function runGenerateCf4All() {
         failed += 1;
       }
     }
-    setTransmitAllStatus(failed
+    setTransmitAllStatus((failed
       ? `CF4 generated for ${generated} claim${generated === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
-      : `CF4 generated for all ${generated} draft claim${generated === 1 ? "" : "s"}.`, failed > 0);
+      : `CF4 generated for all ${generated} draft claim${generated === 1 ? "" : "s"}.`)
+      + (batchStopRequested ? " Batch stopped by request." : ""), failed > 0);
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
@@ -1132,7 +1151,7 @@ async function runGenerateSoaAll() {
   transmitAllButton.disabled = true;
   setToolbarLoading(button, true);
   try {
-    for (let index = 0; index < rows.length; index += 1) {
+    for (let index = 0; index < rows.length && !batchStopRequested; index += 1) {
       const row = rows[index];
       const claimAction = row.querySelector('[data-action="edit-claim"]');
       const { transmittalId, claimId } = claimAction.dataset;
@@ -1149,9 +1168,10 @@ async function runGenerateSoaAll() {
         failed += 1;
       }
     }
-    setTransmitAllStatus(failed
+    setTransmitAllStatus((failed
       ? `SOA generated for ${generated} claim${generated === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
-      : `SOA generated for all ${generated} draft claim${generated === 1 ? "" : "s"}.`, failed > 0);
+      : `SOA generated for all ${generated} draft claim${generated === 1 ? "" : "s"}.`)
+      + (batchStopRequested ? " Batch stopped by request." : ""), failed > 0);
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
@@ -1244,7 +1264,7 @@ async function runRemoveGeneratedSoaAll() {
   otherControls.forEach((control) => { control.disabled = true; });
   setToolbarLoading(button, true);
   try {
-    for (let index = 0; index < rows.length; index += 1) {
+    for (let index = 0; index < rows.length && !batchStopRequested; index += 1) {
       const row = rows[index];
       const claimAction = row.querySelector('[data-action="edit-claim"]');
       const { transmittalId, claimId } = claimAction.dataset;
@@ -1260,9 +1280,10 @@ async function runRemoveGeneratedSoaAll() {
         failed += 1;
       }
     }
-    setTransmitAllStatus(failed
+    setTransmitAllStatus((failed
       ? `Generated eSOA documents removed from ${removed} claim${removed === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
-      : `Generated eSOA documents removed from all ${removed} draft claim${removed === 1 ? "" : "s"}.`, failed > 0);
+      : `Generated eSOA documents removed from all ${removed} draft claim${removed === 1 ? "" : "s"}.`)
+      + (batchStopRequested ? " Batch stopped by request." : ""), failed > 0);
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
@@ -1289,7 +1310,7 @@ async function runRemoveSoaAll() {
   transmitAllButton.disabled = true;
   setToolbarLoading(button, true);
   try {
-    for (let index = 0; index < rows.length; index += 1) {
+    for (let index = 0; index < rows.length && !batchStopRequested; index += 1) {
       const row = rows[index];
       const claimAction = row.querySelector('[data-action="edit-claim"]');
       const { transmittalId, claimId } = claimAction.dataset;
@@ -1305,9 +1326,10 @@ async function runRemoveSoaAll() {
         failed += 1;
       }
     }
-    setTransmitAllStatus(failed
+    setTransmitAllStatus((failed
       ? `SOA data removed from ${removed} claim${removed === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
-      : `SOA data removed from all ${removed} draft claim${removed === 1 ? "" : "s"}.`, failed > 0);
+      : `SOA data removed from all ${removed} draft claim${removed === 1 ? "" : "s"}.`)
+      + (batchStopRequested ? " Batch stopped by request." : ""), failed > 0);
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
@@ -1356,7 +1378,7 @@ async function runChangeArAll() {
   let updated = 0;
   let failed = 0;
   try {
-    for (let index = 0; index < rows.length; index += 1) {
+    for (let index = 0; index < rows.length && !batchStopRequested; index += 1) {
       const row = rows[index];
       const editButton = row.querySelector('[data-action="edit-claim"]');
       const { transmittalId, claimId } = editButton.dataset;
@@ -1373,9 +1395,10 @@ async function runChangeArAll() {
         failed += 1;
       }
     }
-    setTransmitAllStatus(failed
+    setTransmitAllStatus((failed
       ? `Account Receivable updated for ${updated} claim${updated === 1 ? "" : "s"}; ${failed} failed. Check Beacon Message for details.`
-      : `Account Receivable updated for all ${updated} draft claim${updated === 1 ? "" : "s"}.`, failed > 0);
+      : `Account Receivable updated for all ${updated} draft claim${updated === 1 ? "" : "s"}.`)
+      + (batchStopRequested ? " Batch stopped by request." : ""), failed > 0);
   } finally {
     setToolbarLoading(button, false);
     button.disabled = false;
@@ -1433,7 +1456,7 @@ async function runTransmitAll() {
   let failed = 0;
   let rowTotal = 0;
   try {
-    for (let index = 0; index < entries.length; index += 1) {
+    for (let index = 0; index < entries.length && !batchStopRequested; index += 1) {
       const [transmittalId, groupRows] = entries[index];
       const primaryRow = groupRows[0];
       const button = primaryRow.querySelector('[data-action="transmit-claim"]');
@@ -1454,9 +1477,9 @@ async function runTransmitAll() {
       }
     }
     if (failed === 0) {
-      setTransmitAllStatus(`Transmitted ${transmitted} transmittal${transmitted === 1 ? "" : "s"} (${rowTotal} row${rowTotal === 1 ? "" : "s"}).`);
+      setTransmitAllStatus(`Transmitted ${transmitted} transmittal${transmitted === 1 ? "" : "s"} (${rowTotal} row${rowTotal === 1 ? "" : "s"}).${batchStopRequested ? " Batch stopped by request." : ""}`);
     } else {
-      setTransmitAllStatus(`${transmitted} transmittal${transmitted === 1 ? "" : "s"} transmitted, ${failed} failed. Check the row messages for details.`, true);
+      setTransmitAllStatus(`${transmitted} transmittal${transmitted === 1 ? "" : "s"} transmitted, ${failed} failed. Check the row messages for details.${batchStopRequested ? " Batch stopped by request." : ""}`, true);
     }
   } finally {
     setToolbarLoading(transmitAllButton, false);
@@ -1489,7 +1512,7 @@ async function runFinalizeAll() {
   controls.forEach((control) => { control.disabled = true; });
   setToolbarLoading(finalizeAllButton, true);
   try {
-    for (let index = 0; index < rows.length; index += 1) {
+    for (let index = 0; index < rows.length && !batchStopRequested; index += 1) {
       const row = rows[index];
       const editButton = row.querySelector('[data-action="edit-claim"]');
       const { transmittalId, claimId } = editButton.dataset;
@@ -1512,7 +1535,7 @@ async function runFinalizeAll() {
       }
     }
     const parts = [`Finalized ${finalized}`, `${skipped} already finalized`, `${failed} failed`];
-    setTransmitAllStatus(`${parts.join("; ")}.${failed ? " Check Beacon Message for details." : ""}`, failed > 0);
+    setTransmitAllStatus(`${parts.join("; ")}.${failed ? " Check Beacon Message for details." : ""}${batchStopRequested ? " Batch stopped by request." : ""}`, failed > 0);
   } finally {
     setToolbarLoading(finalizeAllButton, false);
     controls.forEach((control) => { control.disabled = false; });

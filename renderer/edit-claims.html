@@ -206,6 +206,7 @@
       .toolbar-group-label { display:none; }
       .toolbar-group-actions { display:flex; gap:4px; }
       .page-toolbar .solid-btn { position:relative; display:grid; width:38px; min-width:38px; height:38px; min-height:38px; place-items:center; padding:0; color:var(--accent); background:var(--bg-dark); border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border)); border-radius:6px; font-size:0; line-height:1; white-space:nowrap; }
+      .page-toolbar #stopAutomationButton[hidden] { display:none; }
       .page-toolbar .solid-btn:hover:not(:disabled) { background:var(--accent-soft); border-color:var(--accent); }
       .page-toolbar .solid-btn:not(.danger-action):not(#finalizeAllButton):not(#transmitAllButton) { background:#12233b; }
       .page-toolbar .solid-btn svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
@@ -321,6 +322,7 @@
                 <button class="solid-btn danger-action" id="removeSoaAllButton" type="button" data-tip="Remove SOA Charges" aria-label="Remove SOA Charges" title="Remove SOA Charges" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 8 8 8"/></svg></button>
                 <button class="solid-btn danger-action" id="deleteClaimsButton" type="button" data-tip="Delete Draft Claims" aria-label="Delete Draft Claims" title="Delete Draft Claims" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button>
               </div></section>
+              <button class="solid-btn danger-action" id="stopAutomationButton" type="button" data-tip="Stop Automation" aria-label="Stop Automation" title="Stop Automation" disabled hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
               <label class="claims-sort" for="claimsSort">Sort patients <select id="claimsSort" disabled><option value="">Default order</option><option value="surname-asc">Surname A–Z</option><option value="surname-desc">Surname Z–A</option></select></label>
               <span class="toolbar-status" id="transmitAllStatus" aria-live="polite"></span>
             </div>
