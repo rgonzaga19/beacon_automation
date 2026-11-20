@@ -2065,7 +2065,7 @@ def delete_finalize_claim(transmittal_id, claim_id):
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             _require_draft_claim(transmittal_id, claim_id)
-            removed_documents = soa_api.remove_generated_esoa_documents(claim_id)
+            removed_documents = soa_api.remove_claim_documents(claim_id)
             beacon_api.delete_claim(claim_id)
         return jsonify({"deleted": True, "documents_deleted": removed_documents})
     except ValueError as exc:
@@ -3681,6 +3681,53 @@ def documents_start():
         return jsonify({"error": "Please enter at least one transmittal number."}), 400
     if not uploads or len(uploads) != len(relative_paths):
         return jsonify({"error": "Select a patient folder containing documents."}), 400
+
+    # Check Beacon before accepting the upload job. ESA (generated eSOA) and
+    # CF4 are generated workflow documents and do not block this upload.
+    try:
+        auth_key = browser_session.auth_context_key(beacon_settings, user_key=f"user:{user.id}")
+        existing_documents = []
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            facility_ids = soa_api.get_client_ids()
+            for number in transmittals:
+                transmittal = None
+                for facility_id in facility_ids:
+                    transmittal = soa_api.get_transmittal(number, client_id=facility_id)
+                    if transmittal:
+                        break
+                if not transmittal:
+                    return jsonify({"error": f"Transmittal {number} was not found."}), 400
+                claims = soa_api.get_claims(int(transmittal["id"])) or []
+                if isinstance(claims, dict):
+                    claims = claims.get("phicClaims") or claims.get("claims") or claims.get("claimList") or []
+                if not claims:
+                    return jsonify({"error": f"Transmittal {number} has no claim to upload documents to."}), 400
+                claim_id = int(claims[0]["id"])
+                documents = soa_api.get_documents(claim_id)
+                blocking_documents = [
+                    str(document.get("documentType") or "Unknown document").strip()
+                    for document in documents
+                    if str(document.get("documentType") or "").strip().upper() not in {"ESA", "CF4"}
+                ]
+                if blocking_documents:
+                    existing_documents.append({
+                        "transmittal": number,
+                        "documents": sorted(set(blocking_documents)),
+                    })
+        if existing_documents:
+            details = "; ".join(
+                f"{item['transmittal']}: {', '.join(item['documents'])}"
+                for item in existing_documents
+            )
+            return jsonify({
+                "error": f"Document upload stopped because documents are already attached ({details}). Remove those documents first, then try again.",
+                "existing_documents": existing_documents,
+            }), 409
+    except Exception as exc:
+        logger.exception("Document upload preflight failed for user %s", user.id)
+        return jsonify({"error": f"Could not check existing Beacon documents: {exc}"}), 502
+
     for upload in uploads:
         if upload and upload.filename:
             upload.stream.seek(0, os.SEEK_END)

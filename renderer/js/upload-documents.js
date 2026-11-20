@@ -63,7 +63,12 @@ startButton.addEventListener("click", async () => {
   try {
     const response = await fetch(`${API_BASE}/api/documents/start`, { method: "POST", body: form });
     const result = await response.json();
-    if (!response.ok || result.error) throw new Error(result.error || "Could not start document upload.");
+    if (!response.ok || result.error) {
+      if (result.existing_documents?.length) {
+        showModal("Documents Already Uploaded", result.error);
+      }
+      throw new Error(result.error || "Could not start document upload.");
+    }
   } catch (error) {
     log(error.message, "ERROR");
     setRunning(false);

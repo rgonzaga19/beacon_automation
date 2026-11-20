@@ -882,7 +882,7 @@ function showDeleteClaimsConfirm(claimCount, onConfirm) {
     <div class="modal-overlay">
       <div class="modal-box">
         <h3>Confirm Draft Claim Deletion</h3>
-        <p>Permanently delete the ${claimCount} selected draft claim${claimCount === 1 ? "" : "s"} and their generated ESA/eSOA documents? Afterward, any of their DRAFT transmittals that are empty will also be deleted. This cannot be undone; transmittals containing other claims will be kept.</p>
+        <p>Permanently delete all documents attached to the ${claimCount} selected draft claim${claimCount === 1 ? "" : "s"} (including generated SOA, CF4, CSF, COE, OTH, and HDA documents), then delete the claims? Afterward, any of their DRAFT transmittals that are empty will also be deleted. This cannot be undone; transmittals containing other claims will be kept.</p>
         <div class="modal-actions">
           <button class="cyber-btn" id="deleteClaimsCancelBtn" type="button">CANCEL</button>
           <button class="cyber-btn danger" id="deleteClaimsConfirmBtn" type="button">YES, DELETE DRAFTS</button>

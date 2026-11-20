@@ -394,6 +394,36 @@ def remove_generated_esoa_documents(claim_id):
     return len(document_ids)
 
 
+def remove_claim_documents(claim_id):
+    """Delete every document attached to a claim and confirm Beacon removed them."""
+    documents = get_documents(claim_id)
+    document_ids = []
+    for document in documents:
+        document_id = next((
+            document.get(key) for key in ("phicDocumentId", "documentId", "id")
+            if document.get(key) is not None
+        ), None)
+        if document_id is None:
+            document_type = str(document.get("documentType") or "unknown").strip()
+            raise RuntimeError(
+                f"Beacon returned a {document_type} document without its document ID."
+            )
+        document_ids.append(document_id)
+
+    for document_id in document_ids:
+        _json(browser_session.http_request(
+            "DELETE",
+            _base_url() + "/api/PHICDocument/DeletePHICDocument",
+            headers=_headers(),
+            params={"phicDocumentId": document_id, "phicClaimId": int(claim_id)},
+            timeout=30,
+        ))
+
+    if get_documents(claim_id):
+        raise RuntimeError("Beacon still returns documents attached to the claim after removal.")
+    return len(document_ids)
+
+
 def get_claim_issue_count(claim_id):
     return _json(browser_session.http_request(
         "GET",
