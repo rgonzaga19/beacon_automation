@@ -401,6 +401,9 @@ async function restoreRunAllStatus() {
 
 clearFieldsBtn.addEventListener("click", () => {
   if (active) return;
+  fetchJSON("/api/run-all/status", { method: "DELETE" }).catch((error) => {
+    console.error("Could not clear saved Run All history.", error);
+  });
   form.reset();
   monthSelect.value = monthNames[new Date().getMonth()];
   yearSelect.value = String(new Date().getFullYear());

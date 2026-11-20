@@ -879,6 +879,9 @@ startBtn.addEventListener("click", async () => {
 
 clearBtn.addEventListener("click", () => {
   if (cf2RunActive) return;
+  fetchJSON("/api/cf2/status", { method: "DELETE" }).catch((error) => {
+    console.error("Could not clear saved CF2 history.", error);
+  });
   setMode("new_draft");
   resetWorkflowCards();
   claimYearSelect.value = String(new Date().getFullYear());

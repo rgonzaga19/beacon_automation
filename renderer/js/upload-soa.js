@@ -468,6 +468,9 @@ automateBtn.addEventListener("click", async () => {
 
 clearBtn.addEventListener("click", () => {
   if (soaRunActive) return;
+  fetchJSON("/api/soa/status", { method: "DELETE" }).catch((error) => {
+    console.error("Could not clear saved SOA history.", error);
+  });
   transmittalsInput.value = "";
   selectedSoaFiles = [];
   webSoaInput.value = "";

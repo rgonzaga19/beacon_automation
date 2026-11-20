@@ -967,6 +967,9 @@ startBtn.addEventListener("click", async () => {
 
 clearBtn.addEventListener("click", () => {
   if (cf4Running) return;
+  fetchJSON("/api/cf4-transmittal/status", { method: "DELETE" }).catch((error) => {
+    console.error("Could not clear saved CF4 history.", error);
+  });
   transmittalsInput.value = "";
   document.getElementById("autoEncodeCf4").checked = false;
   clearLogs();

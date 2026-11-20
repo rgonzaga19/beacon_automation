@@ -3067,10 +3067,16 @@ def cf2_upload():
     })
 
 
-@app.route("/api/cf2/status", methods=["GET"])
+@app.route("/api/cf2/status", methods=["GET", "DELETE"])
 @login_required
 def cf2_status():
     user = current_user()
+    if request.method == "DELETE":
+        row = db.session.get(Cf2TaskSnapshot, user.id)
+        if row:
+            db.session.delete(row)
+            db.session.commit()
+        return jsonify({"cleared": True})
     row = db.session.get(Cf2TaskSnapshot, user.id)
     snapshot = dict(row.snapshot) if row and row.snapshot else None
     if snapshot and snapshot.get("running") and snapshot.get("server_instance") != _server_instance_id:
@@ -3818,10 +3824,16 @@ def soa_start():
     return jsonify({"started": True})
 
 
-@app.route("/api/soa/status", methods=["GET"])
+@app.route("/api/soa/status", methods=["GET", "DELETE"])
 @login_required
 def soa_status():
     user = current_user()
+    if request.method == "DELETE":
+        row = db.session.get(SoaTaskSnapshot, user.id)
+        if row:
+            db.session.delete(row)
+            db.session.commit()
+        return jsonify({"cleared": True})
     row = db.session.get(SoaTaskSnapshot, user.id)
     snapshot = dict(row.snapshot) if row and row.snapshot else None
     if snapshot and snapshot.get("running") and snapshot.get("server_instance") != _server_instance_id:
@@ -4016,11 +4028,17 @@ def cf4_transmittal_start():
     return jsonify({"started": True})
 
 
-@app.route("/api/cf4-transmittal/status", methods=["GET"])
-@app.route("/api/beacon/status", methods=["GET"])
+@app.route("/api/cf4-transmittal/status", methods=["GET", "DELETE"])
+@app.route("/api/beacon/status", methods=["GET", "DELETE"])
 @login_required
 def cf4_transmittal_status():
     user = current_user()
+    if request.method == "DELETE":
+        row = db.session.get(Cf4TransmittalTaskSnapshot, user.id)
+        if row:
+            db.session.delete(row)
+            db.session.commit()
+        return jsonify({"cleared": True})
     row = db.session.get(Cf4TransmittalTaskSnapshot, user.id)
     snapshot = dict(row.snapshot) if row and row.snapshot else None
     if snapshot and snapshot.get("running") and snapshot.get("server_instance") != _server_instance_id:
@@ -4664,12 +4682,20 @@ def run_all_retry():
     return jsonify({"started": True, "stage": start_at, "run_id": retry_state["run_id"]})
 
 
-@app.route("/api/run-all/status", methods=["GET"])
+@app.route("/api/run-all/status", methods=["GET", "DELETE"])
 @login_required
 def run_all_status():
     user = current_user()
     if not (user.is_admin or user.role == "subscriber"):
         return jsonify({"error": "Run All is available to Subscriber and Admin accounts only."}), 403
+    if request.method == "DELETE":
+        with _run_all_status_lock:
+            _run_all_status.pop(user.id, None)
+            row = db.session.get(RunAllTaskSnapshot, user.id)
+            if row:
+                db.session.delete(row)
+                db.session.commit()
+        return jsonify({"cleared": True})
     with _run_all_status_lock:
         state = _run_all_status.get(user.id)
         if state is None:
