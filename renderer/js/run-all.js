@@ -420,6 +420,25 @@ clearFieldsBtn.addEventListener("click", () => {
   );
   errorNode.textContent = "";
   errorNode.style.display = "none";
+  results.clear();
+  currentRunId = null;
+  latestStatusSequence = 0;
+  retryRunId = null;
+  lastProgress = null;
+  runProgress.hidden = true;
+  rpTrack.classList.add("indeterminate");
+  rpFill.style.width = "0%";
+  rpTrack.removeAttribute("aria-valuenow");
+  setCopyTransmittalsStatus("");
+  renderEmptyResults();
+  logLines = 0;
+  logDrawer.classList.remove("has-lines", "has-error");
+  document.getElementById("logCount").textContent = "0 lines";
+  document.getElementById("logPreview").textContent = "";
+  logNode.replaceChildren(Object.assign(document.createElement("div"), {
+    className: "log-empty",
+    textContent: "Waiting for workflow activity…",
+  }));
   statusNode.textContent = "Fields cleared. Ready when you are.";
   updateSummary();
 });
