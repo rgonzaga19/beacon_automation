@@ -6,7 +6,7 @@
   <title>PDF Auto Rename</title>
   <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/theme.css">
-  <link rel="stylesheet" href="css/auto-rename.css">
+  <link rel="stylesheet" href="css/auto-rename.css?v=rename-modal-20261123">
 </head>
 <body>
   <header class="rename-header">
@@ -131,6 +131,13 @@
       </div>
     </aside>
   </div>
-  <script src="js/auto-rename.js?v=rar-support-20261030"></script>
+  <dialog class="rename-generating-modal" id="renameGeneratingModal" aria-labelledby="renameGeneratingTitle" aria-describedby="renameGeneratingMessage">
+    <div class="rename-modal-content">
+      <span class="rename-modal-spinner" aria-hidden="true"></span>
+      <h2 id="renameGeneratingTitle">Renaming PDFs</h2>
+      <p id="renameGeneratingMessage">Preparing your renamed files and building the ZIP. Please wait.</p>
+    </div>
+  </dialog>
+  <script src="js/auto-rename.js?v=rename-modal-20261123"></script>
 </body>
 </html>

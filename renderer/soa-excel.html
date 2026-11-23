@@ -6,7 +6,7 @@
   <title>SOA Excel Generator</title>
   <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/theme.css">
-  <link rel="stylesheet" href="css/soa-excel.css">
+  <link rel="stylesheet" href="css/soa-excel.css?v=batch-modal-20261123">
 </head>
 <body>
   <header class="soa-header">
@@ -97,9 +97,17 @@
     </section>
   </main>
 
+  <dialog class="batch-generating-modal" id="batchGeneratingModal" aria-labelledby="batchGeneratingTitle" aria-describedby="batchGeneratingMessage">
+    <div class="batch-modal-content">
+      <span class="batch-modal-spinner" aria-hidden="true"></span>
+      <h2 id="batchGeneratingTitle">Generating SOA batch</h2>
+      <p id="batchGeneratingMessage">Preparing your files and building the ZIP. Please wait.</p>
+    </div>
+  </dialog>
+
   <script src="vendor/lucide/lucide.min.js"></script>
   <script src="js/icons.js"></script>
   <script>BeabotsIcons.hydrate();</script>
-  <script src="js/soa-excel.js"></script>
+  <script src="js/soa-excel.js?v=batch-modal-20261123"></script>
 </body>
 </html>

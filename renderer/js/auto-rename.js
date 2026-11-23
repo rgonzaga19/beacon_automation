@@ -780,6 +780,7 @@ downloadBtn.addEventListener("click", async () => {
   const unchecked = [...state.rowFor.entries()].filter(([id, row]) => isOk(row) && !state.checked.has(id)).length;
   if (unchecked && !confirm(`${unchecked} rename(s) haven't been marked as checked. Download anyway?`)) return;
   downloadBtn.disabled = true;
+  $("renameGeneratingModal").showModal();
   setStatus("Creating renamed PDF archive...");
   try {
     const response = await fetch("/api/auto-rename/run", { method: "POST", body: makeForm() });
@@ -792,6 +793,7 @@ downloadBtn.addEventListener("click", async () => {
   } catch (error) {
     setStatus(error.message, true);
   } finally {
+    $("renameGeneratingModal").close();
     downloadBtn.disabled = !state.preview;
   }
 });

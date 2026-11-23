@@ -349,6 +349,7 @@ batchButton.addEventListener("click", async () => {
   form.append("month", document.getElementById("batchMonth").value);
   form.append("year", document.getElementById("batchYear").value);
   batchButton.disabled = true;
+  document.getElementById("batchGeneratingModal").showModal();
   batchStatus.className = "status-text";
   batchStatus.textContent = "Generating batch...";
   reviewBatch();
@@ -364,6 +365,7 @@ batchButton.addEventListener("click", async () => {
     batchStatus.className = "status-text error";
     batchStatus.textContent = error.message;
   } finally {
+    document.getElementById("batchGeneratingModal").close();
     batchButton.disabled = !batchFile.files.length;
   }
 });

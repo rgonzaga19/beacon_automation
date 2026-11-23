@@ -88,6 +88,17 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .quiet-btn:hover { color: var(--text-pri); border-color: var(--soa-accent); background: var(--accent-soft); }
 .danger-btn { min-height: 36px; display: inline-flex; align-items: center; gap: 8px; justify-content: center; color: var(--soa-danger); background: color-mix(in srgb, var(--soa-danger) 8%, transparent); border: 1px solid color-mix(in srgb, var(--soa-danger) 40%, transparent); border-radius: 999px; font-size: 12px; }
 .batch-card { max-width: none; margin: 6px 10px; }
+.batch-generating-modal { width: min(360px, calc(100vw - 36px)); padding: 0; color: var(--text-pri); background: var(--soa-surface); border: 1px solid color-mix(in srgb, var(--soa-accent) 55%, var(--soa-border)); border-radius: 16px; box-shadow: 0 24px 90px rgba(0, 0, 0, .45); }
+.batch-generating-modal::backdrop { background: rgba(5, 12, 22, .72); backdrop-filter: blur(4px); }
+.batch-modal-content { display: grid; justify-items: center; gap: 12px; padding: 30px 28px 26px; text-align: center; }
+.batch-modal-spinner { position: relative; width: 54px; height: 54px; border: 4px solid color-mix(in srgb, var(--soa-accent) 18%, transparent); border-top-color: var(--soa-accent); border-right-color: var(--soa-accent); border-radius: 50%; animation: soa-modal-spin .85s linear infinite, soa-modal-glow 1.5s ease-in-out infinite; }
+.batch-modal-spinner::after { position: absolute; inset: 8px; border: 3px solid transparent; border-bottom-color: var(--soa-accent-strong); border-left-color: var(--soa-accent-strong); border-radius: 50%; content: ""; animation: soa-modal-spin-reverse 1.2s linear infinite; }
+.batch-modal-content h2 { margin: 0; color: var(--text-pri); font-size: 15px; font-weight: 800; }
+.batch-modal-content p { margin: 0; color: var(--text-sec); font-size: 12px; line-height: 1.55; }
+@keyframes soa-modal-spin { to { transform: rotate(360deg); } }
+@keyframes soa-modal-spin-reverse { to { transform: rotate(-360deg); } }
+@keyframes soa-modal-glow { 0%, 100% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--soa-accent) 20%, transparent)); } 50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--soa-accent) 58%, transparent)); } }
+@media (prefers-reduced-motion: reduce) { .batch-modal-spinner, .batch-modal-spinner::after { animation-duration: 2.5s; } }
 .batch-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .batch-copy, .field small { margin: 0; color: var(--text-sec); font-size: 12px; line-height: 1.6; }
 .batch-period-row { display: grid; grid-template-columns: 1.35fr .98fr; gap: 8px; }
