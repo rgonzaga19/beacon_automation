@@ -3453,6 +3453,15 @@ def _update_document_snapshot(user_id, **updates):
                 return None
 
 
+class _DocumentStopRequested(Exception):
+    """Internal signal to leave document processing at a safe checkpoint."""
+
+
+def _check_document_stop(stop_event):
+    if stop_event.is_set():
+        raise _DocumentStopRequested()
+
+
 def _run_document_automation(user_id, beacon_settings, files_root, relative_paths, transmittals, stop_event, run_id):
     run_started_at = utc_now()
     room_token = _emit_room.set(user_room(user_id))
@@ -3464,27 +3473,31 @@ def _run_document_automation(user_id, beacon_settings, files_root, relative_path
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             facility_ids = soa_api.get_client_ids()
+            _check_document_stop(stop_event)
             for current, number in enumerate(transmittals, start=1):
-                if stop_event.is_set():
-                    break
+                _check_document_stop(stop_event)
                 progress = {"current": current, "total": len(transmittals), "transmittal": number, "status": "running"}
                 _update_document_snapshot(user_id, progress_item=progress, current=current, total=len(transmittals))
                 socketio.emit("documents_progress", {"run_id": run_id, "running": True, **progress}, room=user_room(user_id))
                 try:
                     transmittal = None
                     for facility_id in facility_ids:
+                        _check_document_stop(stop_event)
                         transmittal = soa_api.get_transmittal(number, client_id=facility_id)
+                        _check_document_stop(stop_event)
                         if transmittal:
                             break
                     if not transmittal:
                         raise ValueError("Transmittal not found.")
                     claims = soa_api.get_claims(int(transmittal["id"])) or []
+                    _check_document_stop(stop_event)
                     if isinstance(claims, dict):
                         claims = claims.get("phicClaims") or claims.get("claims") or claims.get("claimList") or []
                     if not claims:
                         raise ValueError("No claim found in transmittal.")
                     claim_id = int(claims[0]["id"])
                     patient = soa_api.get_cf1(claim_id) or {}
+                    _check_document_stop(stop_event)
                     patient_name = str(patient.get("patientFullname") or "").strip()
                     surname, given = _split_surname_and_given(patient_name)
                     if not surname or not given:
@@ -3492,8 +3505,10 @@ def _run_document_automation(user_id, beacon_settings, files_root, relative_path
                     surname_tokens = [_normalize(token) for token in surname if _normalize(token)]
                     first_key = _normalize(given[0])
                     cf2_record = cf2_api.get_cf2(claim_id) or {}
+                    _check_document_stop(stop_event)
                     raw_treatment_dates = []
                     procedures = beacon_api.get_surgical_procedures(claim_id) or []
+                    _check_document_stop(stop_event)
                     for procedure in procedures:
                         raw_treatment_dates.extend(
                             session.get("sessionDate")
@@ -3625,9 +3640,12 @@ def _run_document_automation(user_id, beacon_settings, files_root, relative_path
                     if sum(path.stat().st_size for path in paths) > 50 * 1024 * 1024:
                         raise ValueError("Matched patient documents exceed Beacon's 50 MB per-upload limit.")
                     details = beacon_api.get_transmittal_by_id(int(transmittal["id"])) or {}
+                    _check_document_stop(stop_event)
                     documents_api.upload_documents(claim_id, details, paths)
                     result = {"transmittal": number, "status": "success", "message": f"Uploaded {len(paths)} document(s)."}
                     socketio.emit("documents_log", {"message": f"{number}: uploaded {len(paths)} document(s).", "level": "SUCCESS"}, room=user_room(user_id))
+                except _DocumentStopRequested:
+                    break
                 except Exception as exc:
                     result = {"transmittal": number, "status": "failed", "message": str(exc)}
                     socketio.emit("documents_log", {"message": f"{number}: {exc}", "level": "ERROR"}, room=user_room(user_id))
@@ -3635,6 +3653,8 @@ def _run_document_automation(user_id, beacon_settings, files_root, relative_path
                 progress["status"] = result["status"]
                 _update_document_snapshot(user_id, progress_item=progress)
                 socketio.emit("documents_progress", {"run_id": run_id, "running": True, **progress}, room=user_room(user_id))
+    except _DocumentStopRequested:
+        pass
     except Exception as exc:
         failed = True
         socketio.emit("documents_log", {"message": f"FATAL ERROR: {exc}", "level": "ERROR"}, room=user_room(user_id))
@@ -3815,6 +3835,11 @@ def documents_stop():
     if not run:
         return jsonify({"stopped": False, "running": False})
     run["stop_event"].set()
+    _update_document_snapshot(
+        current_user().id,
+        stop_requested=True,
+        message="Stop requested. Waiting for the active Beacon request to finish.",
+    )
     return jsonify({"stopped": True, "running": True})
 
 

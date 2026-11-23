@@ -5,6 +5,7 @@ const logs = document.getElementById("logs");
 const startButton = document.getElementById("startUpload");
 let selectedFiles = [];
 let running = false;
+let starting = false;
 
 function log(message, level = "INFO") {
   if (logs.textContent === "Ready.") logs.textContent = "";
@@ -22,6 +23,7 @@ function transmittalList() {
 function setRunning(value) {
   running = value;
   startButton.textContent = value ? "Stop Upload" : "Start Upload";
+  startButton.disabled = starting;
   document.getElementById("browseFolder").disabled = value;
   document.getElementById("clear").disabled = value;
   transmittals.disabled = value;
@@ -41,9 +43,19 @@ transmittals.addEventListener("input", () => {
 
 startButton.addEventListener("click", async () => {
   if (running) {
-    await fetchJSON("/api/documents/stop", { method: "POST" });
-    startButton.textContent = "Stopping...";
-    startButton.disabled = true;
+    try {
+      const result = await fetchJSON("/api/documents/stop", { method: "POST" });
+      if (result.stopped) {
+        log("Stop requested. Finishing the active Beacon request, then stopping.", "WARNING");
+        startButton.textContent = "Stopping...";
+        startButton.disabled = true;
+      } else {
+        log("No active document upload was found to stop.", "WARNING");
+        setRunning(false);
+      }
+    } catch (error) {
+      log(`Stop request failed: ${error.message}`, "ERROR");
+    }
     return;
   }
   const numbers = transmittalList();
@@ -55,6 +67,7 @@ startButton.addEventListener("click", async () => {
 
   logs.textContent = "";
   log(`Starting upload for ${numbers.length} transmittal(s) and ${supported.length} supported file(s)...`);
+  starting = true;
   setRunning(true);
   const form = new FormData();
   form.append("transmittals", numbers.join("\n"));
@@ -69,7 +82,10 @@ startButton.addEventListener("click", async () => {
       }
       throw new Error(result.error || "Could not start document upload.");
     }
+    starting = false;
+    startButton.disabled = false;
   } catch (error) {
+    starting = false;
     log(error.message, "ERROR");
     setRunning(false);
   }
