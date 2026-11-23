@@ -165,16 +165,16 @@ function loadFiles(fileList) {
 async function pdfsFromSelection(fileList) {
   const selected = [...fileList];
   const pdfs = selected.filter((file) => /\.pdf$/i.test(file.name));
-  const archives = selected.filter((file) => /\.rar$/i.test(file.name));
+  const archives = selected.filter((file) => /\.(?:rar|zip)$/i.test(file.name));
   const ignored = selected.length - pdfs.length - archives.length;
   let extractedBytes = pdfs.reduce((total, file) => total + file.size, 0);
   if (archives.length && extractedBytes > MAX_EXTRACTED_PDF_BYTES) {
-    throw new Error("Selected PDFs and PDFs extracted from RAR archives exceed the 90 MB limit.");
+    throw new Error("Selected PDFs and PDFs extracted from ZIP/RAR archives exceed the 90 MB limit.");
   }
 
   for (const archiveFile of archives) {
     if (archiveFile.size > MAX_ARCHIVE_BYTES) {
-      throw new Error(`${archiveFile.name} exceeds the 100 MB RAR size limit.`);
+      throw new Error(`${archiveFile.name} exceeds the 100 MB archive size limit.`);
     }
     if (!archiveModulePromise) {
       const moduleUrl = new URL("vendor/libarchive/libarchive.js", document.baseURI);
@@ -199,12 +199,12 @@ async function pdfsFromSelection(fileList) {
       for (const entry of pdfEntries) {
         const compressed = entry.file;
         if (extractedBytes + compressed.size > MAX_EXTRACTED_PDF_BYTES) {
-          throw new Error("Selected PDFs and PDFs extracted from RAR archives exceed the 90 MB limit.");
+          throw new Error("Selected PDFs and PDFs extracted from ZIP/RAR archives exceed the 90 MB limit.");
         }
         const extracted = await compressed.extract();
         extractedBytes += extracted.size;
         const relativeName = `${entry.path || ""}${compressed.name}`.replaceAll("/", " - ").replaceAll("\\", " - ").replace(/\s*-\s*$/, "");
-        const archiveLabel = archiveFile.name.replace(/\.rar$/i, "");
+        const archiveLabel = archiveFile.name.replace(/\.(?:rar|zip)$/i, "");
         pdfs.push(new File([extracted], `${archiveLabel} - ${relativeName}`, {
           type: "application/pdf",
           lastModified: extracted.lastModified,
@@ -215,14 +215,14 @@ async function pdfsFromSelection(fileList) {
     }
   }
 
-  if (!pdfs.length) throw new Error("Choose PDF files or RAR archives containing PDFs.");
+  if (!pdfs.length) throw new Error("Choose PDF files or ZIP/RAR archives containing PDFs.");
   if (ignored) setStatus(`${ignored} unsupported file(s) were skipped.`, true);
   return pdfs;
 }
 
 async function handleFileSelection(fileList) {
   try {
-    setStatus("Reading selected PDFs and RAR archives...");
+    setStatus("Reading selected PDFs and ZIP/RAR archives...");
     const pdfs = await pdfsFromSelection(fileList);
     loadFiles(pdfs);
     setStatus(`Loaded ${pdfs.length} PDF file(s).`);

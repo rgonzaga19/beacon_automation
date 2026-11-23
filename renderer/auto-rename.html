@@ -30,12 +30,12 @@
           <div class="file-panel">
             <div class="section-heading">
               <span class="step">01</span>
-              <div><h2>Choose files</h2><p>Select PDFs or RAR archives to organize.</p></div>
+              <div><h2>Choose files</h2><p>Select PDFs or ZIP or RAR archives to organize.</p></div>
             </div>
             <label class="dropzone" id="dropzone">
-              <input id="pdfFiles" type="file" accept=".pdf,.rar,application/pdf,application/vnd.rar,application/x-rar-compressed" multiple>
-              <strong>Drop PDFs or RAR archives here, or click to browse</strong>
-              <small id="pdfHint">PDFs inside RAR archives are extracted in your browser.</small>
+              <input id="pdfFiles" type="file" accept=".pdf,.zip,.rar,application/pdf,application/zip,application/x-zip-compressed,application/vnd.rar,application/x-rar-compressed" multiple>
+              <strong>Drop PDFs or ZIP/RAR archives here, or click to browse</strong>
+              <small id="pdfHint">PDFs inside ZIP or RAR archives are extracted in your browser.</small>
             </label>
           </div>
           <div class="order-panel">
@@ -138,6 +138,6 @@
       <p id="renameGeneratingMessage">Preparing your renamed files and building the ZIP. Please wait.</p>
     </div>
   </dialog>
-  <script src="js/auto-rename.js?v=rename-modal-20261123"></script>
+  <script src="js/auto-rename.js?v=rename-modal-zip-20261123"></script>
 </body>
 </html>
