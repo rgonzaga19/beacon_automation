@@ -43,8 +43,7 @@
     font: 600 12px/1.4 var(--font-ui); cursor: pointer;
   }
   .guide-button:hover { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
-  .guide-button:focus-visible, .tab-btn:focus-visible, .settings-nav-btn:focus-visible, .log-drawer-head:focus-visible,
-  .link-btn:focus-visible, .guide-modal-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .guide-button:focus-visible, .tab-btn:focus-visible, .settings-nav-btn:focus-visible, .link-btn:focus-visible, .guide-modal-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* ---------- Tabs ---------- */
   .tabs { flex-shrink: 0; display: flex; gap: 0; padding: 0 var(--gap-3); background: transparent; }
@@ -126,6 +125,8 @@
 
   .review-stage { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
   #reportBox { flex: 1; min-height: 0; display: block; white-space: normal; overflow: auto; }
+  /* The queue board draws its own cards; strip the outer log-box frame/padding. */
+  #reportBox:has(.cf4-summary) { padding: 0; border: 0; background: transparent; overflow: hidden; }
   .log-line.ERROR { color: var(--error, #ff6b6b); }
 
   .cf4-summary { height: 100%; display: flex; flex-direction: column; gap: 10px; white-space: normal; font-family: var(--font-ui); line-height: 1.35; }
@@ -164,25 +165,52 @@
   .es-steps li { display: flex; align-items: center; gap: 8px; color: var(--text-pri); font-size: 12.5px; }
   .es-steps li span { width: 22px; height: 22px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: 50%; font-size: 11px; font-weight: 800; }
 
-  /* Log drawer */
-  .log-drawer { flex: 1 1 0; min-height:0; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
-  .log-drawer:not(.open) { flex:0 0 auto; }
-  .log-drawer-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: transparent; color: var(--text-pri); border: 0; font: 700 12px var(--font-ui); text-align: left; cursor: pointer; }
-  .log-drawer-head:hover { background: var(--accent-soft); }
+  /* Log: one-line ticker in the action bar + pop-up drawer.
+     Collapsed, the log is a single line between Start and Clear, so nothing
+     sits between the queue table and the action bar. Expanded, a drawer
+     rises from the action bar and overlays only the bottom of the table;
+     the stat tiles and status line above it are never covered. */
+  .log-drawer { flex: 1 1 160px; min-width: 120px; display: flex; }
+  .log-ticker {
+    width: 100%; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 11px 12px;
+    background: var(--bg-card); color: var(--text-pri); border: 1px solid var(--border); border-radius: var(--radius-md);
+    font: 700 12px var(--font-ui); text-align: left; cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .log-ticker:hover { background: var(--accent-soft); }
+  .log-ticker:focus-visible, .log-pop-head .ghost-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .ld-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-sec); opacity: 0.6; }
+  .log-drawer.has-lines .ld-dot { background: var(--accent); opacity: 1; }
   .log-drawer.has-error .ld-dot { background: var(--error); opacity: 1; }
-  .ld-preview { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-sec); font-weight: 500; font-size: 11.5px; }
-  .log-drawer.open .ld-preview { visibility: hidden; }
-  .ld-chev { color: var(--text-sec); transition: transform 0.15s ease; }
+  .log-drawer.has-error .log-ticker { border-color: var(--error); }
+  .ld-text { flex: 1; min-width: 0; color: var(--text-sec); font-weight: 500; font-size: 12px; }
+  .ld-text > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ld-preview { display: none; }
+  .log-drawer.has-lines .ld-preview { display: block; }
+  .log-drawer.has-lines #startHint { display: none; }
+  .ld-label { flex: none; color: var(--accent); }
+  .ld-chev { flex: none; color: var(--accent); transition: transform 0.15s ease; }
   .log-drawer.open .ld-chev { transform: rotate(180deg); }
-  .log-drawer #logBox { display: none; flex:1; min-height:0; height:auto; margin: 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: var(--bg-card); color: var(--text-pri); overflow-y: auto; }
-  .log-drawer.open #logBox { display: block; }
+
+  .log-pop {
+    display: none; position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 5;
+    height: clamp(180px, 36vh, 340px); flex-direction: column; overflow: hidden;
+    background: #000; border: 1px solid #303846; border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+  }
+  .log-drawer.open .log-pop { display: flex; }
+  .log-pop-head {
+    flex: none; display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 6px 5px 12px; color: #e5e7eb; background: #11161d; border-bottom: 1px solid #303846;
+    font: 700 12px var(--font-ui);
+  }
+  .log-pop-head .ghost-btn { padding: 5px 9px; color: #a1a1aa; }
+  .log-pop-head .ghost-btn:hover:not(:disabled) { color: #fff; background: rgba(255,255,255,0.1); }
+  .log-pop #logBox { flex: 1; min-height: 0; height: auto; margin: 0; border: 0; border-radius: 0; overflow-y: auto; }
   #logBox:empty::before { content: "Live automation steps appear here once the run starts."; color: var(--text-sec); }
 
   /* Action bar */
-  .action-bar { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+  .action-bar { position: relative; flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); }
   #startBtn { flex: none; min-width: 210px; padding: 12px 18px; font-size: 13px; line-height: 1.25; display: flex; align-items: center; justify-content: center; gap: 9px; }
-  .start-hint { flex: 1; min-width: 120px; color: var(--text-sec); font-size: 12px; }
   .action-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
   .ghost-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 12px; color: var(--text-sec); background: transparent; border: 0; border-radius: var(--radius-md); font: 600 12px var(--font-ui); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
   .ghost-btn:hover:not(:disabled) { color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }
@@ -271,7 +299,7 @@
     .guide-button { width: 100%; }
     .review-col { height:min(680px,70dvh); min-height:420px; }
     #startBtn { width: 100%; }
-    .start-hint { flex-basis: 100%; order: 3; }
+    .log-drawer { flex-basis: 100%; order: 3; }
     .action-sep { display: none; }
     .symptom-columns { grid-template-columns: minmax(0, 1fr); }
     .footer-bar { flex-wrap: wrap; }
@@ -386,22 +414,26 @@
             <div class="log-box" id="reportBox" role="region" aria-label="Automation queue summary"></div>
           </div>
 
-          <div class="log-drawer" id="logDrawer">
-            <button class="log-drawer-head" id="logDrawerToggle" type="button" aria-expanded="false" aria-controls="logBox">
-              <span class="ld-dot"></span>
-              <span>Automation log</span>
-              <span class="ld-preview" id="logDrawerPreview"></span>
-              <span class="ld-chev icon-flat"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></span>
-            </button>
-            <div class="log-box automation-log" id="logBox" role="log" aria-label="Automation log"></div>
-          </div>
-
           <div class="action-bar">
             <button class="solid-btn" id="startBtn" type="button" disabled>
               <span class="icon-flat"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 4.5v15l13-7.5z"/></svg></span>
               <span id="startBtnLabel">Start Automation</span>
             </button>
-            <span class="start-hint" id="startHint" aria-live="polite">Enter at least one transmittal number.</span>
+            <div class="log-drawer" id="logDrawer">
+              <button class="log-ticker" id="logDrawerToggle" type="button" aria-expanded="false" aria-controls="logPop" title="Show automation log">
+                <span class="ld-dot"></span>
+                <span class="ld-text"><span id="startHint" aria-live="polite">Enter at least one transmittal number.</span><span class="ld-preview" id="logDrawerPreview"></span></span>
+                <span class="ld-label">Log</span>
+                <span class="ld-chev icon-flat"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></span>
+              </button>
+              <div class="log-pop" id="logPop" role="dialog" aria-label="Automation log">
+                <div class="log-pop-head">
+                  <span>Automation log</span>
+                  <button class="ghost-btn" id="logPopClose" type="button">Hide <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></button>
+                </div>
+                <div class="log-box automation-log" id="logBox" role="log" aria-label="Automation log"></div>
+              </div>
+            </div>
             <span class="action-sep" aria-hidden="true"></span>
             <button class="ghost-btn" id="clearBtn" type="button">
               <span class="icon-flat"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg></span>

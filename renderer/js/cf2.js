@@ -168,7 +168,10 @@ const copyTransmittalsBtn = document.getElementById("copyTransmittalsBtn");
 const copyTransmittalsLabel = document.getElementById("copyTransmittalsLabel");
 let copyFeedbackTimer = null;
 
-// Collapsible automation-log drawer: the batch table stays visible above it.
+// Automation log: a one-line ticker in the action bar; the full log opens as a
+// drawer over the bottom of the table. Set to true to pop it open on Start.
+const AUTO_OPEN_LOG_ON_START = false;
+
 function setLogDrawer(open) {
   logDrawer.classList.toggle("open", open);
   logDrawerToggle.setAttribute("aria-expanded", String(open));
@@ -176,6 +179,13 @@ function setLogDrawer(open) {
 }
 logDrawerToggle.addEventListener("click", () => {
   setLogDrawer(!logDrawer.classList.contains("open"));
+});
+document.getElementById("logPopClose").addEventListener("click", () => {
+  setLogDrawer(false);
+  logDrawerToggle.focus();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && logDrawer.classList.contains("open")) setLogDrawer(false);
 });
 
 function getTransmittalNumbers() {
@@ -200,7 +210,7 @@ function clearLog() {
   summaryLogBox.innerHTML = "";
   detailsLogBox.innerHTML = "";
   logDrawerPreview.textContent = "";
-  logDrawer.classList.remove("has-error");
+  logDrawer.classList.remove("has-error", "has-lines");
   batchRecords = [];
   batchStatuses = new Map();
   updateCopyTransmittalsButton();
@@ -222,6 +232,7 @@ function detailLog(text, level = "INFO") {
   detailsLogBox.scrollTop = detailsLogBox.scrollHeight;
   // Latest line stays visible in the drawer header while it is collapsed.
   logDrawerPreview.textContent = text;
+  logDrawer.classList.add("has-lines");
   if (level === "ERROR") logDrawer.classList.add("has-error");
 }
 
@@ -358,7 +369,7 @@ function renderBatchTable(records) {
           </tbody>
         </table>
       </div>
-    </div>`;
+    </div>`.trim();
   updateBatchHeader();
 }
 
@@ -842,8 +853,8 @@ startBtn.addEventListener("click", async () => {
   cf2StopRequested = false;
   detailsLogBox.innerHTML = "";
   logDrawerPreview.textContent = "";
-  logDrawer.classList.remove("has-error");
-  setLogDrawer(true);
+  logDrawer.classList.remove("has-error", "has-lines");
+  setLogDrawer(AUTO_OPEN_LOG_ON_START);
   lastDetailLine = "";
   lastDetailAt = 0;
   resetBatchRowsForRun();
@@ -960,7 +971,7 @@ async function restoreCf2Status() {
     setControlsRunning(cf2RunActive);
 
     if (run.running) {
-      setLogDrawer(true);
+      setLogDrawer(AUTO_OPEN_LOG_ON_START);
       updateBatchHeader({
         status: "running",
         current: run.current,

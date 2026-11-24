@@ -672,7 +672,10 @@ const logDrawer = document.getElementById("logDrawer");
 const logDrawerToggle = document.getElementById("logDrawerToggle");
 const logDrawerPreview = document.getElementById("logDrawerPreview");
 
-// Collapsible automation-log drawer: the queue table stays visible above it.
+// Automation log: a one-line ticker in the action bar; the full log opens as a
+// drawer over the bottom of the table. Set to true to pop it open on Start.
+const AUTO_OPEN_LOG_ON_START = false;
+
 function setLogDrawer(open) {
   logDrawer.classList.toggle("open", open);
   logDrawerToggle.setAttribute("aria-expanded", String(open));
@@ -680,6 +683,13 @@ function setLogDrawer(open) {
 }
 logDrawerToggle.addEventListener("click", () => {
   setLogDrawer(!logDrawer.classList.contains("open"));
+});
+document.getElementById("logPopClose").addEventListener("click", () => {
+  setLogDrawer(false);
+  logDrawerToggle.focus();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && logDrawer.classList.contains("open")) setLogDrawer(false);
 });
 
 function writeLog(message, explicitLevel) {
@@ -704,7 +714,10 @@ function writeLog(message, explicitLevel) {
   logBox.appendChild(line);
   logBox.scrollTop = logBox.scrollHeight;
   // Latest line stays visible in the drawer header while it is collapsed.
-  if (message.trim()) logDrawerPreview.textContent = message;
+  if (message.trim()) {
+    logDrawerPreview.textContent = message;
+    logDrawer.classList.add("has-lines");
+  }
   if (tag === "ERROR") logDrawer.classList.add("has-error");
 
   const processingMatch = message.match(/TRANSMITTAL\s+(\d+)\/(\d+)\s*:/i);
@@ -733,7 +746,7 @@ function writeLog(message, explicitLevel) {
 function clearLogs() {
   logBox.innerHTML = "";
   logDrawerPreview.textContent = "";
-  logDrawer.classList.remove("has-error");
+  logDrawer.classList.remove("has-error", "has-lines");
 }
 
 // ---------------------------------------------------------------------------
@@ -935,7 +948,7 @@ startBtn.addEventListener("click", async () => {
   cf4Running = true;
   cf4StopRequested = false;
   showReport();
-  setLogDrawer(true);
+  setLogDrawer(AUTO_OPEN_LOG_ON_START);
   writeLog("Automation started.");
   writeLog(`Found ${transmittals.length} transmittal(s).`);
   setControlsRunning(true);
@@ -1024,7 +1037,7 @@ async function restoreBeaconStatus() {
     showReport();
 
     if (run.running) {
-      setLogDrawer(true);
+      setLogDrawer(AUTO_OPEN_LOG_ON_START);
       writeLog("Reconnected to the running CF4 automation. Earlier detail logs are not retained.");
     } else if (run.done) {
       writeLog(run.message || "CF4 automation finished.", run.failed ? "ERROR" : "INFO");

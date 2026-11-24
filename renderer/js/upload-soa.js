@@ -157,7 +157,10 @@ let soaRows = [];
 let currentProcessingIndex = 0;
 let soaRunActive = false;
 
-// Collapsible automation-log drawer: the queue table stays visible above it.
+// Automation log: a one-line ticker in the action bar; the full log opens as a
+// drawer over the bottom of the table. Set to true to pop it open on Start.
+const AUTO_OPEN_LOG_ON_START = false;
+
 function setLogDrawer(open) {
   logDrawer.classList.toggle("open", open);
   logDrawerToggle.setAttribute("aria-expanded", String(open));
@@ -165,6 +168,13 @@ function setLogDrawer(open) {
 }
 logDrawerToggle.addEventListener("click", () => {
   setLogDrawer(!logDrawer.classList.contains("open"));
+});
+document.getElementById("logPopClose").addEventListener("click", () => {
+  setLogDrawer(false);
+  logDrawerToggle.focus();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && logDrawer.classList.contains("open")) setLogDrawer(false);
 });
 
 function statusLabel(status) {
@@ -193,7 +203,10 @@ function writeLog(message, level) {
   automationLogPanel.appendChild(line);
   automationLogPanel.scrollTop = automationLogPanel.scrollHeight;
   // Latest line stays visible in the drawer header while it is collapsed.
-  if (String(message || "").trim()) logDrawerPreview.textContent = message;
+  if (String(message || "").trim()) {
+    logDrawerPreview.textContent = message;
+    logDrawer.classList.add("has-lines");
+  }
   if (level === "ERROR") logDrawer.classList.add("has-error");
   updateSummaryFromLog(message, level);
 }
@@ -201,7 +214,7 @@ function writeLog(message, level) {
 function clearLog() {
   automationLogPanel.innerHTML = "";
   logDrawerPreview.textContent = "";
-  logDrawer.classList.remove("has-error");
+  logDrawer.classList.remove("has-error", "has-lines");
   soaSummary = {
     running: false,
     total: 0,
@@ -438,7 +451,7 @@ automateBtn.addEventListener("click", async () => {
   soaSummary.running = true;
   soaSummary.total = transmittals.length;
   renderSummary();
-  setLogDrawer(true);
+  setLogDrawer(AUTO_OPEN_LOG_ON_START);
   writeLog(`Starting SOA upload for ${transmittals.length} transmittal(s)...`);
 
   const formData = new FormData();
@@ -532,7 +545,7 @@ async function restoreSoaStatus() {
     renderSummary();
 
     if (run.running) {
-      setLogDrawer(true);
+      setLogDrawer(AUTO_OPEN_LOG_ON_START);
       writeLog("Reconnected to the running SOA upload. Earlier detail logs are not retained.", "INFO");
     } else if (run.done) {
       writeLog(run.message || "SOA upload finished.", run.failed ? "WARNING" : "INFO");
