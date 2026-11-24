@@ -7,106 +7,243 @@
   <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/theme.css">
   <style>
-    html { height:auto; min-height:100%; overflow-y:auto; }
-    body { min-height:100%; height:auto; overflow:visible; padding:clamp(16px,3vw,34px); color:var(--text-pri); background:var(--bg-base); font:13px/1.5 var(--font-ui); }
-    .page { width:min(100%,1120px); min-height:calc(100vh - 68px); margin:0 auto; display:flex; flex-direction:column; gap:16px; }
-    .page-header { position:relative; display:flex; align-items:center; justify-content:space-between; gap:22px; padding:14px 2px 12px; border-bottom:0; background:transparent; }
-    .page-header::after { position:absolute; right:18px; bottom:0; left:18px; height:1px; background:color-mix(in srgb,var(--border) 55%,transparent); content:""; pointer-events:none; }
-    .eyebrow { display:none; }
-    h1 { margin:0 0 4px; font-size:18px; line-height:1.3; letter-spacing:-.2px; }
-    .page-header p { max-width:650px; margin:0; color:var(--text-sec); font-size:11px; }
-    .secure-badge { display:inline-flex; flex:none; align-items:center; gap:8px; margin-top:4px; padding:8px 11px; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:999px; font-size:10px; font-weight:700; white-space:nowrap; }
-    .secure-badge svg { width:14px; height:14px; color:var(--success); }
-    .steps { display:grid; grid-template-columns:repeat(3,1fr); overflow:hidden; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); }
-    .step { display:flex; align-items:center; gap:11px; min-width:0; padding:13px 17px; }
-    .step + .step { border-left:1px solid var(--border); }
-    .step-num { display:grid; width:29px; height:29px; flex:none; place-items:center; color:var(--accent); background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border)); border-radius:9px; font-size:11px; font-weight:800; }
-    .step strong { display:block; font-size:11px; }
-    .step span:last-child { display:block; overflow:hidden; color:var(--text-sec); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
-    .content-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr); gap:16px; align-items:stretch; }
-    .card { min-width:0; padding:20px; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); }
-    .card-heading { display:flex; align-items:flex-start; gap:12px; margin-bottom:17px; }
-    .card-icon { display:grid; width:36px; height:36px; flex:none; place-items:center; color:var(--accent); background:var(--accent-soft); border-radius:10px; }
-    .card-icon svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-    .card-heading h2 { margin:1px 0 3px; font-size:14px; }
-    .card-heading p { margin:0; color:var(--text-sec); font-size:10.5px; line-height:1.45; }
-    .field-label { display:block; margin:0 0 8px; color:var(--text-pri); font-size:10px; font-weight:800; letter-spacing:.55px; text-transform:uppercase; }
-    .folder-row { display:flex; gap:9px; align-items:center; }
-    input[readonly] { width:100%; min-width:0; height:42px; padding:0 12px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font-size:11px; }
-    button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:0 14px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); cursor:pointer; font:700 11px var(--font-ui); transition:background .15s ease,border-color .15s ease,transform .1s ease; white-space:nowrap; }
-    button:hover:not(:disabled) { background:var(--accent-soft); border-color:var(--accent); }
-    button:active:not(:disabled) { transform:translateY(1px); }
-    button:focus-visible,textarea:focus-visible,input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-    button.primary { color:var(--bg-dark); background:var(--accent); border-color:var(--accent); }
-    button.primary:hover:not(:disabled) { background:var(--accent2); border-color:var(--accent2); }
-    button:disabled { opacity:.55; cursor:not-allowed; }
-    .folder-button svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-    .folder-note { margin:14px 0 0; padding:11px 12px; color:var(--text-sec); background:color-mix(in srgb,var(--accent-soft) 48%,transparent); border:1px solid color-mix(in srgb,var(--accent) 18%,var(--border)); border-radius:var(--radius-md); font-size:10px; line-height:1.55; }
-    .folder-note p { margin:0; }
-    .folder-note p + p { margin-top:9px; padding-top:9px; border-top:1px solid color-mix(in srgb,var(--accent) 18%,var(--border)); }
-    .folder-note strong { color:var(--text-pri); }
-    .folder-note a { color:var(--accent); font-weight:700; text-decoration:underline; text-underline-offset:2px; }
-    textarea { display:block; width:100%; min-height:166px; resize:vertical; padding:12px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:12px/1.6 var(--font-ui); }
-    textarea::placeholder,input::placeholder { color:color-mix(in srgb,var(--text-sec) 78%,transparent); }
-    .transmittal-footer { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-top:13px; }
-    .hint { color:var(--text-sec); font-size:10px; }
-    .actions { display:flex; gap:8px; }
-    #count { display:inline-flex; align-items:center; gap:6px; }
-    #count::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--accent); }
-    .log-card { display:flex; flex:1; min-height:200px; flex-direction:column; }
-    .log-card .card-heading { align-items:center; margin-bottom:13px; }
-    .log-heading-copy { flex:1; }
-    .live-badge { display:inline-flex; align-items:center; gap:7px; padding:5px 8px; color:var(--success); background:color-mix(in srgb,var(--success) 9%,transparent); border:1px solid color-mix(in srgb,var(--success) 26%,var(--border)); border-radius:999px; font-size:9px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; }
-    .live-badge::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
-    .logs { flex:1; min-height:120px; max-height:min(360px,36dvh); overflow:auto; padding:12px 14px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:11px/1.75 Consolas,"SFMono-Regular",monospace; }
-    .logs > div { overflow-wrap:anywhere; }
-    .logs > div.SUCCESS { color:var(--success); } .logs > div.ERROR { color:var(--error); } .logs > div.WARNING { color:var(--warning); }
-    @media(max-width:760px) { .content-grid { grid-template-columns:1fr; } .page { min-height:0; } }
-    @media(max-width:560px) { body { padding:15px; } .page { gap:14px; } .page-header { display:block; } .secure-badge { margin-top:14px; } .steps { grid-template-columns:1fr; } .step { padding:10px 13px; } .step + .step { border-top:1px solid var(--border); border-left:0; } .card { padding:16px; } .folder-row { align-items:stretch; flex-direction:column; } .folder-row button { width:100%; } .transmittal-footer { align-items:stretch; flex-direction:column; } .actions { display:grid; grid-template-columns:1fr 1fr; } }
+    /* ============================================================
+       Upload PhilHealth documents — Setup → Review → Run (same shell
+       as CF2, CF4 and Upload SOA).
+
+         • Setup column   1 · Document source   2 · Transmittal numbers
+         • Review & Run   queue table, action bar with the log ticker + drawer
+
+       Every #id upload-documents.js touches is kept.
+       ============================================================ */
+
+    :root { --gap-1: 8px; --gap-2: 16px; --gap-3: 24px; }
+    .icon-flat { display: inline-flex; align-items: center; justify-content: center; flex: none; line-height: 0; }
+    .icon-flat svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ---------- Page header ---------- */
+    .page-header { position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px var(--gap-3) 12px var(--gap-3); background: transparent; }
+    .page-header::after { position: absolute; right: var(--gap-3); bottom: 0; left: var(--gap-3); height: 1px; background: color-mix(in srgb, var(--border) 55%, transparent); content: ""; pointer-events: none; }
+    .page-header .title-block { line-height: 1.3; min-width: 0; }
+    .page-header .title { font-family: var(--font-ui); color: var(--text-pri); font-size: 18px; font-weight: 700; letter-spacing: 0.4px; }
+    .page-header .subtitle { font-family: var(--font-ui); color: var(--text-sec); font-size: 12px; letter-spacing: 0.3px; }
+    .secure-badge { display: inline-flex; flex: none; align-items: center; gap: 8px; padding: 6px 12px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; font: 700 11.5px var(--font-ui); white-space: nowrap; }
+    .secure-badge svg { width: 14px; height: 14px; }
+
+    /* ---------- Main row ---------- */
+    .main-row { flex: 1; display: grid; grid-template-columns: minmax(320px, 420px) minmax(0, 1fr); gap: var(--gap-3); padding: var(--gap-2) var(--gap-3) var(--gap-3) var(--gap-3); min-height: 0; }
+    .setup-col, .review-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--gap-1); }
+    .setup-col { overflow-y: auto; scrollbar-gutter: stable; }
+    .setup-col > .section-label, .review-col > .section-label { padding: 0 2px 2px 2px; }
+    .section-label span { font-size: 11px; }
+
+    /* ---------- Setup cards ---------- */
+    .setup-card { flex: none; display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+    .setup-card.grow { flex: 1; min-height: 260px; }
+    .step-head { display: flex; align-items: flex-start; gap: 10px; }
+    .step-badge { width: 26px; height: 26px; flex: none; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: var(--radius-sm); font-size: 12px; font-weight: 800; }
+    .step-copy { flex: 1; min-width: 0; }
+    .step-copy h2 { margin: 0 0 2px; color: var(--text-pri); font: 700 14px var(--font-ui); }
+    .step-copy p { margin: 0; color: var(--text-sec); font-size: 12px; line-height: 1.5; }
+    .step-chip { flex: none; padding: 4px 9px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; font: 800 11px var(--font-ui); white-space: nowrap; }
+
+    .folder-box { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1.5px dashed var(--accent); border-radius: var(--radius-md); background: var(--accent-soft); }
+    .folder-box.filled { border-style: solid; border-color: color-mix(in srgb, var(--success) 55%, var(--border)); background: var(--bg-card); }
+    .field-label { display: block; color: var(--text-sec); font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; }
+    input[readonly] { width: 100%; min-width: 0; height: 38px; padding: 0 12px; color: var(--text-pri); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12.5px; }
+    .folder-box.filled input[readonly] { background: var(--bg-panel); }
+
+    button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    .pick-btn { min-height: 38px; padding: 0 14px; color: var(--text-pri); background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; font: 700 12px var(--font-ui); white-space: nowrap; transition: background .15s ease, border-color .15s ease; }
+    .pick-btn:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); }
+    .pick-btn:disabled { opacity: .55; cursor: not-allowed; }
+    .pick-btn svg { width: 15px; height: 15px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .pick-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    details.fold { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-card); }
+    details.fold > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; color: var(--text-pri); font-size: 12px; font-weight: 700; cursor: pointer; list-style: none; }
+    details.fold > summary::-webkit-details-marker { display: none; }
+    details.fold > summary::after { content: "+"; color: var(--text-sec); font-size: 16px; line-height: 1; }
+    details.fold[open] > summary::after { content: "−"; }
+    details.fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .fold-body { padding: 0 12px 12px; color: var(--text-sec); font-size: 11.5px; line-height: 1.6; }
+    .fold-body p { margin: 0; }
+    .fold-body p + p { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border); }
+    .fold-body strong { color: var(--text-pri); }
+    .fold-body a { color: var(--accent); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+
+    .input-wrapper { flex: 1; min-height: 0; display: flex; }
+    textarea { display: block; flex: 1; width: 100%; min-height: 160px; resize: none; padding: 12px; color: var(--text-pri); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); font: 12.5px/1.6 var(--font-ui); }
+    textarea:disabled { opacity: .6; }
+    textarea::placeholder { color: var(--text-sec); }
+    textarea:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    /* ---------- Review & Run ---------- */
+    .review-stage { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+    #queueBox { flex: 1; min-height: 0; display: block; white-space: normal; overflow: hidden; padding: 0; border: 0; background: transparent; }
+    .queue { height: 100%; display: flex; flex-direction: column; gap: 10px; font-family: var(--font-ui); line-height: 1.35; }
+    .queue-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .queue-stat { padding: 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .queue-stat .label { color: var(--text-sec); font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; }
+    .queue-stat .value { margin-top: 4px; color: var(--text-pri); font-size: 18px; font-weight: 900; }
+    .queue-stat.success .value { color: var(--success); }
+    .queue-stat.warning .value { color: var(--warning); }
+    .queue-stat.error .value { color: var(--error); }
+    .queue-status { padding: 10px 12px; color: var(--text-sec); background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-md); font-size: 12px; }
+    .queue-table-wrap { flex: 1; min-height: 0; overflow: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .queue-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .queue-table th { position: sticky; top: 0; z-index: 1; padding: 8px 10px; color: var(--text-sec); background: var(--bg-panel); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; text-align: left; }
+    .queue-table th:first-child { width: 130px; }
+    .queue-table th:last-child { width: 38%; }
+    .queue-table td { padding: 9px 11px; border-bottom: 1px solid var(--border); color: var(--text-pri); font-size: 12px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .queue-table td.detail { color: var(--text-sec); }
+    .queue-table tbody tr:last-child td { border-bottom: 0; }
+    .queue-table tbody tr:hover { background: var(--accent-soft); }
+    .queue-row.running { background: var(--accent-soft); outline: 1px solid var(--accent); outline-offset: -1px; }
+    .queue-row.running td:first-child { color: var(--accent); }
+    .queue-row.success td:first-child { color: var(--success); }
+    .queue-row.skipped td:first-child { color: var(--warning); }
+    .queue-row.failed td:first-child, .queue-row.failed td.detail { color: var(--error); }
+    .row-status { display: inline-flex; align-items: center; gap: 7px; font-weight: 900; }
+    .row-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .55; }
+    .queue-row.running .row-dot { opacity: 1; animation: q-pulse .9s ease-in-out infinite; }
+    @keyframes q-pulse { 0%, 100% { opacity: .35; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.12); } }
+    @media (max-width: 1100px) { .queue-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+    .queue-empty { height: 100%; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .es-icon { width: 48px; height: 48px; color: var(--accent); background: var(--accent-soft); border-radius: 50%; }
+    .es-icon svg { width: 24px; height: 24px; }
+    .es-title { color: var(--text-pri); font-size: 15px; font-weight: 700; }
+    .es-sub { margin: 0; max-width: 380px; color: var(--text-sec); font-size: 12.5px; line-height: 1.5; }
+    .es-steps { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 18px; }
+    .es-steps li { display: flex; align-items: center; gap: 8px; color: var(--text-pri); font-size: 12.5px; }
+    .es-steps li span { width: 22px; height: 22px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: 50%; font-size: 11px; font-weight: 800; }
+
+    /* ---------- Action bar ---------- */
+    .action-bar { position: relative; flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+    #startUpload { flex: none; min-width: 190px; padding: 12px 18px; font-size: 13px; line-height: 1.25; display: flex; align-items: center; justify-content: center; gap: 9px; }
+    .action-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
+    .ghost-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 12px; color: var(--text-sec); background: transparent; border: 0; border-radius: var(--radius-md); font: 600 12px var(--font-ui); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+    .ghost-btn:hover:not(:disabled) { color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }
+    .ghost-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .ghost-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* Log: one-line ticker + pop-up drawer over the bottom of the table */
+    .log-drawer { flex: 1 1 160px; min-width: 120px; display: flex; }
+    .log-ticker { width: 100%; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 11px 12px; background: var(--bg-card); color: var(--text-pri); border: 1px solid var(--border); border-radius: var(--radius-md); font: 700 12px var(--font-ui); text-align: left; cursor: pointer; transition: background-color .15s ease; }
+    .log-ticker:hover { background: var(--accent-soft); }
+    .log-ticker:focus-visible, .log-pop-head .ghost-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .ld-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-sec); opacity: .6; }
+    .log-drawer.has-lines .ld-dot { background: var(--accent); opacity: 1; }
+    .log-drawer.has-error .ld-dot { background: var(--error); opacity: 1; }
+    .log-drawer.has-error .log-ticker { border-color: var(--error); }
+    .ld-text { flex: 1; min-width: 0; color: var(--text-sec); font-weight: 500; font-size: 12px; }
+    .ld-text > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ld-preview { display: none; }
+    .log-drawer.has-lines .ld-preview { display: block; }
+    .log-drawer.has-lines #readyHint { display: none; }
+    .ld-label { flex: none; color: var(--accent); }
+    .ld-chev { flex: none; color: var(--accent); transition: transform .15s ease; }
+    .log-drawer.open .ld-chev { transform: rotate(180deg); }
+    .log-pop { display: none; position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 5; height: clamp(180px, 36vh, 340px); flex-direction: column; overflow: hidden; background: #000; border: 1px solid #303846; border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
+    .log-drawer.open .log-pop { display: flex; }
+    .log-pop-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 6px 5px 12px; color: #e5e7eb; background: #11161d; border-bottom: 1px solid #303846; font: 700 12px var(--font-ui); }
+    .log-pop-head .ghost-btn { padding: 5px 9px; color: #a1a1aa; }
+    .log-pop-head .ghost-btn:hover:not(:disabled) { color: #fff; background: rgba(255,255,255,.1); }
+    .logs { flex: 1; min-height: 0; overflow: auto; padding: 12px 14px; font: 12px/1.7 Consolas, "SFMono-Regular", monospace; border: 0; border-radius: 0; }
+    .logs > div { overflow-wrap: anywhere; }
+    .logs > div.SUCCESS { color: #4ade80 !important; }
+    .logs > div.ERROR { color: #ff6b6b !important; }
+    .logs > div.WARNING { color: #fbbf24 !important; }
+    #logs:empty::before { content: "Live upload steps appear here once the run starts."; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 900px) {
+      .main-row { grid-template-columns: minmax(0, 1fr); align-content: start; overflow-y: auto; }
+      .setup-col { overflow: visible; padding-right: 0; }
+      .review-col { height: 680px; min-height: 680px; }
+    }
+    @media (max-width: 620px) {
+      .main-row { display: flex; flex-direction: column; align-items: stretch; gap: 14px; padding: 12px; }
+      .setup-col, .review-col { width: 100%; flex: none; }
+      .page-header { align-items: flex-start; flex-direction: column; }
+      .review-col { height: min(680px, 70dvh); min-height: 420px; }
+      #startUpload { width: 100%; }
+      .log-drawer { flex-basis: 100%; order: 3; }
+      .action-sep { display: none; }
+    }
   </style>
 </head>
 <body>
-  <main class="page">
-    <header class="page-header">
-      <div>
-        <div class="eyebrow">Document operations</div>
-        <h1>Upload PhilHealth documents</h1>
-        <p>Match patient folders to transmittals and send supported documents through your upload workflow.</p>
-      </div>
-      <div class="secure-badge"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5 16 5v4.7c0 3.8-2.5 6.3-6 7.8-3.5-1.5-6-4-6-7.8V5l6-2.5Z" stroke="currentColor" stroke-width="1.5"/><path d="m7.2 9.9 1.8 1.8 3.8-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Managed document workflow</div>
-    </header>
-    <section class="steps" aria-label="Upload steps">
-      <div class="step"><span class="step-num">01</span><div><strong>Select source folder</strong><span>Choose patient documents</span></div></div>
-      <div class="step"><span class="step-num">02</span><div><strong>Enter transmittals</strong><span>One number per line</span></div></div>
-      <div class="step"><span class="step-num">03</span><div><strong>Run and monitor</strong><span>Follow progress below</span></div></div>
-    </section>
-    <div class="content-grid">
-      <section class="card">
-        <div class="card-heading"><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5h6l2 2h9v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2h4l2 2"/><path d="M12 13v5m-2-2 2 2 2-2"/></svg></div><div><h2>Document source</h2><p>Select the parent folder containing your patient folders.</p></div></div>
-        <label class="field-label" for="folderPath">Patient document folder</label>
-        <div class="folder-row"><input id="folderPath" readonly placeholder="No folder selected"><button id="browseFolder" class="folder-button" type="button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5a2 2 0 0 1 2-2h4l2 2h5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-9Z"/><path d="M10 8v5m-2-2 2 2 2-2"/></svg>Choose Parent folder</button></div>
-        <div class="folder-note">
+<div class="app-window">
+
+  <header class="page-header">
+    <div class="title-block">
+      <div class="title">Upload PhilHealth documents</div>
+      <div class="subtitle">Match patient folders to transmittals and send supported documents through your upload workflow.</div>
+    </div>
+    <div class="secure-badge"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5 16 5v4.7c0 3.8-2.5 6.3-6 7.8-3.5-1.5-6-4-6-7.8V5l6-2.5Z" stroke="currentColor" stroke-width="1.5"/><path d="m7.2 9.9 1.8 1.8 3.8-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Managed document workflow</div>
+  </header>
+
+  <div class="main-row">
+
+    <!-- ===== Setup ===== -->
+    <div class="setup-col">
+      <div class="section-label"><span>SETUP</span></div>
+
+      <section class="panel setup-card">
+        <div class="step-head"><span class="step-badge">1</span><div class="step-copy"><h2>Document source</h2><p>Select the parent folder containing your patient folders.</p></div></div>
+        <div class="folder-box" id="folderBox">
+          <label class="field-label" for="folderPath">Patient document folder</label>
+          <input id="folderPath" readonly placeholder="No folder selected">
+          <button id="browseFolder" class="pick-btn" type="button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5a2 2 0 0 1 2-2h4l2 2h5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-9Z"/><path d="M10 8v5m-2-2 2 2 2-2"/></svg><span id="browseLabel">Choose parent folder</span></button>
+        </div>
+        <details class="fold"><summary>Matching guidance and supported documents</summary><div class="fold-body">
           <p><strong>Matching guidance</strong><br>Folders can use the surname alone <strong>GONZAGA</strong> or surname first followed by the first name, such as <strong>GONZAGA ROMEL</strong>. When surnames repeat, the full first name is preferred; an initial can still narrow a match when initials differ. A date or day number (1 to 31) can also match the CF2 treatment dates. Examples: <strong>GONZAGA 15</strong>, <strong>GONZAGA AUG 13-15</strong>, or folders.</p>
           <p><strong>Beabots supported documents to upload</strong><br><strong>SOA</strong> - SOA (GONZAGA SOA), <strong>CSF</strong> - CSF (GONZAGA CSF), <strong>PBEF</strong> - COE (GONZAGA PBEF), <strong>CF4</strong> - OTH (GONZAGA CF4), <strong>AF</strong> - AF (GONZAGA AF), <strong>TX</strong> - OTH (GONZAGA TX)</p>
           <p>Documents not included? Contact the developer: <a href="mailto:gonzagaromel19@gmail.com">Email</a> or <a href="viber://chat?number=%2B639556845324">Viber</a>.</p>
-        </div>
+        </div></details>
       </section>
-      <section class="card">
-        <div class="card-heading"><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M14 3.5v5h5M8 13h7M8 16.5h7"/></svg></div><div><h2>Transmittal list</h2><p>Paste the numbers you want to process, one per line.</p></div></div>
-        <label class="field-label" for="transmittals">Transmittal numbers</label>
-        <textarea id="transmittals" placeholder="e.g.&#10;1234567890&#10;1234567891"></textarea>
-        <div class="transmittal-footer"><span id="count" class="hint">0 transmittals</span><div class="actions"><button id="clear" type="button">Clear all</button><button id="startUpload" class="primary" type="button">Start upload <span aria-hidden="true">→</span></button></div></div>
+
+      <section class="panel setup-card grow" aria-labelledby="transmittalsTitle">
+        <div class="step-head"><span class="step-badge">2</span><div class="step-copy"><h2 id="transmittalsTitle">Transmittal numbers</h2><p>Paste the numbers you want to process, one per line.</p></div><span class="step-chip" id="count">0 transmittals</span></div>
+        <div class="input-wrapper"><textarea id="transmittals" placeholder="e.g.&#10;1234567890&#10;1234567891" aria-labelledby="transmittalsTitle"></textarea></div>
       </section>
     </div>
-    <section class="card log-card">
-      <div class="card-heading"><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM8 9h8M8 12.5h5M8 16h3"/></svg></div><div class="log-heading-copy"><h2>Automation log</h2><p>Upload progress and processing messages appear here.</p></div><span class="live-badge">Activity log</span></div>
-      <div id="logs" class="logs automation-log" aria-live="polite">Ready.</div>
-    </section>
-  </main>
-  <input id="folderPicker" type="file" webkitdirectory directory multiple hidden>
-  <div id="modalRoot"></div>
-  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-  <script src="js/common.js"></script>
-  <script src="js/upload-documents.js"></script>
+
+    <!-- ===== Review & Run ===== -->
+    <div class="review-col">
+      <div class="section-label"><span>REVIEW &amp; RUN</span></div>
+
+      <div class="review-stage"><div class="log-box" id="queueBox" role="region" aria-label="Upload queue"></div></div>
+
+      <div class="action-bar">
+        <button id="startUpload" class="solid-btn" type="button"><span class="icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span><span id="startLabel">Start upload</span></button>
+
+        <div class="log-drawer" id="logDrawer">
+          <button class="log-ticker" id="logToggle" type="button" aria-expanded="false" aria-controls="logPop" title="Show automation log">
+            <span class="ld-dot" aria-hidden="true"></span>
+            <span class="ld-text"><span id="readyHint">Choose the patient folder to start.</span><span class="ld-preview" id="logPreview"></span></span>
+            <span class="ld-label">Log</span>
+            <span class="ld-chev icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></span>
+          </button>
+          <div class="log-pop" id="logPop" role="dialog" aria-label="Automation log">
+            <div class="log-pop-head"><span>Automation log</span><button class="ghost-btn" id="logPopClose" type="button">Hide <span class="icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></button></div>
+            <div id="logs" class="logs automation-log" role="log" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <span class="action-sep" aria-hidden="true"></span>
+        <button class="ghost-btn" id="clear" type="button"><span class="icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg></span>Clear all</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<input id="folderPicker" type="file" webkitdirectory directory multiple hidden>
+<div id="modalRoot"></div>
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<script src="js/common.js"></script>
+<script src="js/upload-documents.js"></script>
 </body>
 </html>
