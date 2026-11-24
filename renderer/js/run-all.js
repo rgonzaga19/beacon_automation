@@ -14,6 +14,7 @@ const rpTrack = document.getElementById("rpTrack");
 const rpFill = document.getElementById("rpFill");
 let lastProgress = null;
 let logLines = 0;
+let queueNames = []; // SOA filenames shown as the queue before a run starts
 const results = new Map();
 let active = false;
 let retryRunId = null;
@@ -99,14 +100,35 @@ function updateSummary() {
     ? `${dupes.size} duplicate filename${dupes.size === 1 ? "" : "s"}. Each patient needs a unique SOA.`
     : soaFiles.length ? "Matched to workbook rows when the run starts." : "";
   const chips = document.getElementById("soaChips");
-  chips.replaceChildren(...soaFiles.slice(0, 6).map((file) => {
+  chips.replaceChildren(...soaFiles.slice(0, 3).map((file) => {
     const chip = document.createElement("span");
     chip.className = `file-chip${dupes.has(file.name.trim().toLowerCase()) ? " dupe" : ""}`;
     chip.textContent = file.name;
     chip.title = file.name;
     return chip;
-  }), ...(soaFiles.length > 6 ? [Object.assign(document.createElement("span"), { className: "file-chip", textContent: `+${soaFiles.length - 6} more` })] : []));
+  }), ...(soaFiles.length > 3 ? [Object.assign(document.createElement("span"), { className: "file-chip", textContent: `+${soaFiles.length - 3} more` })] : []));
   document.getElementById("sumPeriodText").textContent = `${monthSelect.value} ${yearSelect.value}`;
+  document.getElementById("wbPickerText").textContent = workbook ? "Replace workbook" : "Choose workbook";
+  document.getElementById("soaPickerText").textContent = soaFiles.length ? "Replace SOA files" : "Choose SOA files";
+
+  // Before a run, the table lists the selected SOA filenames as the queue and
+  // the progress card shows a ready state. Real patients appear after preflight.
+  if (!active && !results.size) {
+    queueNames = soaFiles.map((file) => file.name.replace(/\.(xlsx|xls)$/i, "").trim().toUpperCase());
+    renderEmptyResults();
+  } else if (results.size) {
+    queueNames = [];
+  }
+  if (!active && !lastProgress && !results.size) {
+    const ready = Boolean(workbook) && soaFiles.length > 0;
+    document.getElementById("rpTitle").firstChild.textContent = ready ? "Ready to run" : "Add files to begin";
+    document.getElementById("rpSub").textContent = ready
+      ? `${soaFiles.length} SOA file${soaFiles.length === 1 ? "" : "s"} · ${monthSelect.value} ${yearSelect.value} · names are checked before any draft is created`
+      : "Choose the CF2 workbook and the patient SOA files.";
+    document.getElementById("rpCount").textContent = `0/${soaFiles.length} done`;
+    rpTrack.classList.remove("indeterminate");
+    rpFill.style.width = "0%";
+  }
   const hint = document.getElementById("startHint");
   const missing = [!workbook && "the workbook", !soaFiles.length && "the SOA files"].filter(Boolean);
   hint.textContent = active ? "" : missing.length ? `Add ${missing.join(" and ")} to start.` : `Ready: ${soaFiles.length} SOA file${soaFiles.length === 1 ? "" : "s"} for ${monthSelect.value} ${yearSelect.value}.`;
@@ -190,6 +212,11 @@ function pipelineMarkup(item) {
 }
 
 function renderEmptyResults() {
+  if (queueNames.length) {
+    resultsBody.innerHTML = queueNames.map((name) => `<tr class="queue-row"><td title="${escapeHtml(name)}">${escapeHtml(name)}</td><td>—</td><td>${pipelineMarkup({})}</td><td class="stage-msg">Not checked yet</td></tr>`).join("");
+    updateTally();
+    return;
+  }
   resultsBody.innerHTML = `<tr class="ghost-row"><td><span class="ghost-bar"></span></td><td><span class="ghost-bar" style="width:70px"></span></td><td>${pipelineMarkup({})}</td><td class="stage-msg">Each patient moves through CF2 draft, SOA upload, eSOA generation, then CF4. Results appear here as the run progresses.</td></tr>`;
   updateTally();
 }
@@ -198,6 +225,7 @@ function updateTally() {
   const items = [...results.values()];
   const failed = (item) => [item.cf2, item.soa, item.esoa, item.cf4].includes("failed");
   const running = (item) => [item.cf2, item.soa, item.esoa, item.cf4].includes("running");
+  document.getElementById("tTotal").textContent = String(items.length || queueNames.length);
   document.getElementById("tDone").textContent = String(items.filter(completedSuccessfully).length);
   document.getElementById("tRun").textContent = String(items.filter(running).length);
   document.getElementById("tFail").textContent = String(items.filter(failed).length);
@@ -208,6 +236,7 @@ function updateRunProgress() {
   const total = Number(lastProgress.total) || results.size || 1;
   const finished = [...results.values()].filter((item) => completedSuccessfully(item) || [item.cf2, item.soa, item.esoa, item.cf4].includes("failed")).length;
   rpTrack.classList.remove("indeterminate");
+  document.getElementById("rpCount").textContent = `${Math.min(finished, total)}/${total} done`;
   const value = Math.min(100, Math.round((finished / total) * 100));
   rpFill.style.width = `${value}%`;
   rpTrack.setAttribute("aria-valuenow", String(value));
@@ -286,6 +315,13 @@ function setLogOpen(open) {
   document.getElementById("logToggle").setAttribute("aria-expanded", String(open));
 }
 document.getElementById("logToggle").addEventListener("click", () => setLogOpen(!logDrawer.classList.contains("open")));
+document.getElementById("logPopClose").addEventListener("click", () => {
+  setLogOpen(false);
+  document.getElementById("logToggle").focus();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && logDrawer.classList.contains("open")) setLogOpen(false);
+});
 
 function setActive(value) {
   active = value;
@@ -428,8 +464,7 @@ clearFieldsBtn.addEventListener("click", () => {
   latestStatusSequence = 0;
   retryRunId = null;
   lastProgress = null;
-  runProgress.hidden = true;
-  rpTrack.classList.add("indeterminate");
+  rpTrack.classList.remove("indeterminate");
   rpFill.style.width = "0%";
   rpTrack.removeAttribute("aria-valuenow");
   setCopyTransmittalsStatus("");

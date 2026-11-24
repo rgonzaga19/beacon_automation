@@ -7,184 +7,275 @@
 <script src="js/theme.js"></script>
 <link rel="stylesheet" href="css/theme.css" />
 <style>
-  * { box-sizing:border-box; }
-  html,body { width:100%; height:auto; min-height:100%; overflow-x:hidden; overflow-y:auto; }
-  body { min-height:100vh; color:var(--text-pri); background:var(--bg-dark); -webkit-text-size-adjust:100%; }
-  .page { width:100%; max-width:1180px; margin:0 auto; padding:clamp(16px,3vw,34px); }
-  .page-header { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:0 0 16px; padding:0 0 14px; border-bottom:1px solid var(--border); }
-  h1 { margin:0 0 4px; font-size:19px; letter-spacing:-.2px; }
-  .page-header p { max-width:720px; margin:0; color:var(--text-sec); font-size:11.5px; line-height:1.5; }
-  .saved-settings { flex:none; padding:7px 11px; border:1px solid var(--border); border-radius:999px; color:var(--text-sec); font-size:10px; }
-  .layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; align-items:start; }
-  .panel { min-width:0; padding:clamp(14px,2vw,20px); background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); }
-  .panel + .panel { margin-top:14px; }
-  .panel-heading { display:flex; align-items:center; gap:11px; margin-bottom:14px; }
-  .step-number { flex:none; display:grid; place-items:center; width:28px; height:28px; border-radius:9px; color:var(--accent); background:var(--accent-soft); font-size:11px; font-weight:800; }
-  .panel h2 { margin:0; font-size:13.5px; }
-  .panel-heading p { margin:2px 0 0; color:var(--text-sec); font-size:10.5px; }
-  .drop-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-  .upload-card { position:relative; min-width:0; display:flex; flex-direction:column; gap:9px; padding:14px; border:1.5px dashed var(--border); border-radius:var(--radius-md); background:var(--bg-card); transition:border-color .15s ease,background .15s ease; }
-  .upload-card.dragging { border-color:var(--accent); background:var(--accent-soft); }
-  .upload-card.filled { border-style:solid; border-color:color-mix(in srgb,var(--success) 55%,var(--border)); }
-  .upload-title { color:var(--text-pri); font-size:12px; font-weight:750; }
-  .upload-title em { color:var(--text-sec); font-style:normal; font-weight:600; font-size:10px; }
-  .upload-card small { color:var(--text-sec); font-size:10.5px; line-height:1.5; }
-  .template-link { align-self:flex-start; color:var(--accent); font:600 10.5px var(--font-ui); text-decoration:none; }
-  .template-link:hover { color:var(--text-pri); text-decoration:underline; text-underline-offset:3px; }
-  .template-link:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
-  .picker-row { display:flex; align-items:center; gap:10px; min-width:0; margin-top:auto; }
-  .file-input { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); clip-path:inset(50%); border:0; }
-  .picker-button { display:inline-flex; align-items:center; gap:8px; min-height:38px; flex:none; padding:0 12px; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-md); font:700 11px var(--font-ui); cursor:pointer; }
-  .picker-button:hover,.upload-card:focus-within .picker-button { border-color:var(--accent); background:var(--accent-soft); }
-  .picker-button svg { width:15px; height:15px; stroke:var(--accent); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-  .file-meta { min-width:0; color:var(--text-sec); font-size:10.5px; line-height:1.45; overflow-wrap:anywhere; }
-  .file-meta strong { display:block; color:var(--text-pri); font-size:11px; }
-  .file-meta.ready strong { color:var(--success); }
-  .drop-hint { color:var(--text-sec); font-size:10px; }
-  .chips { display:flex; flex-wrap:wrap; gap:5px; }
-  .chips:empty { display:none; }
-  .file-chip { max-width:100%; padding:3px 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-pri); background:var(--bg-panel); border:1px solid var(--border); border-radius:999px; font-size:10px; }
-  .file-chip.dupe { color:var(--warning); border-color:var(--warning); }
-  .field { min-width:0; display:grid; gap:6px; }
-  .field label { color:var(--text-pri); font-size:12px; font-weight:750; }
-  .field small { color:var(--text-sec); font-size:10.5px; }
-  .field input,.field select { display:block; width:100%; min-width:0; min-height:42px; padding:8px 11px; color:var(--text-pri); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); font:inherit; font-size:13px; }
-  .field input:focus-visible,.field select:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
-  .period-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-  details.fold { margin-top:14px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--bg-card); }
-  details.fold > summary { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 13px; color:var(--text-pri); font-size:11.5px; font-weight:700; cursor:pointer; list-style:none; }
-  details.fold > summary::-webkit-details-marker { display:none; }
-  details.fold > summary::after { content:"+"; color:var(--text-sec); font-size:16px; line-height:1; }
-  details.fold[open] > summary::after { content:"−"; }
-  details.fold > summary:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
-  details.fold .fold-body { padding:0 13px 13px; }
-  .fold-body p { margin:0 0 10px; color:var(--text-sec); font-size:10.5px; }
-  .billing-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:11px; }
-  .match-quick { margin:0; padding-left:17px; color:var(--text-sec); font-size:11px; line-height:1.6; }
-  .match-quick b { color:var(--text-pri); }
-  .match-full { margin:8px 0 0; padding-left:17px; display:grid; gap:5px; color:var(--text-sec); font-size:10.5px; line-height:1.55; }
-  .match-full b,.match-full strong { color:var(--text-pri); }
-  .summary { position:sticky; top:12px; }
-  .summary h2 { margin:0 0 12px; font-size:13px; }
-  .sum-list { display:grid; gap:9px; margin:0 0 14px; padding:0; list-style:none; }
-  .sum-list li { display:flex; align-items:flex-start; gap:9px; color:var(--text-sec); font-size:11px; line-height:1.4; }
-  .sum-mark { flex:none; display:grid; place-items:center; width:18px; height:18px; margin-top:1px; color:var(--text-sec); border:1.5px solid var(--border); border-radius:50%; font-size:10px; font-weight:800; }
-  .sum-list li.ok .sum-mark { color:#fff; background:var(--success); border-color:var(--success); }
-  .sum-list li.ok strong { color:var(--text-pri); }
-  .sum-list strong { display:block; color:var(--text-sec); font-size:11px; }
-  .sum-list span.sub { display:block; font-size:10px; }
-  .actions { display:flex; flex-wrap:wrap; align-items:center; gap:9px; padding-top:14px; border-top:1px solid var(--border); }
-  .actions button { min-height:42px; padding:9px 16px; }
-  .actions #startBtn,.actions #clearFieldsBtn { display:inline-flex; align-items:center; justify-content:center; gap:7px; }
-  #startBtn { flex:1; min-width:130px; }
-  #clearFieldsBtn { background:transparent; }
-  #stopBtn { display:none; }
-  #stopBtn.visible { display:inline-flex; flex:1 0 100%; justify-content:center; }
-  .start-hint { flex:1 0 100%; color:var(--text-sec); font-size:10.5px; line-height:1.4; }
-  #status { margin-top:10px; color:var(--text-sec); font-size:11px; min-height:15px; }
-  #error { display:none; margin-top:10px; padding:11px 13px; color:var(--error); background:var(--bg-card); border:1px solid var(--error); border-radius:var(--radius-md); font-size:11px; line-height:1.5; white-space:pre-wrap; }
-  .cf4-note { margin:12px 0 0; color:var(--text-sec); font-size:10px; line-height:1.5; }
-  .run-progress { margin-bottom:14px; padding:13px 15px; background:var(--bg-panel); border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border)); border-radius:var(--radius-lg); }
-  .run-progress[hidden] { display:none; }
-  .rp-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:9px; }
-  .rp-title { min-width:0; color:var(--text-pri); font-size:12px; font-weight:750; }
-  .rp-title small { display:block; margin-top:2px; color:var(--text-sec); font-size:10.5px; font-weight:500; }
-  .rp-track { height:8px; overflow:hidden; background:var(--bg-card); border-radius:999px; }
-  .rp-fill { height:100%; width:0; background:var(--accent); border-radius:inherit; transition:width .4s ease; }
-  .rp-track.indeterminate .rp-fill { width:30%; animation:rp-slide 1.5s ease-in-out infinite alternate; }
-  @keyframes rp-slide { from { transform:translateX(0); } to { transform:translateX(230%); } }
-  .results-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
-  .results-head h2 { margin:0; font-size:13.5px; }
-  .tally { display:flex; flex-wrap:wrap; gap:6px; }
-  .tally span { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; color:var(--text-sec); border:1px solid var(--border); border-radius:999px; font-size:10.5px; font-weight:700; }
-  .tally span::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--text-sec); }
-  .tally .t-done::before { background:var(--success); } .tally .t-run::before { background:var(--accent); } .tally .t-fail::before { background:var(--error); }
-  .tally b { color:var(--text-pri); }
-  .results-copy-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:0 0 10px; }
-  .results-copy-status { color:var(--text-sec); font-size:11px; }
-  .results-copy-status.error { color:var(--error); }
-  .flat-copy-option { min-height:0; padding:0; color:var(--accent); background:transparent; border:0; font:inherit; font-size:11px; text-decoration:underline; text-underline-offset:2px; cursor:pointer; }
-  .flat-copy-option:hover { color:var(--text-pri); }
-  .flat-copy-option:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
-  .transmittal-copy { margin-left:8px; }
-  .result-help { margin:0 0 12px; color:var(--text-sec); font-size:10.5px; line-height:1.5; }
-  #resultsWrap { max-width:100%; overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
-  table { width:100%; min-width:640px; border-collapse:collapse; font-size:11.5px; }
-  th,td { padding:11px 12px; border-bottom:1px solid var(--border); text-align:left; vertical-align:middle; }
-  tbody tr:last-child td { border-bottom:0; }
-  th { color:var(--text-sec); font-size:9.5px; letter-spacing:.5px; text-transform:uppercase; background:var(--bg-card); }
-  tbody tr:hover { background:color-mix(in srgb,var(--accent-soft) 40%,transparent); }
-  tbody tr.row-running { background:color-mix(in srgb,var(--accent-soft) 24%,var(--bg-panel)); }
-  tbody tr.row-running td:first-child { box-shadow:inset 3px 0 0 var(--accent); }
-  tbody tr.row-failed td:first-child { box-shadow:inset 3px 0 0 var(--error); }
-  .help { color:var(--text-sec); }
-  .pipe { display:flex; align-items:flex-start; gap:0; margin:0; padding:0; list-style:none; }
-  .pipe li { position:relative; display:grid; justify-items:center; gap:4px; width:54px; color:var(--text-sec); font-size:9.5px; font-weight:700; }
-  .pipe li::before { content:""; position:absolute; top:9px; right:50%; width:100%; height:2px; background:var(--border); }
-  .pipe li:first-child::before { display:none; }
-  .pipe li.success::before,.pipe li.skipped::before { background:var(--success); }
-  .pipe .dot { position:relative; z-index:1; width:20px; height:20px; display:grid; place-items:center; color:var(--text-sec); background:var(--bg-panel); border:2px solid var(--border); border-radius:50%; font-size:10px; line-height:1; }
-  .pipe li.success .dot { color:#fff; background:var(--success); border-color:var(--success); }
-  .pipe li.skipped .dot { color:var(--success); border-color:var(--success); }
-  .pipe li.failed .dot { color:#fff; background:var(--error); border-color:var(--error); }
-  .pipe li.running .dot { border-color:color-mix(in srgb,var(--accent) 30%,transparent); border-top-color:var(--accent); animation:stage-spin .75s linear infinite; }
-  .pipe li.blocked .dot { opacity:.55; }
-  @keyframes stage-spin { to { transform:rotate(360deg); } }
-  .ghost-row td { padding:16px 12px; }
-  .ghost-row .pipe li { opacity:.7; }
-  .ghost-row .ghost-bar { display:block; height:10px; width:min(150px,80%); background:color-mix(in srgb,var(--text-sec) 16%,transparent); border-radius:999px; }
-  .empty-note { padding:13px 15px; color:var(--text-sec); font-size:11px; line-height:1.5; }
-  .stage-msg { color:var(--text-sec); font-size:10.5px; line-height:1.45; overflow-wrap:anywhere; }
-  .row-failed .stage-msg { color:var(--error); }
-  .log-drawer { margin-top:14px; background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; }
-  .log-drawer-head { width:100%; display:flex; align-items:center; gap:10px; padding:11px 15px; background:transparent; color:var(--text-pri); border:0; font:700 12px var(--font-ui); text-align:left; cursor:pointer; }
-  .log-drawer-head:hover { background:var(--accent-soft); }
-  .log-drawer-head:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
-  .ld-dot { width:8px; height:8px; flex:none; border-radius:50%; background:var(--text-sec); opacity:.5; }
-  .log-drawer.has-lines .ld-dot { background:var(--accent); opacity:1; }
-  .log-drawer.has-error .ld-dot { background:var(--error); opacity:1; }
-  .ld-count { color:var(--text-sec); font-weight:600; font-size:10.5px; }
-  .ld-preview { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-sec); font-weight:500; font-size:10.5px; }
-  .log-drawer.open .ld-preview { visibility:hidden; }
-  .ld-chev { color:var(--text-sec); transition:transform .15s ease; }
-  .log-drawer.open .ld-chev { transform:rotate(180deg); }
-  #log { display:none; min-height:calc(5 * 1.5em + 24px); max-height:240px; overflow:auto; gap:5px; align-content:start; padding:12px 15px; border-top:1px solid var(--border); color:var(--text-pri); font:11px/1.5 var(--font-ui); background:var(--bg-card); }
-  .log-drawer.open #log { display:grid; }
-  .log-line { overflow-wrap:anywhere; }
-  .log-empty { align-self:center; color:var(--text-sec); opacity:.75; }
-  .log-line.err { color:var(--error); }
-  @media(prefers-reduced-motion:reduce) { .pipe li.running .dot,.rp-track.indeterminate .rp-fill { animation:none; } .rp-fill { transition:none; } }
-  @media(max-width:900px) { .layout { grid-template-columns:1fr; } .summary { position:static; } }
-  @media(max-width:620px) { .drop-grid,.period-grid,.billing-grid { grid-template-columns:1fr; } .page-header { display:block; } .saved-settings { display:inline-block; margin-top:10px; } .picker-row { flex-direction:column; align-items:stretch; } .picker-button { justify-content:center; } }
+  /* ============================================================
+     Run Full Workflow — Setup → Review → Run (same shell as CF2,
+     CF4 and Upload SOA).
+
+       • Setup column   1 · Select files   2 · Claim period   Preflight
+       • Review & Run   progress card, stat tiles, per-patient pipeline
+                        table, action bar with the log ticker + drawer
+
+     One screen, no page scroll. Every #id run-all.js touches is kept.
+     ============================================================ */
+
+  :root { --gap-1: 8px; --gap-2: 16px; --gap-3: 24px; }
+
+  .icon-flat { display: inline-flex; align-items: center; justify-content: center; flex: none; line-height: 0; }
+  .icon-flat svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ---------- Page header ---------- */
+  .page-header { position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px var(--gap-3) 12px var(--gap-3); background: transparent; }
+  .page-header::after { position: absolute; right: var(--gap-3); bottom: 0; left: var(--gap-3); height: 1px; background: color-mix(in srgb, var(--border) 55%, transparent); content: ""; pointer-events: none; }
+  .page-header .title-block { line-height: 1.3; min-width: 0; }
+  .page-header .title { font-family: var(--font-ui); color: var(--text-pri); font-size: 18px; font-weight: 700; letter-spacing: 0.4px; }
+  .page-header .subtitle { font-family: var(--font-ui); color: var(--text-sec); font-size: 12px; letter-spacing: 0.3px; }
+  .saved-settings { flex: none; padding: 6px 12px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; font: 700 11.5px var(--font-ui); white-space: nowrap; }
+
+  /* ---------- Main row ---------- */
+  .main-row { flex: 1; display: grid; grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); gap: var(--gap-3); padding: var(--gap-2) var(--gap-3) var(--gap-3) var(--gap-3); min-height: 0; }
+  .setup-col, .review-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--gap-1); }
+  .setup-col { overflow-y: auto; scrollbar-gutter: stable; }
+  .setup-col > .section-label, .review-col > .section-label { padding: 0 2px 2px 2px; }
+  .section-label span { font-size: 11px; }
+
+  /* ---------- Setup cards ---------- */
+  .setup-card { flex: none; display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+  .step-head { display: flex; align-items: flex-start; gap: 10px; }
+  .step-badge { width: 26px; height: 26px; flex: none; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: var(--radius-sm); font-size: 12px; font-weight: 800; }
+  .step-copy { flex: 1; min-width: 0; }
+  .step-copy h2 { margin: 0 0 2px; color: var(--text-pri); font: 700 14px var(--font-ui); }
+  .step-copy p { margin: 0; color: var(--text-sec); font-size: 12px; line-height: 1.5; }
+
+  .upload-card { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1.5px dashed var(--accent); border-radius: var(--radius-md); background: var(--accent-soft); transition: border-color .15s ease, background .15s ease; }
+  .upload-card.dragging { border-style: solid; background: var(--accent-soft-strong); }
+  .upload-card.filled { border-style: solid; border-color: color-mix(in srgb, var(--success) 55%, var(--border)); background: var(--bg-card); }
+  .upload-title { color: var(--text-pri); font-size: 13px; font-weight: 700; }
+  .upload-title em { color: var(--text-sec); font-style: normal; font-weight: 600; font-size: 11px; }
+  .upload-card small { color: var(--text-sec); font-size: 11.5px; line-height: 1.5; }
+  .template-link { align-self: flex-start; color: var(--accent); font: 600 11.5px var(--font-ui); text-decoration: none; }
+  .template-link:hover { color: var(--text-pri); text-decoration: underline; text-underline-offset: 3px; }
+  .template-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .picker-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .file-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); clip-path: inset(50%); border: 0; }
+  .picker-button { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; flex: none; padding: 0 12px; color: var(--text-pri); background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); font: 700 12px var(--font-ui); cursor: pointer; }
+  .picker-button:hover, .upload-card:focus-within .picker-button { border-color: var(--accent); background: var(--accent-soft); }
+  .picker-button svg { width: 15px; height: 15px; stroke: var(--accent); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .file-meta { min-width: 0; color: var(--text-sec); font-size: 11.5px; line-height: 1.45; overflow-wrap: anywhere; }
+  .file-meta strong { display: block; color: var(--text-pri); font-size: 12px; }
+  .file-meta.ready strong { color: var(--success); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chips:empty { display: none; }
+  .file-chip { max-width: 100%; padding: 3px 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-pri); background: var(--bg-panel); border: 1px solid var(--border); border-radius: 999px; font-size: 11px; }
+  .file-chip.dupe { color: var(--warning); border-color: var(--warning); }
+
+  .field { min-width: 0; display: grid; gap: 6px; }
+  .field label { color: var(--text-sec); font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+  .field input, .field select { display: block; width: 100%; min-width: 0; min-height: 38px; padding: 8px 10px; color: var(--text-pri); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; font-size: 13px; }
+  .field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .period-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .billing-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+
+  details.fold { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-card); }
+  details.fold > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; color: var(--text-pri); font-size: 12px; font-weight: 700; cursor: pointer; list-style: none; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::after { content: "+"; color: var(--text-sec); font-size: 16px; line-height: 1; }
+  details.fold[open] > summary::after { content: "−"; }
+  details.fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  details.fold .fold-body { padding: 0 12px 12px; }
+  .fold-body p { margin: 0 0 10px; color: var(--text-sec); font-size: 11.5px; }
+  .match-quick { margin: 0; padding-left: 17px; color: var(--text-sec); font-size: 12px; line-height: 1.6; }
+  .match-quick b, .match-full b { color: var(--text-pri); }
+  .match-full { margin: 8px 0 0; padding-left: 17px; display: grid; gap: 5px; color: var(--text-sec); font-size: 11.5px; line-height: 1.55; }
+
+  /* Preflight checklist (was "Run summary") */
+  .sum-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+  .sum-list li { display: flex; align-items: flex-start; gap: 9px; color: var(--text-sec); font-size: 12px; line-height: 1.4; }
+  .sum-mark { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-top: 1px; color: var(--text-sec); border: 1.5px solid var(--border); border-radius: 50%; font-size: 10px; font-weight: 800; }
+  .sum-list li.ok .sum-mark { color: #fff; background: var(--success); border-color: var(--success); }
+  .sum-list li.ok strong { color: var(--text-pri); }
+  .sum-list strong { display: block; color: var(--text-sec); font-size: 12px; overflow-wrap: anywhere; }
+  .sum-list span.sub { display: block; font-size: 11px; }
+  .cf4-note { margin: 0; color: var(--text-sec); font-size: 11px; line-height: 1.5; }
+
+  /* ---------- Review & Run: progress card ---------- */
+  .run-progress { flex: none; padding: 12px 14px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+  .run-progress[hidden] { display: block; } /* always visible: idle state shows "Ready to run" */
+  .rp-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+  .rp-title { min-width: 0; color: var(--text-pri); font-size: 13px; font-weight: 700; }
+  .rp-title small { display: block; margin-top: 2px; color: var(--text-sec); font-size: 11.5px; font-weight: 500; }
+  .rp-count { flex: none; padding: 4px 9px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; font: 800 11px var(--font-ui); white-space: nowrap; }
+  .rp-track { height: 6px; overflow: hidden; background: var(--bg-card); border-radius: 999px; }
+  .rp-fill { height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width .4s ease; }
+  .rp-track.indeterminate .rp-fill { width: 30%; animation: rp-slide 1.5s ease-in-out infinite alternate; }
+  @keyframes rp-slide { from { transform: translateX(0); } to { transform: translateX(230%); } }
+  #status { margin-top: 9px; color: var(--text-sec); font-size: 12px; }
+  #status:empty { margin: 0; }
+  /* While a run is active the progress title already says it; keep the live region for screen readers only. */
+  body:has(#stopBtn.visible) #status { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip: rect(0,0,0,0); }
+  #error { display: none; margin-top: 9px; padding: 10px 12px; color: var(--error); background: var(--bg-card); border: 1px solid var(--error); border-radius: var(--radius-md); font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
+
+  /* Stat tiles */
+  .run-tiles { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .run-tile { padding: 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .run-tile .label { color: var(--text-sec); font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; }
+  .run-tile .value { margin-top: 4px; color: var(--text-pri); font-size: 18px; font-weight: 900; }
+  .run-tile.success .value, .run-tile.running .value { color: var(--success); }
+  .run-tile.running .value { color: var(--accent); }
+  .run-tile.error .value { color: var(--error); }
+  @media (max-width: 1100px) { .run-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* Results table */
+  .results-card { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+  #resultsWrap { flex: 1; min-height: 0; max-width: 100%; overflow: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  table { width: 100%; min-width: 560px; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+  th { position: sticky; top: 0; z-index: 1; color: var(--text-sec); background: var(--bg-panel); font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; }
+  th:nth-child(2) { width: 150px; }
+  th:nth-child(3) { width: 244px; }
+  td { overflow-wrap: anywhere; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: var(--accent-soft); }
+  tbody tr.row-running { background: var(--accent-soft); }
+  tbody tr.row-running td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  tbody tr.row-failed td:first-child { box-shadow: inset 3px 0 0 var(--error); }
+  .help { color: var(--text-sec); }
+  .result-help { margin: 0; padding: 0 2px; color: var(--text-sec); font-size: 11px; line-height: 1.45; }
+  .results-copy-status { padding: 0 2px; color: var(--success); font-size: 12px; }
+  .results-copy-status:empty { display: none; }
+  .results-copy-status.error { color: var(--error); }
+  .flat-copy-option { min-height: 0; padding: 0; color: var(--accent); background: transparent; border: 0; font: inherit; font-size: 11.5px; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+  .flat-copy-option:hover { color: var(--text-pri); }
+  .flat-copy-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .transmittal-copy { margin-left: 8px; }
+  .retry-stage { padding: 5px 11px; font-size: 11.5px; }
+
+  /* Per-patient stage pipeline */
+  .pipe { display: flex; align-items: flex-start; gap: 0; margin: 0; padding: 0; list-style: none; }
+  .pipe li { position: relative; display: grid; justify-items: center; gap: 4px; width: 54px; color: var(--text-sec); font-size: 10.5px; font-weight: 700; }
+  .pipe li::before { content: ""; position: absolute; top: 9px; right: 50%; width: 100%; height: 2px; background: var(--border); }
+  .pipe li:first-child::before { display: none; }
+  .pipe li.success::before, .pipe li.skipped::before { background: var(--success); }
+  .pipe .dot { position: relative; z-index: 1; width: 20px; height: 20px; display: grid; place-items: center; color: var(--text-sec); background: var(--bg-card); border: 2px solid var(--border); border-radius: 50%; font-size: 10px; line-height: 1; }
+  .pipe li.success .dot { color: #fff; background: var(--success); border-color: var(--success); }
+  .pipe li.skipped .dot { color: var(--success); border-color: var(--success); }
+  .pipe li.failed .dot { color: #fff; background: var(--error); border-color: var(--error); }
+  .pipe li.running .dot { border-color: color-mix(in srgb, var(--accent) 30%, transparent); border-top-color: var(--accent); animation: stage-spin .75s linear infinite; }
+  .pipe li.blocked .dot { opacity: .55; }
+  @keyframes stage-spin { to { transform: rotate(360deg); } }
+  .ghost-row td { padding: 16px 12px; }
+  .ghost-row .pipe li { opacity: .7; }
+  .ghost-row .ghost-bar { display: block; height: 10px; width: min(150px, 80%); background: color-mix(in srgb, var(--text-sec) 16%, transparent); border-radius: 999px; }
+  .empty-note { padding: 13px 15px; color: var(--text-sec); font-size: 12px; line-height: 1.5; }
+  .stage-msg { color: var(--text-sec); font-size: 11.5px; line-height: 1.45; overflow-wrap: anywhere; }
+  .row-failed .stage-msg { color: var(--error); }
+  .queue-row td:first-child { font-weight: 700; }
+  @media (prefers-reduced-motion: reduce) { .pipe li.running .dot, .rp-track.indeterminate .rp-fill { animation: none; } .rp-fill { transition: none; } }
+
+  /* ---------- Action bar: Start/Stop, log ticker, copy, clear ---------- */
+  .action-bar { position: relative; flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+  #startBtn, #stopBtn { flex: none; min-width: 210px; padding: 12px 18px; font-size: 13px; line-height: 1.25; align-items: center; justify-content: center; gap: 9px; }
+  #startBtn { display: flex; }
+  #stopBtn { display: none; color: var(--error); border-color: var(--error); }
+  #stopBtn:hover { background: color-mix(in srgb, var(--error) 12%, transparent); }
+  #stopBtn.visible { display: flex; }
+  .action-bar:has(#stopBtn.visible) #startBtn { display: none; }
+  .action-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
+  #copySuccessfulTransmittals { padding: 11px 14px; font-size: 12px; white-space: nowrap; }
+  .ghost-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 12px; color: var(--text-sec); background: transparent; border: 0; border-radius: var(--radius-md); font: 600 12px var(--font-ui); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+  .ghost-btn:hover:not(:disabled) { color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }
+  .ghost-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .ghost-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Log: one-line ticker + pop-up drawer over the bottom of the table */
+  .log-drawer { flex: 1 1 160px; min-width: 120px; display: flex; }
+  .log-ticker { width: 100%; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 11px 12px; background: var(--bg-card); color: var(--text-pri); border: 1px solid var(--border); border-radius: var(--radius-md); font: 700 12px var(--font-ui); text-align: left; cursor: pointer; transition: background-color .15s ease; }
+  .log-ticker:hover { background: var(--accent-soft); }
+  .log-ticker:focus-visible, .log-pop-head .ghost-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ld-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-sec); opacity: .6; }
+  .log-drawer.has-lines .ld-dot { background: var(--accent); opacity: 1; }
+  .log-drawer.has-error .ld-dot { background: var(--error); opacity: 1; }
+  .log-drawer.has-error .log-ticker { border-color: var(--error); }
+  .ld-text { flex: 1; min-width: 0; color: var(--text-sec); font-weight: 500; font-size: 12px; }
+  .ld-text > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #startHint:empty::before { content: "Run in progress…"; }
+  .ld-preview { display: none; }
+  .log-drawer.has-lines .ld-preview { display: block; }
+  .log-drawer.has-lines #startHint { display: none; }
+  .ld-label { flex: none; color: var(--accent); }
+  .ld-chev { flex: none; color: var(--accent); transition: transform .15s ease; }
+  .log-drawer.open .ld-chev { transform: rotate(180deg); }
+  .log-pop { display: none; position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 5; height: clamp(180px, 36vh, 340px); flex-direction: column; overflow: hidden; background: #000; border: 1px solid #303846; border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
+  .log-drawer.open .log-pop { display: flex; }
+  .log-pop-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 6px 5px 12px; color: #e5e7eb; background: #11161d; border-bottom: 1px solid #303846; font: 700 12px var(--font-ui); }
+  .ld-count { margin-left: 8px; color: #a1a1aa; font-weight: 600; font-size: 11px; }
+  .log-pop-head .ghost-btn { padding: 5px 9px; color: #a1a1aa; }
+  .log-pop-head .ghost-btn:hover:not(:disabled) { color: #fff; background: rgba(255,255,255,.1); }
+  #log { flex: 1; min-height: 0; overflow: auto; display: grid; gap: 5px; align-content: start; padding: 12px 15px; font: 12px/1.5 var(--font-ui); }
+  .log-line { overflow-wrap: anywhere; }
+  .log-empty { align-self: center; color: var(--text-sec); opacity: .75; }
+  .log-line.err { color: var(--error); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 900px) {
+    .main-row { grid-template-columns: minmax(0, 1fr); align-content: start; overflow-y: auto; }
+    .setup-col { overflow: visible; padding-right: 0; }
+    .review-col { height: 720px; min-height: 720px; }
+  }
+  @media (max-width: 620px) {
+    .main-row { display: flex; flex-direction: column; align-items: stretch; gap: 14px; padding: 12px; }
+    .setup-col, .review-col { width: 100%; flex: none; }
+    .page-header { align-items: flex-start; flex-direction: column; }
+    .review-col { height: min(720px, 80dvh); min-height: 460px; }
+    #startBtn, #stopBtn { width: 100%; }
+    .log-drawer { flex-basis: 100%; order: 3; }
+    .action-sep { display: none; }
+    .period-grid { grid-template-columns: 1fr; }
+    .picker-row { flex-direction: column; align-items: stretch; }
+    .picker-button { justify-content: center; }
+  }
 </style>
 </head>
 <body>
-<main class="page">
+<div class="app-window">
+
   <header class="page-header">
-    <div><h1>Run Full Workflow</h1><p>For each completed workbook row: CF2 draft, matched SOA upload, eSOA validation and generation in Beacon, then CF4 encoding. Patients are processed one at a time.</p></div>
-    <span class="saved-settings">CF4 configuration · saved values or app defaults</span>
+    <div class="title-block">
+      <div class="title">Run Full Workflow</div>
+      <div class="subtitle">CF2 draft, matched SOA upload, eSOA validation and generation, then CF4 encoding. One patient at a time.</div>
+    </div>
+    <span class="saved-settings">CF4 settings: saved values or app defaults</span>
   </header>
 
-  <section class="run-progress" id="runProgress" aria-live="polite" hidden>
-    <div class="rp-top"><div class="rp-title" id="rpTitle">Starting…<small id="rpSub"></small></div></div>
-    <div class="rp-track indeterminate" id="rpTrack" role="progressbar" aria-label="Run progress" aria-valuemin="0" aria-valuemax="100"><div class="rp-fill" id="rpFill"></div></div>
-  </section>
+  <div class="main-row">
 
-  <form id="runForm" class="layout">
-    <div class="setup">
-      <section class="panel">
-        <div class="panel-heading"><span class="step-number">1</span><div><h2>Select files</h2><p>One New Draft workbook and one SOA spreadsheet per completed patient row. You can also drag files onto the boxes.</p></div></div>
-        <div class="drop-grid">
-          <section class="upload-card" id="workbookCard"><div class="upload-title">CF2 workbook <em>· required</em></div><small>New Draft template · .xlsx, .xlsm, or .xls</small><a class="template-link" href="/api/cf2/download-template?mode=new_draft">Download new draft template <span aria-hidden="true">&#8595;</span></a><div class="picker-row"><label class="picker-button" for="workbook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 14v5h14v-5"/></svg>Choose workbook</label><input class="file-input" id="workbook" name="workbook" type="file" accept=".xlsx,.xlsm,.xls" required><div class="file-meta" id="workbookMeta"><strong>No workbook selected</strong>Choose the New Draft CF2 workbook.</div></div></section>
-          <section class="upload-card" id="soaCard"><div class="upload-title">Patient SOA files <em>· required</em></div><small>One spreadsheet per patient · .xlsx or .xls</small><a class="template-link" href="/soa-excel.html" target="_blank" rel="noopener noreferrer">No SOA file yet? Create one in the SOA Excel generator <span aria-hidden="true">&#8599;</span></a><div class="chips" id="soaChips" aria-label="Selected SOA files"></div><div class="picker-row"><label class="picker-button" for="soaFiles"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>Choose SOA files</label><input class="file-input" id="soaFiles" name="soa_files" type="file" accept=".xlsx,.xls" multiple required><div class="file-meta" id="soaMeta"><strong>No SOA files selected</strong>Names will be checked against the workbook.</div></div></section>
-        </div>
+    <!-- ===== Setup ===== -->
+    <form id="runForm" class="setup-col">
+      <div class="section-label"><span>SETUP</span></div>
+
+      <section class="panel setup-card">
+        <div class="step-head"><span class="step-badge">1</span><div class="step-copy"><h2>Select files</h2><p>One workbook, plus one SOA file per patient. You can drop files onto the boxes.</p></div></div>
+
+        <section class="upload-card" id="workbookCard">
+          <div class="upload-title">CF2 workbook <em>· required</em></div>
+          <a class="template-link" href="/api/cf2/download-template?mode=new_draft">Download new draft template <span aria-hidden="true">&#8595;</span> <span class="help">· .xlsx, .xlsm, .xls</span></a>
+          <div class="picker-row"><label class="picker-button" for="workbook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 14v5h14v-5"/></svg><span id="wbPickerText">Choose workbook</span></label><input class="file-input" id="workbook" name="workbook" type="file" accept=".xlsx,.xlsm,.xls" required><div class="file-meta" id="workbookMeta"><strong>No workbook selected</strong>Choose the New Draft CF2 workbook.</div></div>
+        </section>
+
+        <section class="upload-card" id="soaCard">
+          <div class="upload-title">Patient SOA files <em>· required</em></div>
+          <a class="template-link" href="/soa-excel.html" target="_blank" rel="noopener noreferrer">No SOA file yet? Create one in the SOA Excel generator <span aria-hidden="true">&#8599;</span></a>
+          <div class="chips" id="soaChips" aria-label="Selected SOA files"></div>
+          <div class="picker-row"><label class="picker-button" for="soaFiles"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg><span id="soaPickerText">Choose SOA files</span></label><input class="file-input" id="soaFiles" name="soa_files" type="file" accept=".xlsx,.xls" multiple required><div class="file-meta" id="soaMeta"><strong>No SOA files selected</strong>Names will be checked against the workbook.</div></div>
+        </section>
+
         <details class="fold" id="matchFold"><summary>How file matching works</summary><div class="fold-body">
           <ul class="match-quick"><li>The SOA file count must equal the number of completed patient rows.</li><li>Name each SOA with the patient's <b>surname and first name</b>, such as <b>ABAO ALLEN</b>.</li><li>If a match is missing, ambiguous, or duplicated, the run stops <b>before any draft is created</b>.</li></ul>
           <ol class="match-full"><li>Use the <b>New Draft CF2 Excel template</b> with one completed patient row per claim. Blank rows are ignored.</li><li>A surname alone, such as <b>ABAO</b>, works only when it identifies one patient. Comma-formatted workbook names are normalized during the check.</li><li>For patients with the same surname, add an initial or full first name. If needed, include a treatment date or day, such as <b>ABAO AUG 13-15</b> or <b>ABAO 15</b>. Every selected file must match one patient only.</li><li>The claim month and year interpret treatment dates. Billing contact fields are optional. CF4 uses your saved settings, or app defaults if none are saved.</li><li>Run All creates claim drafts and encodes claim data in Beacon; it does <b>not</b> submit claims to PhilHealth.</li></ol>
         </div></details>
       </section>
-      <section class="panel">
-        <div class="panel-heading"><span class="step-number">2</span><div><h2>Claim period</h2><p>Month and year used to interpret treatment dates.</p></div></div>
+
+      <section class="panel setup-card">
+        <div class="step-head"><span class="step-badge">2</span><div class="step-copy"><h2>Claim period</h2><p>Month and year used to interpret treatment dates.</p></div></div>
         <div class="period-grid">
           <div class="field"><label for="claimMonth">Claim month</label><select id="claimMonth" name="claim_month"></select></div>
           <div class="field"><label for="claimYear">Claim year</label><select id="claimYear" name="claim_year"></select></div>
@@ -195,40 +286,71 @@
           <div class="field"><label for="arNumber">Contact number</label><input id="arNumber" name="account_receivable_number" inputmode="tel" placeholder="e.g. 09XXXXXXXXX"></div>
         </div></div></details>
       </section>
+
+      <section class="panel setup-card" aria-label="Preflight">
+        <div class="step-head"><div class="step-copy"><h2>Preflight</h2></div></div>
+        <ul class="sum-list">
+          <li id="sumWorkbook"><span class="sum-mark" aria-hidden="true">·</span><span><strong id="sumWorkbookText">No workbook yet</strong></span></li>
+          <li id="sumSoa"><span class="sum-mark" aria-hidden="true">·</span><span><strong id="sumSoaText">No SOA files yet</strong><span class="sub" id="sumSoaSub"></span></span></li>
+          <li class="ok" id="sumPeriod"><span class="sum-mark" aria-hidden="true">✓</span><span><strong id="sumPeriodText">Period</strong></span></li>
+          <li class="ok"><span class="sum-mark" aria-hidden="true">✓</span><span><strong>eSOA generated automatically</strong><span class="sub">Validated, generated and uploaded after each SOA, before CF4.</span></span></li>
+        </ul>
+        <p class="cf4-note">Creates drafts and encodes claim data in Beacon. It does not submit to PhilHealth.</p>
+      </section>
+    </form>
+
+    <!-- ===== Review & Run ===== -->
+    <div class="review-col">
+      <div class="section-label"><span>REVIEW &amp; RUN</span></div>
+
+      <section class="run-progress" id="runProgress" aria-live="polite">
+        <div class="rp-top"><div class="rp-title" id="rpTitle">Add files to begin<small id="rpSub">Choose the CF2 workbook and the patient SOA files.</small></div><span class="rp-count" id="rpCount">0/0 done</span></div>
+        <div class="rp-track" id="rpTrack" role="progressbar" aria-label="Run progress" aria-valuemin="0" aria-valuemax="100"><div class="rp-fill" id="rpFill"></div></div>
+        <div id="status" role="status" aria-live="polite"></div>
+        <div id="error" role="alert"></div>
+      </section>
+
+      <div class="run-tiles" id="tally" aria-live="polite">
+        <div class="run-tile"><div class="label">Total</div><div class="value" id="tTotal">0</div></div>
+        <div class="run-tile success"><div class="label">Completed</div><div class="value" id="tDone">0</div></div>
+        <div class="run-tile running"><div class="label">Running</div><div class="value" id="tRun">0</div></div>
+        <div class="run-tile error"><div class="label">Need attention</div><div class="value" id="tFail">0</div></div>
+      </div>
+
+      <section class="results-card" aria-label="Run results">
+        <div id="resultsWrap"><table><thead><tr><th>Patient</th><th>Transmittal</th><th>Progress</th><th>Details</th></tr></thead><tbody id="resultsBody"></tbody></table></div>
+        <p class="result-help">If CF2 succeeds but a later stage fails, use <b>Retry remaining stages</b> on that patient. No second draft is created. Stop requests take effect at a safe step boundary.</p>
+        <span class="results-copy-status" id="copyTransmittalsStatus" aria-live="polite"></span>
+      </section>
+
+      <div class="action-bar">
+        <button id="startBtn" class="solid-btn" type="submit" form="runForm"><i data-lucide="play" data-icon-size="16" aria-hidden="true"></i>Start Run All</button>
+        <button id="stopBtn" class="cyber-btn" type="button">Stop after current step</button>
+
+        <div class="log-drawer" id="logDrawer">
+          <button class="log-ticker" id="logToggle" type="button" aria-expanded="false" aria-controls="logPop" title="Show activity log">
+            <span class="ld-dot" aria-hidden="true"></span>
+            <span class="ld-text"><span id="startHint">Add the workbook and SOA files to start.</span><span class="ld-preview" id="logPreview"></span></span>
+            <span class="ld-label">Log</span>
+            <span class="ld-chev icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></span>
+          </button>
+          <div class="log-pop" id="logPop" role="dialog" aria-label="Activity log">
+            <div class="log-pop-head">
+              <span>Activity log<span class="ld-count" id="logCount">0 lines</span></span>
+              <button class="ghost-btn" id="logPopClose" type="button">Hide <span class="icon-flat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></button>
+            </div>
+            <div id="log" class="log-box automation-log" aria-live="polite"><div class="log-empty">Waiting for workflow activity…</div></div>
+          </div>
+        </div>
+
+        <button class="cyber-btn" id="copySuccessfulTransmittals" type="button" title="Copy transmittal numbers for all successful patients">Copy successful transmittals</button>
+        <span class="action-sep" aria-hidden="true"></span>
+        <button class="ghost-btn" id="clearFieldsBtn" type="button"><i data-lucide="eraser" data-icon-size="16" aria-hidden="true"></i>Clear</button>
+      </div>
     </div>
 
-    <aside class="panel summary" aria-label="Run summary">
-      <h2>Run summary</h2>
-      <ul class="sum-list">
-        <li id="sumWorkbook"><span class="sum-mark" aria-hidden="true">·</span><span><strong id="sumWorkbookText">No workbook yet</strong></span></li>
-        <li id="sumSoa"><span class="sum-mark" aria-hidden="true">·</span><span><strong id="sumSoaText">No SOA files yet</strong><span class="sub" id="sumSoaSub"></span></span></li>
-        <li class="ok" id="sumPeriod"><span class="sum-mark" aria-hidden="true">✓</span><span><strong id="sumPeriodText">Period</strong></span></li>
-        <li class="ok"><span class="sum-mark" aria-hidden="true">✓</span><span><strong>eSOA generated automatically</strong><span class="sub">Validated, generated and uploaded after each SOA, before CF4.</span></span></li>
-      </ul>
-      <div class="actions">
-        <button id="startBtn" class="cyber-btn" type="submit"><i data-lucide="play" data-icon-size="16" aria-hidden="true"></i>Start Run All</button>
-        <button id="clearFieldsBtn" class="cyber-btn" type="button"><i data-lucide="eraser" data-icon-size="16" aria-hidden="true"></i>Clear</button>
-        <button id="stopBtn" class="cyber-btn" type="button">Stop after current step</button>
-        <span class="start-hint" id="startHint">Add the workbook and SOA files to start.</span>
-      </div>
-      <div id="status" role="status" aria-live="polite"></div>
-      <div id="error" role="alert"></div>
-      <p class="cf4-note">Creates drafts and encodes claim data in Beacon. It does not submit to PhilHealth.</p>
-    </aside>
-  </form>
-
-  <section class="panel" style="margin-top:16px" aria-label="Run results">
-    <div class="results-head"><h2>Run results</h2><div class="tally" id="tally" aria-live="polite"><span class="t-done"><b id="tDone">0</b> completed</span><span class="t-run"><b id="tRun">0</b> running</span><span class="t-fail"><b id="tFail">0</b> need attention</span></div></div>
-    <p class="result-help">If CF2 succeeds but a later stage fails, use <b>Retry remaining stages</b> on that patient. No second draft is created. Stop requests take effect at a safe step boundary.</p>
-    <div class="results-copy-actions"><button class="flat-copy-option" id="copySuccessfulTransmittals" type="button" title="Copy transmittal numbers for all successful patients">Copy successful transmittals</button><span class="results-copy-status" id="copyTransmittalsStatus" aria-live="polite"></span></div>
-    <div id="resultsWrap"><table><thead><tr><th>Patient</th><th>Transmittal</th><th>Progress</th><th>Details</th></tr></thead><tbody id="resultsBody"></tbody></table></div>
-  </section>
-
-  <section class="log-drawer" id="logDrawer">
-    <button class="log-drawer-head" id="logToggle" type="button" aria-expanded="false" aria-controls="log"><span class="ld-dot" aria-hidden="true"></span>Activity log<span class="ld-count" id="logCount">0 lines</span><span class="ld-preview" id="logPreview"></span><span class="ld-chev" aria-hidden="true">▾</span></button>
-    <div id="log" class="automation-log" aria-live="polite"><div class="log-empty">Waiting for workflow activity…</div></div>
-  </section>
-</main>
+  </div>
+</div>
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
 <script src="js/common.js"></script>
 <script src="vendor/lucide/lucide.min.js"></script>
