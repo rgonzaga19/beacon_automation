@@ -3702,9 +3702,15 @@ def documents_start():
     if not uploads or len(uploads) != len(relative_paths):
         return jsonify({"error": "Select a patient folder containing documents."}), 400
 
-    # Check Beacon before accepting the upload job. ESA (generated eSOA) and
-    # CF4 are generated workflow documents and do not block this upload.
+    # Check Beacon before accepting the upload job. A filename already
+    # attached to the claim blocks only that same file, regardless of type.
     try:
+        normalize_document_filename = lambda value: Path(str(value).replace("\\", "/")).name.replace("_", " ").strip().casefold()
+        upload_names = {
+            normalize_document_filename(upload.filename)
+            for upload in uploads
+            if upload and upload.filename
+        }
         auth_key = browser_session.auth_context_key(beacon_settings, user_key=f"user:{user.id}")
         existing_documents = []
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
@@ -3725,11 +3731,18 @@ def documents_start():
                     return jsonify({"error": f"Transmittal {number} has no claim to upload documents to."}), 400
                 claim_id = int(claims[0]["id"])
                 documents = soa_api.get_documents(claim_id)
-                blocking_documents = [
-                    str(document.get("documentType") or "Unknown document").strip()
-                    for document in documents
-                    if str(document.get("documentType") or "").strip().upper() not in {"ESA", "CF4"}
-                ]
+                blocking_documents = []
+                for document in documents:
+                    # Beacon returns the stored filename under different keys
+                    # across versions. Only block when the selected batch
+                    # contains that same filename; other documents may coexist.
+                    stored_name = next((
+                        document.get(key) for key in (
+                            "fileName", "filename", "documentName", "documentFileName", "originalFileName"
+                        ) if document.get(key)
+                    ), None)
+                    if stored_name and normalize_document_filename(stored_name) in upload_names:
+                        blocking_documents.append(Path(str(stored_name).replace("\\", "/")).name)
                 if blocking_documents:
                     existing_documents.append({
                         "transmittal": number,
