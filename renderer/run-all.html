@@ -180,7 +180,7 @@
   #stopBtn.visible { display: flex; }
   .action-bar:has(#stopBtn.visible) #startBtn { display: none; }
   .action-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
-  #copySuccessfulTransmittals { padding: 11px 14px; font-size: 12px; white-space: nowrap; }
+  #copySuccessfulTransmittals { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 14px; font-size: 12px; white-space: nowrap; }
   .ghost-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 12px; color: var(--text-sec); background: transparent; border: 0; border-radius: var(--radius-md); font: 600 12px var(--font-ui); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
   .ghost-btn:hover:not(:disabled) { color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }
   .ghost-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -343,7 +343,7 @@
           </div>
         </div>
 
-        <button class="cyber-btn" id="copySuccessfulTransmittals" type="button" title="Copy transmittal numbers for all successful patients">Copy successful transmittals</button>
+        <button class="cyber-btn" id="copySuccessfulTransmittals" type="button" title="Copy transmittal numbers for all successful patients"><i data-lucide="copy" data-icon-size="16" aria-hidden="true"></i>Copy transmittals</button>
         <span class="action-sep" aria-hidden="true"></span>
         <button class="ghost-btn" id="clearFieldsBtn" type="button"><i data-lucide="eraser" data-icon-size="16" aria-hidden="true"></i>Clear</button>
       </div>
