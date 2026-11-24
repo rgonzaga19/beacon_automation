@@ -17,6 +17,18 @@ const authTitle = document.getElementById("authTitle");
 const authIntro = document.getElementById("authIntro");
 const formEyebrow = document.getElementById("formEyebrow");
 const sessionNote = document.getElementById("sessionNote");
+const rememberLogin = document.getElementById("rememberLogin");
+const rememberLoginLabel = document.getElementById("rememberLoginLabel");
+
+try {
+  const savedEmail = localStorage.getItem("beabots-saved-login-email");
+  if (savedEmail) {
+    usernameInput.value = savedEmail;
+    rememberLogin.checked = true;
+  }
+} catch {
+  // The login form remains usable when browser storage is unavailable.
+}
 
 let authMode = "login";
 
@@ -68,6 +80,7 @@ function setAuthMode(mode, { focusTab = false } = {}) {
   createAccountTab.tabIndex = registering ? 0 : -1;
 
   confirmField.hidden = !registering;
+  rememberLoginLabel.hidden = registering;
   confirmPasswordInput.required = registering;
   passwordRequirement.hidden = !registering;
   passwordInput.autocomplete = registering ? "new-password" : "current-password";
@@ -167,6 +180,15 @@ loginForm.addEventListener("submit", async (event) => {
     });
 
     if (result.error) throw new Error(result.error);
+
+    if (!registering) {
+      try {
+        if (rememberLogin.checked) localStorage.setItem("beabots-saved-login-email", email);
+        else localStorage.removeItem("beabots-saved-login-email");
+      } catch {
+        // Saving the email is optional; authentication should still complete.
+      }
+    }
 
     const agreementKey = `beabots-agreement-ack:${encodeURIComponent(email)}`;
     if (localStorage.getItem(agreementKey) !== "v2") {

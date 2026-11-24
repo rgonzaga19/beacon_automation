@@ -14,24 +14,19 @@
   html,body { min-height:100%; margin:0; }
   body.auth-page { min-height:100vh; color:var(--text-pri); background:var(--bg-dark); font-family:var(--font-ui); -webkit-font-smoothing:antialiased; }
 
-  .shell { position:relative; min-height:100vh; min-height:100svh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:72px 20px 28px; overflow-x:hidden; overflow-y:auto; }
+  .shell { position:relative; min-height:100vh; min-height:100svh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 20px 28px; overflow-x:hidden; overflow-y:auto; }
   .ambient { position:absolute; inset:0; pointer-events:none; background:radial-gradient(760px 420px at 50% -8%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 70%),radial-gradient(520px 360px at 12% 105%,rgba(56,120,214,.16),transparent 70%),radial-gradient(520px 360px at 92% 95%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 70%); }
   .ambient::before { content:""; position:absolute; inset:0; background-image:linear-gradient(color-mix(in srgb,var(--text-pri) 6%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--text-pri) 6%,transparent) 1px,transparent 1px); background-size:46px 46px; -webkit-mask-image:radial-gradient(ellipse at 50% 38%,#000 0%,transparent 68%); mask-image:radial-gradient(ellipse at 50% 38%,#000 0%,transparent 68%); }
-  .topbar { position:absolute; z-index:2; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:22px clamp(20px,4vw,48px); }
-  .wordmark { display:inline-flex; align-items:center; gap:12px; color:var(--text-pri); font-size:13px; font-weight:800; letter-spacing:2px; text-decoration:none; }
-  .wordmark .mark { display:grid; place-items:center; width:34px; height:34px; background:var(--bg-panel); border:1px solid var(--border); border-radius:10px; }
-  .wordmark img { width:21px; height:21px; object-fit:contain; }
-  .wordmark .header-brand-copy { display:flex; flex-direction:column; align-items:flex-start; gap:4px; line-height:1; }
-  .wordmark .header-brand-copy > span:first-child { font-size:14px; font-weight:850; letter-spacing:1.3px; }
-  .wordmark .brand-tagline { color:var(--text-sec); font-size:9px; font-weight:600; letter-spacing:.8px; line-height:1.2; text-transform:uppercase; }
   .auth-theme-toggle { visibility:hidden; display:inline-flex; align-items:center; gap:7px; min-height:32px; padding:0 4px; color:var(--text-sec); background:transparent; border:0; border-radius:8px; font:600 11px var(--font-ui); cursor:pointer; }
   html.theme-ready .auth-theme-toggle { visibility:visible; }
   .auth-theme-toggle:hover { color:var(--text-pri); }
   .theme-switch-icon { display:block; width:15px; height:15px; color:var(--accent); }
-  .wordmark:focus-visible,.auth-theme-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .login-card { position:relative; z-index:1; width:min(100%,424px); margin-block:auto; padding:clamp(20px,3vw,28px); background:color-mix(in srgb,var(--bg-panel) 88%,transparent); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border:1px solid var(--border); border-radius:22px; box-shadow:var(--shadow-md),0 0 0 1px color-mix(in srgb,var(--accent) 6%,transparent); }
-  .card-mark { display:grid; place-items:center; width:46px; height:46px; margin:0 auto 12px; background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 35%,transparent); border-radius:14px; box-shadow:0 0 30px var(--accent-soft-strong); }
-  .card-mark img { width:32px; height:32px; object-fit:contain; }
+  .card-brand { display:flex; align-items:center; gap:12px; margin-bottom:24px; padding-bottom:19px; border-bottom:1px solid var(--border); }
+  .card-mark { display:grid; place-items:center; width:44px; height:44px; flex:none; background:linear-gradient(145deg,var(--accent-soft),color-mix(in srgb,var(--accent) 10%,var(--bg-panel))); border:1px solid color-mix(in srgb,var(--accent) 28%,var(--border)); border-radius:13px; box-shadow:0 5px 16px color-mix(in srgb,var(--accent) 12%,transparent); }
+  .card-mark img { width:29px; height:29px; object-fit:contain; }
+  .card-brand-name { color:var(--text-pri); font-size:18px; font-weight:760; letter-spacing:-.45px; line-height:1.2; }
+  .card-brand-caption { margin-top:4px; color:var(--text-sec); font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; }
   .auth-heading { text-align:center; }
   .form-eyebrow { display:inline-flex; align-items:center; gap:8px; padding:4px 10px 4px 8px; color:var(--accent); background:var(--accent-soft); border-radius:999px; font-size:10.5px; font-weight:700; letter-spacing:.3px; }
   .form-eyebrow::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--accent); }
@@ -49,9 +44,9 @@
   .pw-checks li.ok::before { content:"✓"; color:#fff; background:var(--success); border-color:var(--success); }
   .login-form-tools { position:absolute; top:12px; right:14px; }
   .session-note { justify-content:center; margin:14px 0 0; text-align:center; }
-  @media (max-width:520px) { .shell { justify-content:flex-start; padding:72px 16px 24px; } .topbar { padding:16px; } .login-card { width:min(100%,424px); margin-block:0 auto; padding:22px 20px; border-radius:18px; } }
+  @media (max-width:520px) { .shell { justify-content:flex-start; padding:24px 16px; } .login-card { width:min(100%,424px); margin-block:0 auto; padding:22px 20px; border-radius:18px; } }
   @media (max-width:360px) { .shell { padding-right:12px; padding-left:12px; } .login-card { padding:19px 16px; } .auth-tab { padding-inline:6px; font-size:11.5px; } }
-  @media (max-height:620px) { .shell { justify-content:flex-start; padding-top:64px; padding-bottom:20px; } .login-card { margin-block:0 auto; padding-top:18px; padding-bottom:18px; } .card-mark { width:40px; height:40px; margin-bottom:9px; } .auth-heading .intro { margin-bottom:10px; } .auth-switch { margin-bottom:10px; } .login-field { margin-bottom:8px; } .form-foot { display:none; } }
+  @media (max-height:620px) { .shell { justify-content:flex-start; padding-top:24px; padding-bottom:20px; } .login-card { margin-block:0 auto; padding-top:18px; padding-bottom:18px; } .card-mark { width:40px; height:40px; } .card-brand { margin-bottom:17px; padding-bottom:15px; } .auth-heading .intro { margin-bottom:10px; } .auth-switch { margin-bottom:10px; } .login-field { margin-bottom:8px; } .form-foot { display:none; } }
   @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
 
   .form-wrap { flex:1; display:flex; flex-direction:column; justify-content:center; width:min(100%,380px); margin:0 auto; padding:36px 0; }
@@ -83,6 +78,10 @@
   .password-toggle:focus-visible { outline:2px solid var(--accent); }
   .hint-line { min-height:16px; margin:6px 2px 0; color:var(--warning); font-size:11px; }
   .hint-line[hidden] { display:none; }
+  .remember-login { display:flex; align-items:center; gap:9px; margin:0 0 14px; color:var(--text-sec); font-size:12px; line-height:1.4; cursor:pointer; }
+  .remember-login[hidden] { display:none; }
+  .remember-login input { width:15px; height:15px; margin:0; accent-color:var(--accent); cursor:pointer; }
+  .remember-login:focus-within { color:var(--text-pri); }
 
   .session-note { display:flex; align-items:center; gap:8px; margin:2px 0 12px; color:var(--text-sec); font-size:11px; line-height:1.45; }
   .note-lock { display:grid; place-items:center; flex:none; width:16px; height:16px; color:var(--accent); border:1px solid var(--border); border-radius:50%; font-size:6px; }
@@ -159,12 +158,8 @@ body.login-success-transition .transition-caption { animation:copy-settle 400ms 
 <body class="auth-page">
 <div class="shell">
   <div class="ambient" aria-hidden="true"></div>
-  <div class="topbar">
-    <a class="wordmark" href="/" aria-label="Beabots home"><span class="mark"><img src="assets/bot.ico" alt=""></span><span class="header-brand-copy"><span>BEABOTS</span><span class="brand-tagline">Beacon Automation</span></span></a>
-  </div>
-
   <main class="login-card" aria-labelledby="authTitle">
-    <div class="card-mark" aria-hidden="true"><img src="assets/bot.ico" alt=""></div>
+    <div class="card-brand"><span class="card-mark" aria-hidden="true"><img src="assets/bot.ico" alt=""></span><div><div class="card-brand-name">Beabots</div><div class="card-brand-caption">Claims workflow platform</div></div></div>
     <div class="auth-heading">
       <span class="form-eyebrow" id="formEyebrow">YOUR WORKSPACE</span>
       <h2 id="authTitle">Welcome back</h2>
@@ -192,6 +187,7 @@ body.login-success-transition .transition-caption { animation:copy-settle 400ms 
           <div class="input-shell"><span class="input-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><rect x="3.5" y="8.5" width="13" height="9" rx="2"></rect><path d="M6.5 8.5V6a3.5 3.5 0 0 1 7 0v2.5"></path></svg></span><input type="password" id="confirmPassword" name="confirm_password" autocomplete="new-password" placeholder="Enter your password again" /></div>
         </div>
         <ul class="pw-checks" id="pwChecks" aria-label="Password requirements" hidden><li id="chkLen">At least 8 characters</li><li id="chkMatch">Both passwords match</li></ul>
+        <label class="remember-login" id="rememberLoginLabel" for="rememberLogin"><input type="checkbox" id="rememberLogin" /> Remember my email on this device</label>
         <button class="solid-btn auth-submit" id="loginBtn" type="submit"><span id="submitLabel">Sign in</span><span class="submit-arrow" aria-hidden="true">→</span></button>
         <div class="login-status" id="loginStatus" role="status" aria-live="polite"></div>
         <div class="session-note" id="sessionNote"><span class="note-lock" aria-hidden="true">●</span> This is your Beabots account, not your Beacon login.</div>
