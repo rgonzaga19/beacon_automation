@@ -13,6 +13,7 @@ const claimEditor = document.getElementById("claimEditor");
 const editorSubtitle = document.getElementById("editorSubtitle");
 const transmitAllButton = document.getElementById("transmitAllButton");
 const transmitAllStatus = document.getElementById("transmitAllStatus");
+window.BeabotsIcons?.hydrate(document);
 const finalizeAllButton = document.getElementById("finalizeAllButton");
 let activeEditClaim = null;
 let courseInWardRowIndex = 0;
@@ -153,15 +154,23 @@ function addCourseInWardRow(entry = {}) {
   order.id = orderLabel.htmlFor;
   orderField.append(orderLabel, order);
   const remove = document.createElement("button");
-  remove.className = "cyber-btn danger course-ward-remove";
+  remove.className = "cyber-btn danger course-ward-remove icon-labeled-button";
   remove.type = "button";
-  remove.textContent = "REMOVE";
+  remove.setAttribute("aria-label", "Remove course entry");
+  const removeIcon = document.createElement("i");
+  removeIcon.dataset.lucide = "trash-2";
+  removeIcon.dataset.iconSize = "15";
+  removeIcon.setAttribute("aria-hidden", "true");
+  const removeLabel = document.createElement("span");
+  removeLabel.textContent = "REMOVE";
+  remove.append(removeIcon, removeLabel);
   remove.addEventListener("click", () => {
     row.remove();
     if (!container.children.length) renderCourseInWardRows();
   });
   if (entry.id != null) row.dataset.courseId = entry.id;
   row.append(dateField, orderField, remove);
+  window.BeabotsIcons?.hydrate(row);
   container.append(row);
 }
 

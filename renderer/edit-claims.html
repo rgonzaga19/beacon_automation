@@ -123,6 +123,8 @@
     .course-ward-field textarea { min-height:72px; padding:8px 10px; resize:vertical; line-height:1.45; }
     .course-ward-field input:focus,.course-ward-field textarea:focus { border-color:var(--accent); outline:2px solid var(--accent-soft); }
     .course-ward-remove { min-height:37px; padding:0 10px; }
+    .course-ward-remove svg,.editor-actions svg { width:15px; height:15px; flex:none; }
+    .editor-actions .icon-labeled-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; }
     .course-ward-empty { margin:0; color:var(--text-sec); font-size:11px; }
     .editor-doc-list { display:grid; gap:7px; margin:0; padding:0; list-style:none; color:var(--text-sec); font-size:10px; }
     .editor-doc-list li { overflow-wrap:anywhere; }
@@ -431,7 +433,7 @@
         <section class="editor-section" data-editor-section="course">
           <h3>Course in the Ward</h3>
           <div class="course-ward-list" id="courseInWardRows"></div>
-          <div class="editor-actions"><button class="cyber-btn" id="addCourseInWardRow" type="button">ADD ENTRY</button><button class="cyber-btn" type="button" data-save-editor="course">SAVE COURSE IN THE WARD</button></div>
+          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" id="addCourseInWardRow" type="button"><i data-lucide="plus" data-icon-size="15" aria-hidden="true"></i><span>ADD ENTRY</span></button><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="course"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span>SAVE</span></button></div>
           <div class="editor-message" id="courseEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="soa">
@@ -445,6 +447,8 @@
     </section>
   </div>
   <div id="modalRoot"></div>
+  <script src="vendor/lucide/lucide.min.js"></script>
+  <script src="js/icons.js"></script>
   <script src="js/common.js"></script>
   <script src="js/edit-claims.js"></script>
 </body>
