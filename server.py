@@ -2523,6 +2523,23 @@ def save_finalize_claim_cf4_text(transmittal_id, claim_id):
             payload = beacon_automation._normalize_cf4_save_payload(cf4, claim_id, False, {}, [])
             payload["historyOfPresentIllness"] = cf4.get("historyOfPresentIllness") or ""
             payload["pertinentPastMedicalHistory"] = cf4.get("pertinentPastMedicalHistory") or ""
+            # Saving either text field round-trips the full CF4 object. Keep
+            # Course in the Ward calendar dates stable across Beacon's UTC
+            # timestamp representation, just as the vitals save route does.
+            orders = payload.get("phiccF4DoctorsOrder") or []
+            normalized_orders = []
+            for order in orders:
+                if not isinstance(order, dict):
+                    normalized_orders.append(order)
+                    continue
+                normalized_order = dict(order)
+                local_order_date = _beacon_local_datetime(order.get("date"))
+                if local_order_date:
+                    normalized_order["date"] = beacon_automation._local_date_to_beacon_utc(
+                        local_order_date.date()
+                    )
+                normalized_orders.append(normalized_order)
+            payload["phiccF4DoctorsOrder"] = normalized_orders
             for key in field_keys:
                 if key in data:
                     payload[key] = str(data.get(key) or "").strip()

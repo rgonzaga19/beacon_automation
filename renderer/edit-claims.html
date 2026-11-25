@@ -352,21 +352,21 @@
     </div>
   <div class="editor-overlay" id="claimEditor" hidden>
     <section class="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
-      <header class="editor-header"><div class="editor-heading"><span class="editor-eyebrow">CLAIM WORKSPACE</span><h2 id="editorTitle">Edit Draft Claim</h2><div class="editor-subtitle" id="editorSubtitle"></div></div><div class="editor-claim-navigation"><button class="cyber-btn editor-previous" id="editorPrevious" type="button" aria-label="Previous claim" title="Previous claim"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><button class="cyber-btn editor-next" id="editorNext" type="button" aria-label="Next claim" title="Next claim"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div><button class="cyber-btn editor-close" id="editorClose" type="button" aria-label="Close editor" title="Close editor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+      <header class="editor-header"><div class="editor-heading"><span class="editor-eyebrow">CLAIM WORKSPACE</span><h2 id="editorTitle">Edit Draft Claim</h2><div class="editor-subtitle" id="editorSubtitle"></div></div><div class="editor-claim-navigation"><button class="cyber-btn editor-previous" id="editorPrevious" type="button" aria-label="Previous claim" title="Previous claim"><i data-lucide="chevron-left" data-icon-size="16" aria-hidden="true"></i></button><button class="cyber-btn editor-next" id="editorNext" type="button" aria-label="Next claim" title="Next claim"><i data-lucide="chevron-right" data-icon-size="16" aria-hidden="true"></i></button></div><button class="cyber-btn editor-close" id="editorClose" type="button" aria-label="Close editor" title="Close editor"><i data-lucide="x" data-icon-size="16" aria-hidden="true"></i></button></header>
       <div class="editor-workspace">
         <nav class="editor-tabs" id="editorTabs" role="tablist" aria-label="Claim actions">
           <div class="editor-nav-group">
-            <button class="editor-tab" type="button" role="tab" data-editor-view="cf2" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Change admission and discharge</span></button>
-            <button class="editor-tab" type="button" role="tab" data-editor-view="doctor" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20v-1a7 7 0 0 1 14 0v1"/></svg><span>Doctor and sign date</span></button>
-            <button class="editor-tab" type="button" role="tab" data-editor-view="receivable" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg><span>Account receivable</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="cf2" aria-selected="false"><i data-lucide="calendar-clock" data-icon-size="16" aria-hidden="true"></i><span>Change admission and discharge</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="doctor" aria-selected="false"><i data-lucide="user-round" data-icon-size="16" aria-hidden="true"></i><span>Doctor and sign date</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="receivable" aria-selected="false"><i data-lucide="landmark" data-icon-size="16" aria-hidden="true"></i><span>Account receivable</span></button>
           </div>
           <div class="editor-nav-group">
-            <button class="editor-tab" type="button" role="tab" data-editor-view="cf4" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Vitals (CF4)</span></button>
-            <button class="editor-tab" type="button" role="tab" data-editor-view="history" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7"/></svg><span>HPI and medical history</span></button>
-            <button class="editor-tab" type="button" role="tab" data-editor-view="course" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Course in the ward</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="cf4" aria-selected="false"><i data-lucide="heart-pulse" data-icon-size="16" aria-hidden="true"></i><span>Vitals (CF4)</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="history" aria-selected="false"><i data-lucide="file-text" data-icon-size="16" aria-hidden="true"></i><span>HPI and medical history</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="course" aria-selected="false"><i data-lucide="list" data-icon-size="16" aria-hidden="true"></i><span>Course in the ward</span></button>
           </div>
           <div class="editor-nav-group">
-            <button class="editor-tab" type="button" role="tab" data-editor-view="soa" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18l-3-2-4 2-4-2-3 2zM8 8h8M8 12h8M8 16h5"/></svg><span>SOA charges</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="soa" aria-selected="false"><i data-lucide="receipt" data-icon-size="16" aria-hidden="true"></i><span>SOA charges</span></button>
           </div>
         </nav>
         <div class="editor-content">
@@ -379,7 +379,7 @@
             <div class="editor-field"><label for="editDischargeDate">Discharge Date</label><input id="editDischargeDate" type="date"></div>
             <div class="editor-field"><label for="editDischargeTime">Discharge Time</label><input id="editDischargeTime" type="time"></div>
           </div>
-          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="cf2">SAVE CF2</button></div>
+          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="cf2"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE CF2</span></button></div>
           <div class="editor-message" id="cf2EditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="receivable" hidden>
@@ -391,7 +391,7 @@
             <div class="editor-field"><label for="editReceivableDateSigned">CF2 PDF Date Signed (last treatment)</label><input id="editReceivableDateSigned" type="date" readonly></div>
           </div>
           <p class="editor-note">These values update the CF2 HCI representative and eSOA prepared by/contact fields.</p>
-          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="receivable">SAVE ACCOUNT RECEIVABLE</button></div>
+          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="receivable"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE ACCOUNT RECEIVABLE</span></button></div>
           <div class="editor-message" id="receivableEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="doctor">
@@ -401,7 +401,7 @@
             <div class="editor-field"><label for="editDoctorAccreditation">Doctor Accreditation Number</label><input id="editDoctorAccreditation" type="text"></div>
             <div class="editor-field"><label for="editDoctorSignDate">Doctor Sign Date</label><input id="editDoctorSignDate" type="date"></div>
           </div>
-          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="doctor">SAVE DOCTOR</button></div>
+          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="doctor"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE DOCTOR</span></button></div>
           <div class="editor-message" id="doctorEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="cf4">
@@ -415,31 +415,31 @@
             <div class="editor-field"><label for="editHeight">Height</label><input id="editHeight" type="number" step="any"></div>
             <div class="editor-field"><label for="editWeight">Weight</label><input id="editWeight" type="number" step="any"></div>
           </div>
-          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="cf4">SAVE VITALS</button><button class="cyber-btn" id="generateCf4Button" type="button">GENERATE CF4</button></div>
+          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="cf4"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE VITALS</span></button><button class="cyber-btn icon-labeled-button" id="generateCf4Button" type="button"><i data-lucide="file-check-2" data-icon-size="15" aria-hidden="true"></i><span data-button-label>GENERATE CF4</span></button></div>
           <div class="editor-message" id="cf4EditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="hpi">
           <h3>History of Present Illness</h3>
           <div class="editor-field"><label for="editHistoryOfPresentIllness">History of Present Illness</label><textarea id="editHistoryOfPresentIllness" rows="2"></textarea></div>
-          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="hpi">SAVE HPI</button></div>
+          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="hpi"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE HPI</span></button></div>
           <div class="editor-message" id="hpiEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="pmh">
           <h3>Pertinent Past Medical History</h3>
           <div class="editor-field"><label for="editPertinentPastMedicalHistory">Pertinent Past Medical History</label><textarea id="editPertinentPastMedicalHistory" rows="2"></textarea></div>
-          <div class="editor-actions"><button class="cyber-btn" type="button" data-save-editor="pmh">SAVE HISTORY</button></div>
+          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="pmh"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE HISTORY</span></button></div>
           <div class="editor-message" id="pmhEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="course">
           <h3>Course in the Ward</h3>
           <div class="course-ward-list" id="courseInWardRows"></div>
-          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" id="addCourseInWardRow" type="button"><i data-lucide="plus" data-icon-size="15" aria-hidden="true"></i><span>ADD ENTRY</span></button><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="course"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span>SAVE</span></button></div>
+          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" id="addCourseInWardRow" type="button"><i data-lucide="plus" data-icon-size="15" aria-hidden="true"></i><span>ADD ENTRY</span></button><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="course"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE COURSE IN THE WARD</span></button></div>
           <div class="editor-message" id="courseEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="soa">
           <h3>SOA Charges and Payments</h3>
           <p class="editor-note" id="editorSoaSummary">Loading SOA rows...</p>
-          <div class="editor-actions"><button class="cyber-btn danger" id="removeSoaButton" type="button">REMOVE SOA CHARGES</button><button class="cyber-btn" id="generateSoaButton" type="button">GENERATE SOA</button></div>
+          <div class="editor-actions"><button class="cyber-btn danger icon-labeled-button" id="removeSoaButton" type="button"><i data-lucide="trash-2" data-icon-size="15" aria-hidden="true"></i><span data-button-label>REMOVE SOA CHARGES</span></button><button class="cyber-btn icon-labeled-button" id="generateSoaButton" type="button"><i data-lucide="receipt-text" data-icon-size="15" aria-hidden="true"></i><span data-button-label>GENERATE SOA</span></button></div>
           <div class="editor-message" id="soaEditorMessage" aria-live="polite"></div>
         </section>
         </div>

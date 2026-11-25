@@ -60,6 +60,12 @@ function setToolbarLoading(button, loading) {
   else button.removeAttribute("aria-busy");
 }
 
+function setEditorButtonLabel(button, label) {
+  const labelElement = button.querySelector("[data-button-label]") || button.querySelector("span");
+  if (labelElement) labelElement.textContent = label;
+  else button.textContent = label;
+}
+
 function updateSelectionControls() {
   const rows = Array.from(claimsBody.querySelectorAll("tr[data-claim-row]"));
   const selectedRows = rows.filter((row) => row.classList.contains("selected"));
@@ -709,8 +715,8 @@ document.querySelectorAll("[data-save-editor]").forEach((button) => {
       course: { entries: readCourseInWardRows() },
     };
     button.disabled = true;
-    const originalText = button.textContent;
-    button.textContent = "SAVING...";
+    const originalText = button.querySelector("[data-button-label]")?.textContent || button.textContent;
+    setEditorButtonLabel(button, "SAVING...");
     setEditorMessage(section, "Saving changes to Beacon...");
     try {
       const endpoint = section === "cf4" ? "cf4-vitals" : ["hpi", "pmh"].includes(section) ? "cf4-text" : section === "course" ? "course-in-ward" : section;
@@ -724,7 +730,7 @@ document.querySelectorAll("[data-save-editor]").forEach((button) => {
       setEditorMessage(section, error.message || "Save failed.", true);
     } finally {
       button.disabled = false;
-      button.textContent = originalText;
+      setEditorButtonLabel(button, originalText);
     }
   });
 });
@@ -734,8 +740,8 @@ document.getElementById("removeSoaButton").addEventListener("click", async (even
   const button = event.currentTarget;
   const { transmittalId, claimId } = activeEditClaim;
   button.disabled = true;
-  const originalText = button.textContent;
-  button.textContent = "REMOVING...";
+  const originalText = button.querySelector("[data-button-label]")?.textContent || button.textContent;
+  setEditorButtonLabel(button, "REMOVING...");
   setEditorMessage("soa", "Removing the SOA charge rows from Beacon...");
   try {
     const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/soa`, { method: "DELETE" });
@@ -745,16 +751,16 @@ document.getElementById("removeSoaButton").addEventListener("click", async (even
     setEditorMessage("soa", error.message || "Beacon could not remove the SOA data.", true);
   } finally {
     button.disabled = false;
-    button.textContent = originalText;
+    setEditorButtonLabel(button, originalText);
   }
 });
 
 async function generateEditorFile({ button, section, endpoint, successText }) {
   if (!activeEditClaim) return;
   const { transmittalId, claimId } = activeEditClaim;
-  const originalText = button.textContent;
+  const originalText = button.querySelector("[data-button-label]")?.textContent || button.textContent;
   button.disabled = true;
-  button.textContent = "GENERATING...";
+  setEditorButtonLabel(button, "GENERATING...");
   setEditorMessage(section, "Validating and generating in Beacon...");
   try {
     await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/${endpoint}`, {
@@ -766,7 +772,7 @@ async function generateEditorFile({ button, section, endpoint, successText }) {
     setEditorMessage(section, error.message || "Beacon generation failed.", true);
   } finally {
     button.disabled = false;
-    button.textContent = originalText;
+    setEditorButtonLabel(button, originalText);
   }
 }
 
