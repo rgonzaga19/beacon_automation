@@ -361,8 +361,8 @@
             <button class="editor-tab" type="button" role="tab" data-editor-view="receivable" aria-selected="false"><i data-lucide="landmark" data-icon-size="16" aria-hidden="true"></i><span>Account receivable</span></button>
           </div>
           <div class="editor-nav-group">
-            <button class="editor-tab" type="button" role="tab" data-editor-view="cf4" aria-selected="false"><i data-lucide="heart-pulse" data-icon-size="16" aria-hidden="true"></i><span>Vitals (CF4)</span></button>
             <button class="editor-tab" type="button" role="tab" data-editor-view="history" aria-selected="false"><i data-lucide="file-text" data-icon-size="16" aria-hidden="true"></i><span>HPI and medical history</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="cf4" aria-selected="false"><i data-lucide="heart-pulse" data-icon-size="16" aria-hidden="true"></i><span>Vitals (CF4)</span></button>
             <button class="editor-tab" type="button" role="tab" data-editor-view="course" aria-selected="false"><i data-lucide="list" data-icon-size="16" aria-hidden="true"></i><span>Course in the ward</span></button>
           </div>
           <div class="editor-nav-group">
@@ -404,6 +404,16 @@
           <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="doctor"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE DOCTOR</span></button></div>
           <div class="editor-message" id="doctorEditorMessage" aria-live="polite"></div>
         </section>
+        <section class="editor-section" data-editor-section="hpi">
+          <h3>History of Present Illness</h3>
+          <div class="editor-field"><label for="editHistoryOfPresentIllness">History of Present Illness</label><textarea id="editHistoryOfPresentIllness" rows="2"></textarea></div>
+        </section>
+        <section class="editor-section" data-editor-section="pmh">
+          <h3>Pertinent Past Medical History</h3>
+          <div class="editor-field"><label for="editPertinentPastMedicalHistory">Pertinent Past Medical History</label><textarea id="editPertinentPastMedicalHistory" rows="2"></textarea></div>
+          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="history"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE HPI AND HISTORY</span></button></div>
+          <div class="editor-message" id="historyEditorMessage" aria-live="polite"></div>
+        </section>
         <section class="editor-section" data-editor-section="cf4">
           <h3>CF4 Vitals</h3>
           <div class="editor-grid">
@@ -417,18 +427,6 @@
           </div>
           <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="cf4"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE VITALS</span></button><button class="cyber-btn icon-labeled-button" id="generateCf4Button" type="button"><i data-lucide="file-check-2" data-icon-size="15" aria-hidden="true"></i><span data-button-label>GENERATE CF4</span></button></div>
           <div class="editor-message" id="cf4EditorMessage" aria-live="polite"></div>
-        </section>
-        <section class="editor-section" data-editor-section="hpi">
-          <h3>History of Present Illness</h3>
-          <div class="editor-field"><label for="editHistoryOfPresentIllness">History of Present Illness</label><textarea id="editHistoryOfPresentIllness" rows="2"></textarea></div>
-          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="hpi"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE HPI</span></button></div>
-          <div class="editor-message" id="hpiEditorMessage" aria-live="polite"></div>
-        </section>
-        <section class="editor-section" data-editor-section="pmh">
-          <h3>Pertinent Past Medical History</h3>
-          <div class="editor-field"><label for="editPertinentPastMedicalHistory">Pertinent Past Medical History</label><textarea id="editPertinentPastMedicalHistory" rows="2"></textarea></div>
-          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="pmh"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE HISTORY</span></button></div>
-          <div class="editor-message" id="pmhEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="course">
           <h3>Course in the Ward</h3>

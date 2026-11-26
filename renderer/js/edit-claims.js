@@ -464,7 +464,7 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
   claimEditor.hidden = false;
   editorSubtitle.textContent = "Loading draft claim...";
   document.getElementById("editorSoaSummary").textContent = "Loading SOA rows...";
-  ["cf2", "receivable", "doctor", "cf4", "hpi", "pmh", "course", "soa"].forEach((section) => setEditorMessage(section, ""));
+  ["cf2", "receivable", "doctor", "cf4", "hpi", "pmh", "history", "course", "soa"].forEach((section) => setEditorMessage(section, ""));
   try {
     const data = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/edit`);
     editorSubtitle.textContent = `${data.patient_name || "Draft claim"} | ${data.transmittal_number} | ${data.claim_series || "Claim series pending"}`;
@@ -719,11 +719,18 @@ document.querySelectorAll("[data-save-editor]").forEach((button) => {
     setEditorButtonLabel(button, "SAVING...");
     setEditorMessage(section, "Saving changes to Beacon...");
     try {
-      const endpoint = section === "cf4" ? "cf4-vitals" : ["hpi", "pmh"].includes(section) ? "cf4-text" : section === "course" ? "course-in-ward" : section;
-      await editorRequest(`${route}/${endpoint}`, {
-        method: "POST",
-        body: JSON.stringify(payloads[section]),
-      });
+      if (section === "history") {
+        await Promise.all(["hpi", "pmh"].map((historySection) => editorRequest(`${route}/cf4-text`, {
+          method: "POST",
+          body: JSON.stringify(payloads[historySection]),
+        })));
+      } else {
+        const endpoint = section === "cf4" ? "cf4-vitals" : ["hpi", "pmh"].includes(section) ? "cf4-text" : section === "course" ? "course-in-ward" : section;
+        await editorRequest(`${route}/${endpoint}`, {
+          method: "POST",
+          body: JSON.stringify(payloads[section]),
+        });
+      }
       await openClaimEditor(transmittalId, claimId, activeEditClaim.view);
       setEditorMessage(section, "Saved to Beacon.");
     } catch (error) {
