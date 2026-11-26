@@ -105,8 +105,8 @@
 .transition-light { position:absolute; inset:-30%; overflow:hidden; background:radial-gradient(ellipse at 50% 45%,rgba(255,255,255,.28),rgba(11,89,85,.1) 28%,transparent 58%); opacity:0; transform:scale(.88); }
 .transition-light::after { position:absolute; top:-20%; bottom:-20%; left:-45%; width:34%; content:""; background:linear-gradient(90deg,transparent,rgba(11,89,85,.08) 42%,rgba(255,255,255,.76) 50%,rgba(11,89,85,.08) 58%,transparent); filter:blur(7px); transform:skewX(-18deg); }
 .transition-halo { position:absolute; left:50%; top:calc(50% - 44px); width:82px; height:82px; border:1px solid rgba(11,89,85,.46); border-radius:50%; box-shadow:0 0 28px rgba(11,89,85,.16),inset 0 0 22px rgba(11,89,85,.12); opacity:0; transform:translate(-50%,-50%) scale(.55); }
-.transition-mark { position:relative; z-index:1; display:grid; width:70px; height:70px; margin-bottom:10px; place-items:center; background:linear-gradient(145deg,rgba(255,255,255,.86),rgba(32,198,179,.62)); border:1px solid rgba(11,89,85,.28); border-radius:20px; box-shadow:0 14px 44px rgba(11,55,53,.16),0 0 28px rgba(11,89,85,.12),inset 0 1px rgba(255,255,255,.8); opacity:0; transform:translateY(12px) scale(.78) rotate(-5deg); }
-.transition-mark img { width:43px; height:43px; object-fit:contain; filter:drop-shadow(0 2px 8px rgba(11,89,85,.18)); }
+.transition-mark { position:relative; z-index:1; display:grid; width:70px; height:70px; flex:0 0 70px; aspect-ratio:1; margin-bottom:10px; place-items:center; background:linear-gradient(145deg,rgba(255,255,255,.86),rgba(32,198,179,.62)); border:1px solid rgba(11,89,85,.28); border-radius:20px; box-shadow:0 14px 44px rgba(11,55,53,.16),0 0 28px rgba(11,89,85,.12),inset 0 1px rgba(255,255,255,.8); opacity:0; transform:translateY(12px) rotate(-4deg); }
+.transition-mark img { display:block; width:43px; height:43px; flex:none; aspect-ratio:1; object-fit:contain; object-position:center; filter:drop-shadow(0 2px 8px rgba(11,89,85,.18)); }
 .transition-rule { position:relative; z-index:1; width:0; height:1px; margin:3px 0 4px; background:linear-gradient(90deg,transparent,rgba(11,89,85,.62),transparent); }
 .transition-title { position:relative; z-index:1; color:#0b1424; font-size:16px; font-weight:650; letter-spacing:.1px; opacity:0; transform:translateY(5px); }
 .transition-caption { position:relative; z-index:1; color:#164b4a; font-size:11px; letter-spacing:.15px; opacity:0; transform:translateY(4px); }
@@ -123,7 +123,7 @@ body.login-success-transition .transition-caption { animation:copy-settle 400ms 
 @keyframes light-bloom { 0% { opacity:0; transform:scale(.88); } 40% { opacity:1; } 100% { opacity:.7; transform:scale(1.08); } }
 @keyframes light-sweep { 0% { transform:translateX(0) skewX(-18deg); opacity:0; } 18% { opacity:1; } 100% { transform:translateX(490%) skewX(-18deg); opacity:0; } }
 @keyframes halo-burst { 0% { opacity:0; transform:translate(-50%,-50%) scale(.55); } 22% { opacity:.85; } 100% { opacity:0; transform:translate(-50%,-50%) scale(2.8); } }
-@keyframes mark-settle { 0% { opacity:0; transform:translateY(12px) scale(.78) rotate(-5deg); } 72% { opacity:1; transform:translateY(-2px) scale(1.035) rotate(.6deg); } 100% { opacity:1; transform:translateY(0) scale(1) rotate(0); } }
+@keyframes mark-settle { 0% { opacity:0; transform:translateY(12px) rotate(-4deg); } 72% { opacity:1; transform:translateY(-2px) rotate(.5deg); } 100% { opacity:1; transform:translateY(0) rotate(0); } }
 @keyframes logo-light { 0%,100% { filter:drop-shadow(0 2px 8px rgba(11,89,85,.18)); } 45% { filter:drop-shadow(0 0 17px rgba(255,255,255,.95)); } }
 @keyframes rule-draw { to { width:128px; } }
 @keyframes copy-settle { to { opacity:1; transform:translateY(0); } }
@@ -154,7 +154,9 @@ body.login-success-transition .transition-caption { animation:copy-settle 400ms 
   .transition-rule { width:128px; }
 }
 
-</style></head>
+</style>
+<link rel="stylesheet" href="css/login-bg.css" />
+</head>
 <body class="auth-page">
 <div class="shell">
   <div class="ambient" aria-hidden="true"></div>
@@ -201,6 +203,7 @@ body.login-success-transition .transition-caption { animation:copy-settle 400ms 
 <script>BeabotsIcons.hydrate();</script>
 <script src="js/common.js"></script>
 <script src="js/login.js"></script>
+<script src="js/login-bg.js"></script>
 <script>
   // Live password checklist for Create account (additive; login.js is unchanged).
   (function(){var pw=document.getElementById('password'),cf=document.getElementById('confirmPassword'),box=document.getElementById('pwChecks'),len=document.getElementById('chkLen'),mt=document.getElementById('chkMatch');

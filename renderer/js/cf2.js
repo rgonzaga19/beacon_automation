@@ -744,16 +744,17 @@ accountReceivableBtn.addEventListener("click", () => {
   root.innerHTML = `
     <div class="modal-overlay">
       <div class="modal-box guide-modal">
-        <h3>Account Receivable</h3>
-        <div class="field-group"><label for="arName">Name</label><input id="arName" type="text" value="${escapeHtml(accountReceivable.name)}"></div>
-        <div class="field-group"><label for="arDesignation">Designation</label><input id="arDesignation" type="text" value="${escapeHtml(accountReceivable.designation)}"></div>
-        <div class="field-group"><label for="arNumber">Number</label><input id="arNumber" type="text" value="${escapeHtml(accountReceivable.number)}"></div>
-        <div class="modal-actions" style="margin-top:18px">
-          <button class="cyber-btn" id="arCancelBtn" type="button">Cancel</button>
-          <button class="solid-btn" id="arSaveBtn" type="button">Save</button>
+        <h3 class="ar-modal-title"><span class="icon-flat"><i data-lucide="landmark" data-icon-size="16" aria-hidden="true"></i></span>Account Receivable</h3>
+        <div class="field-group"><label class="ar-modal-label" for="arName"><span class="icon-flat"><i data-lucide="user-round" data-icon-size="14" aria-hidden="true"></i></span>Name</label><input id="arName" type="text" value="${escapeHtml(accountReceivable.name)}"></div>
+        <div class="field-group"><label class="ar-modal-label" for="arDesignation"><span class="icon-flat"><i data-lucide="briefcase" data-icon-size="14" aria-hidden="true"></i></span>Designation</label><input id="arDesignation" type="text" value="${escapeHtml(accountReceivable.designation)}"></div>
+        <div class="field-group"><label class="ar-modal-label" for="arNumber"><span class="icon-flat"><i data-lucide="phone" data-icon-size="14" aria-hidden="true"></i></span>Number</label><input id="arNumber" type="text" value="${escapeHtml(accountReceivable.number)}"></div>
+        <div class="modal-actions ar-modal-actions" style="margin-top:18px">
+          <button class="cyber-btn" id="arCancelBtn" type="button"><span class="icon-flat"><i data-lucide="x" data-icon-size="14" aria-hidden="true"></i></span>Cancel</button>
+          <button class="solid-btn" id="arSaveBtn" type="button"><span class="icon-flat"><i data-lucide="save" data-icon-size="14" aria-hidden="true"></i></span>Save</button>
         </div>
       </div>
     </div>`;
+  window.BeabotsIcons?.hydrate(root);
   document.getElementById("arCancelBtn").addEventListener("click", () => { root.innerHTML = ""; });
   document.getElementById("arSaveBtn").addEventListener("click", async (event) => {
     const button = event.currentTarget;

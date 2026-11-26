@@ -94,6 +94,16 @@
   .field-group select:disabled { opacity: 0.5; }
   .modal-box .field-group { margin-bottom: 12px; }
   .modal-box .field-group input { width: 100%; }
+  .field-group label.ar-modal-label { display:flex; min-height:16px; align-items:center; gap:8px; margin-bottom:7px; }
+  .ar-modal-label .icon-flat,.ar-modal-title .icon-flat { color:var(--accent); }
+  .ar-modal-title { display:flex; align-items:center; justify-content:center; gap:8px; text-align:center; }
+  .ar-modal-title .icon-flat svg { width:16px; height:16px; }
+  .ar-modal-label .icon-flat { display:inline-flex; width:16px; height:16px; align-items:center; justify-content:center; }
+  .ar-modal-label .icon-flat svg { width:14px; height:14px; }
+  .modal-box .field-group input { box-sizing:border-box; min-height:40px; padding:9px 11px; }
+  .guide-modal .modal-actions.ar-modal-actions { align-items:center; gap:10px; }
+  .ar-modal-actions button { display:inline-flex; min-width:86px; min-height:38px; align-items:center; justify-content:center; gap:8px; padding:8px 12px; }
+  .ar-modal-actions .icon-flat { display:inline-flex; width:14px; height:14px; align-items:center; justify-content:center; }
 
   .ar-chip { flex: 1; min-width: 280px; display: flex; align-items: center; gap: 12px; }
   .ar-card-mark {
