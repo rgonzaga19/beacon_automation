@@ -1,0 +1,106 @@
+/* Beabots login background upgrade.
+   Layers (back to front): base gradients -> aurora blobs -> panning grid
+   -> network canvas -> light beam -> center vignette -> login card.
+   Everything reads theme variables, so dark and light themes both work. */
+
+.ambient { overflow: hidden; z-index: 0; }
+
+/* ---------- Aurora: slow drifting color glows ---------- */
+.bg-aurora {
+  position: absolute; inset: 0; z-index: 0;
+  transform: translate3d(calc(var(--px, 0) * 1px), calc(var(--py, 0) * 1px), 0);
+  transition: transform .9s cubic-bezier(.2,.7,.25,1);
+}
+.bg-aurora i {
+  position: absolute; display: block; border-radius: 50%;
+  filter: blur(72px); opacity: .6; will-change: transform;
+}
+.bg-aurora i:nth-child(1) {
+  width: 620px; height: 620px; left: -10%; top: -16%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 60%, transparent), transparent 68%);
+  animation: aurora-a 24s ease-in-out infinite alternate;
+}
+.bg-aurora i:nth-child(2) {
+  width: 560px; height: 560px; right: -8%; bottom: -14%;
+  background: radial-gradient(circle, rgba(56,120,214,.55), transparent 68%);
+  animation: aurora-b 28s ease-in-out infinite alternate;
+}
+.bg-aurora i:nth-child(3) {
+  width: 440px; height: 440px; right: 14%; top: -10%;
+  background: radial-gradient(circle, rgba(124,92,230,.4), transparent 68%);
+  animation: aurora-c 32s ease-in-out infinite alternate;
+}
+html[data-theme="light"] .bg-aurora i { opacity: .38; }
+
+@keyframes aurora-a { to { transform: translate3d(22vw, 16vh, 0) scale(1.18); } }
+@keyframes aurora-b { to { transform: translate3d(-20vw, -14vh, 0) scale(1.12); } }
+@keyframes aurora-c { to { transform: translate3d(-16vw, 22vh, 0) scale(.88); } }
+
+/* ---------- Grid: a touch more visible, slowly panning ---------- */
+.ambient::before {
+  z-index: 1;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--text-pri) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--text-pri) 9%, transparent) 1px, transparent 1px);
+  background-size: 46px 46px;
+  animation: grid-pan 36s linear infinite;
+}
+@keyframes grid-pan { to { background-position: 46px 46px, 46px 46px; } }
+
+/* ---------- Network canvas ---------- */
+.bg-net { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; }
+
+/* ---------- Light beam sweeping across ---------- */
+.bg-beam {
+  position: absolute; z-index: 3; top: -25%; bottom: -25%; left: -40%; width: 28%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 14%, transparent) 50%, transparent);
+  filter: blur(10px); transform: skewX(-20deg);
+  animation: beam-sweep 13s ease-in-out infinite;
+}
+@keyframes beam-sweep {
+  0%, 12% { left: -40%; opacity: 0; }
+  25% { opacity: 1; }
+  60%, 100% { left: 120%; opacity: 0; }
+}
+
+/* ---------- Vignette: calms the area behind the form ---------- */
+.bg-vignette {
+  position: absolute; inset: 0; z-index: 4;
+  background:
+    radial-gradient(ellipse 560px 470px at 50% 50%,
+      color-mix(in srgb, var(--bg-dark) 78%, transparent) 0%,
+      color-mix(in srgb, var(--bg-dark) 40%, transparent) 55%,
+      transparent 100%),
+    radial-gradient(ellipse at 50% 50%, transparent 55%, color-mix(in srgb, var(--bg-dark) 55%, transparent) 130%);
+}
+
+/* ---------- Card: entrance + slow orbiting edge light ---------- */
+@property --edge-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+
+.login-card { animation: card-rise .7s cubic-bezier(.2,.75,.25,1) both; }
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(18px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+.login-card::after {
+  content: ""; position: absolute; inset: -1px; z-index: -1; border-radius: inherit; padding: 1.5px;
+  pointer-events: none; opacity: .85;
+  background: conic-gradient(from var(--edge-angle), transparent 0 62%,
+    color-mix(in srgb, var(--accent) 85%, transparent) 82%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: edge-orbit 8s linear infinite;
+}
+@keyframes edge-orbit { to { --edge-angle: 360deg; } }
+
+.card-mark { animation: mark-breathe 4.5s ease-in-out infinite; }
+@keyframes mark-breathe {
+  0%, 100% { box-shadow: 0 5px 16px color-mix(in srgb, var(--accent) 12%, transparent); }
+  50% { box-shadow: 0 5px 26px color-mix(in srgb, var(--accent) 34%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-aurora i, .ambient::before, .bg-beam, .login-card, .login-card::after, .card-mark { animation: none !important; }
+  .bg-beam { display: none; }
+}
