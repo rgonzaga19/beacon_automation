@@ -187,6 +187,9 @@ def _first_present(record, *field_names):
 
 def _claim_payload(patient, member_pin, transmittal_id, admission_date, discharge_date, include_facility=False):
     identity = cf2_api.get_hospital_identity(transmittal_id)
+    member_type_code = patient.get("memberTypeCode")
+    if str(member_type_code or "").strip().upper() == "IP":
+        member_type_code = "NS"
     member_pen = _first_present(
         patient,
         "memberPEN",
@@ -207,7 +210,7 @@ def _claim_payload(patient, member_pin, transmittal_id, admission_date, discharg
         "memberbirthday": _mmddyyyy(patient.get("memberBirthday")),
         "membergender": patient.get("memberGender") or "",
         "memberpin": member_pin,
-        "membertypecode": patient.get("memberTypeCode"),
+        "membertypecode": member_type_code,
         "membermailingaddress": patient.get("memberMailingAddress") or "",
         "memberzipcode": patient.get("memberZipCode") or "",
         "memberlandlinenumber": patient.get("memberLandLineNumber") or "",
