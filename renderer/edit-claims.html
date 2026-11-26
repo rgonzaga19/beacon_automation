@@ -75,16 +75,28 @@
     .editor-overlay { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:20px; background:rgba(2,7,15,.78); backdrop-filter:blur(4px); }
     .editor-overlay[hidden] { display:none; }
     .editor-dialog { display:flex; flex-direction:column; width:min(1040px,100%); height:min(700px,92vh); min-height:420px; overflow:hidden; background:var(--bg-dark); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:0 24px 80px rgba(0,0,0,.5); }
-    .editor-header { position:relative; display:flex; align-items:center; gap:14px; padding:19px 24px; border-bottom:0; background:transparent; }
+    .editor-header { position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:16px; padding:16px 24px; border-bottom:1px solid var(--border); background:linear-gradient(110deg,color-mix(in srgb,var(--accent-soft) 58%,transparent),transparent 66%),var(--bg-panel); }
     .editor-header::after { display:none; }
     .editor-heading { min-width:0; }
-    .editor-eyebrow { display:block; margin-bottom:3px; color:var(--accent); font-size:9px; font-weight:800; letter-spacing:1px; }
-    .editor-header h2 { margin:0; color:var(--text-pri); font-size:16px; }
-    .editor-subtitle { margin-top:5px; color:var(--text-sec); font-size:11px; overflow-wrap:anywhere; }
-    .editor-close { display:grid; width:36px; min-width:36px; height:36px; min-height:36px; place-items:center; margin-left:auto; padding:0; flex:none; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; }
+    .editor-eyebrow { display:block; margin-bottom:4px; color:var(--accent); font-size:9px; font-weight:800; letter-spacing:1px; }
+    .editor-header h2 { display:flex; align-items:center; gap:9px; margin:0; color:var(--text-pri); font-size:22px; }
+    .editor-patient-icon { width:19px; height:19px; flex:none; color:var(--accent); stroke:currentColor; }
+    .editor-current-section { display:inline-flex; max-width:100%; align-items:center; gap:6px; margin-top:7px; padding:4px 9px; overflow:hidden; color:var(--accent); background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 32%,transparent); border-radius:999px; font-size:9px; font-weight:800; letter-spacing:.35px; text-overflow:ellipsis; text-transform:uppercase; white-space:nowrap; }
+    .editor-section-icon { display:inline-flex; width:13px; height:13px; flex:none; }
+    .editor-section-icon svg { width:13px; height:13px; stroke:currentColor; }
+    .editor-subtitle { display:flex; flex-wrap:wrap; align-items:stretch; gap:8px; margin-top:10px; }
+    .editor-context-item { display:flex; min-height:48px; align-items:center; gap:9px; padding:7px 12px; color:var(--text-sec); background:color-mix(in srgb,var(--bg-dark) 62%,transparent); border:1px solid var(--border); border-radius:9px; }
+    .editor-context-item > svg { width:16px; height:16px; flex:none; color:var(--accent); stroke:currentColor; }
+    .editor-transmittal-value { font-size:10px; font-weight:700; }
+    .editor-date-card { display:flex; min-width:132px; align-items:center; gap:9px; padding:7px 12px; background:color-mix(in srgb,var(--accent) 8%,var(--bg-dark)); border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border)); border-radius:9px; }
+    .editor-date-icon { width:17px; height:17px; flex:none; color:var(--accent); stroke:currentColor; }
+    .editor-date-copy { display:grid; align-content:center; gap:3px; }
+    .editor-date-label { color:var(--text-sec); font-size:8px; font-weight:800; letter-spacing:.8px; }
+    .editor-date-value { color:var(--text-pri); font-size:14px; font-weight:800; line-height:1.15; font-variant-numeric:tabular-nums; }
+    .editor-close { display:grid; width:36px; min-width:36px; height:36px; min-height:36px; place-items:center; margin:0; padding:0; flex:none; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; }
     .editor-close:hover { color:var(--text-pri); border-color:var(--accent); background:var(--accent-soft); }
     .editor-close svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; }
-    .editor-claim-navigation { position:absolute; top:50%; left:50%; display:flex; align-items:center; gap:8px; transform:translate(-50%,-50%); }
+    .editor-claim-navigation { position:static; display:flex; align-items:center; gap:8px; }
     .editor-next,.editor-previous { display:grid; width:42px; min-width:42px; height:42px; min-height:42px; place-items:center; padding:0; flex:none; color:var(--text-sec); background:var(--bg-panel); border:1px solid var(--border); border-radius:9px; }
     .editor-next:hover:not(:disabled),.editor-previous:hover:not(:disabled) { color:var(--accent); background:var(--accent-soft); border-color:var(--accent); }
     .editor-next svg,.editor-previous svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
@@ -122,7 +134,7 @@
     .course-ward-field input { min-height:38px; padding:7px 10px; color-scheme:dark; }
     .course-ward-field textarea { min-height:72px; padding:8px 10px; resize:vertical; line-height:1.45; }
     .course-ward-field input:focus,.course-ward-field textarea:focus { border-color:var(--accent); outline:2px solid var(--accent-soft); }
-    .course-ward-remove { min-height:37px; padding:0 10px; }
+    .course-ward-remove { display:grid; width:37px; height:37px; min-height:37px; margin-top:17px; padding:0; place-items:center; }
     .course-ward-remove svg,.editor-actions svg { width:15px; height:15px; flex:none; }
     .editor-actions .icon-labeled-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; }
     .course-ward-empty { margin:0; color:var(--text-sec); font-size:11px; }
@@ -130,9 +142,9 @@
     .editor-doc-list li { overflow-wrap:anywhere; }
     .editor-note { margin:10px 0 0; color:var(--text-sec); font-size:10px; line-height:1.5; }
     .editor-warning { margin:10px 0 14px; padding:10px 12px; border:1px solid color-mix(in srgb,#f0ad4e 55%,transparent); border-radius:var(--radius-sm); background:color-mix(in srgb,#f0ad4e 10%,transparent); color:#f0c477; font-size:11px; line-height:1.5; }
-    @media(max-width:700px) { .editor-overlay { padding:10px; } .editor-content { padding:16px; } .editor-tabs { flex-basis:176px; padding:14px 8px; } .editor-tab { padding:7px 8px; font-size:9px; } .editor-dialog { height:96vh; min-height:0; } .editor-header { flex-wrap:wrap; gap:8px; padding:15px; } .editor-heading { flex:1 0 100%; } .editor-claim-navigation { position:static; margin-left:auto; transform:none; } .editor-close { margin-left:0; } }
+    @media(max-width:700px) { .editor-overlay { padding:10px; } .editor-content { padding:16px; } .editor-tabs { flex-basis:176px; padding:14px 8px; } .editor-tab { padding:7px 8px; font-size:9px; } .editor-dialog { height:96vh; min-height:0; } .editor-header { grid-template-columns:minmax(0,1fr) auto; gap:10px; padding:14px; } .editor-heading { grid-column:1/-1; } .editor-patient-name { font-size:19px; } .editor-claim-navigation { grid-column:1; grid-row:2; justify-self:end; } .editor-close { grid-column:2; grid-row:2; } .editor-date-card { min-width:118px; } }
     @media(max-width:420px) { .editor-grid { grid-template-columns:1fr; gap:9px; } .editor-section { padding:13px; } }
-    @media(max-width:620px) { .course-ward-row { grid-template-columns:1fr; } .course-ward-remove { width:100%; } }
+    @media(max-width:620px) { .course-ward-row { grid-template-columns:1fr; } .course-ward-remove { margin-top:0; } }
     .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
     table { width:100%; min-width:960px; border-collapse:collapse; font-size:11px; text-align:left; }
     #claimsBody td:nth-child(2) { min-width:178px; white-space:nowrap; }
@@ -351,22 +363,21 @@
       </main>
     </div>
   <div class="editor-overlay" id="claimEditor" hidden>
-    <section class="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
-      <header class="editor-header"><div class="editor-heading"><span class="editor-eyebrow">CLAIM WORKSPACE</span><h2 id="editorTitle">Edit Draft Claim</h2><div class="editor-subtitle" id="editorSubtitle"></div></div><div class="editor-claim-navigation"><button class="cyber-btn editor-previous" id="editorPrevious" type="button" aria-label="Previous claim" title="Previous claim"><i data-lucide="chevron-left" data-icon-size="16" aria-hidden="true"></i></button><button class="cyber-btn editor-next" id="editorNext" type="button" aria-label="Next claim" title="Next claim"><i data-lucide="chevron-right" data-icon-size="16" aria-hidden="true"></i></button></div><button class="cyber-btn editor-close" id="editorClose" type="button" aria-label="Close editor" title="Close editor"><i data-lucide="x" data-icon-size="16" aria-hidden="true"></i></button></header>
+      <section class="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editorPatientName editorTitle">
+      <header class="editor-header"><div class="editor-heading"><span class="editor-eyebrow">CLAIM WORKSPACE</span><h2 class="editor-patient-name" id="editorPatientName"><i class="editor-patient-icon" data-lucide="user-round" data-icon-size="19" aria-hidden="true"></i><span id="editorPatientNameText">Loading patient...</span></h2><div class="editor-current-section"><span class="editor-section-icon" id="editorSectionIcon" aria-hidden="true"></span><span id="editorTitle">Edit Draft Claim</span></div><div class="editor-subtitle" id="editorSubtitle"><div class="editor-context-item"><i data-lucide="file-text" data-icon-size="16" aria-hidden="true"></i><span class="editor-transmittal-value" id="editorTransmittal">Transmittal —</span></div><div class="editor-date-card"><i class="editor-date-icon" data-lucide="calendar-days" data-icon-size="17" aria-hidden="true"></i><span class="editor-date-copy"><span class="editor-date-label">ADMISSION</span><strong class="editor-date-value" id="editorAdmissionDate">Not set</strong></span></div><div class="editor-date-card"><i class="editor-date-icon" data-lucide="calendar-days" data-icon-size="17" aria-hidden="true"></i><span class="editor-date-copy"><span class="editor-date-label">DISCHARGE</span><strong class="editor-date-value" id="editorDischargeDate">Not set</strong></span></div></div></div><div class="editor-claim-navigation"><button class="cyber-btn editor-previous" id="editorPrevious" type="button" aria-label="Previous claim" title="Previous claim"><i data-lucide="chevron-left" data-icon-size="16" aria-hidden="true"></i></button><button class="cyber-btn editor-next" id="editorNext" type="button" aria-label="Next claim" title="Next claim"><i data-lucide="chevron-right" data-icon-size="16" aria-hidden="true"></i></button></div><button class="cyber-btn editor-close" id="editorClose" type="button" aria-label="Close editor" title="Close editor"><i data-lucide="x" data-icon-size="16" aria-hidden="true"></i></button></header>
       <div class="editor-workspace">
         <nav class="editor-tabs" id="editorTabs" role="tablist" aria-label="Claim actions">
           <div class="editor-nav-group">
             <button class="editor-tab" type="button" role="tab" data-editor-view="cf2" aria-selected="false"><i data-lucide="calendar-clock" data-icon-size="16" aria-hidden="true"></i><span>Change admission and discharge</span></button>
             <button class="editor-tab" type="button" role="tab" data-editor-view="doctor" aria-selected="false"><i data-lucide="user-round" data-icon-size="16" aria-hidden="true"></i><span>Doctor and sign date</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="patient-records" aria-selected="false"><i data-lucide="file-lock-2" data-icon-size="16" aria-hidden="true"></i><span>Access patient records</span></button>
             <button class="editor-tab" type="button" role="tab" data-editor-view="receivable" aria-selected="false"><i data-lucide="landmark" data-icon-size="16" aria-hidden="true"></i><span>Account receivable</span></button>
+            <button class="editor-tab" type="button" role="tab" data-editor-view="soa" aria-selected="false"><i data-lucide="receipt" data-icon-size="16" aria-hidden="true"></i><span>SOA charges</span></button>
           </div>
           <div class="editor-nav-group">
             <button class="editor-tab" type="button" role="tab" data-editor-view="history" aria-selected="false"><i data-lucide="file-text" data-icon-size="16" aria-hidden="true"></i><span>HPI and medical history</span></button>
             <button class="editor-tab" type="button" role="tab" data-editor-view="cf4" aria-selected="false"><i data-lucide="heart-pulse" data-icon-size="16" aria-hidden="true"></i><span>Vitals (CF4)</span></button>
             <button class="editor-tab" type="button" role="tab" data-editor-view="course" aria-selected="false"><i data-lucide="list" data-icon-size="16" aria-hidden="true"></i><span>Course in the ward</span></button>
-          </div>
-          <div class="editor-nav-group">
-            <button class="editor-tab" type="button" role="tab" data-editor-view="soa" aria-selected="false"><i data-lucide="receipt" data-icon-size="16" aria-hidden="true"></i><span>SOA charges</span></button>
           </div>
         </nav>
         <div class="editor-content">
@@ -382,6 +393,35 @@
           <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="cf2"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE CF2</span></button></div>
           <div class="editor-message" id="cf2EditorMessage" aria-live="polite"></div>
         </section>
+        <section class="editor-section" data-editor-section="patient-records" hidden>
+          <h3>Access Patient Records</h3>
+          <div class="editor-grid">
+            <div class="editor-field"><label for="editAprConsentType">Consent Type</label><select id="editAprConsentType"><option value="1">Signature of patient</option><option value="2">Signature of representative</option><option value="3">Thumb mark</option></select></div>
+            <div class="editor-field"><label for="editAprDate">Date</label><input id="editAprDate" type="date"></div>
+          </div>
+          <div id="editAprThumbmarkFields" hidden>
+            <div class="editor-grid" style="margin-top:12px">
+              <div class="editor-field"><label for="editAprThumbmarkedBy">Thumbmarked By</label><select id="editAprThumbmarkedBy"><option value="P">By patient/member</option><option value="R">By representative</option></select></div>
+            </div>
+          </div>
+          <div id="editAprRepresentativeFields" hidden>
+            <h4 style="margin:16px 0 10px">Representative Details</h4>
+            <div class="editor-grid">
+              <div class="editor-field"><label for="editAprRepresentativeName">Representative Name (printed on CF2 PDF)</label><input id="editAprRepresentativeName" type="text" autocomplete="name"></div>
+            </div>
+            <div id="editAprSignatureRepresentativeDetails">
+            <div class="editor-grid" style="margin-top:12px">
+              <div class="editor-field"><label for="editAprRelationship">Relationship to Patient</label><select id="editAprRelationship"><option value="S">Spouse</option><option value="C">Child</option><option value="P">Parent</option><option value="I">Siblings</option><option value="O">Others</option></select></div>
+              <div class="editor-field" id="editAprRelationshipOtherField" hidden><label for="editAprRelationshipOther">Specify Relationship</label><input id="editAprRelationshipOther" type="text"></div>
+              <div class="editor-field"><label for="editAprReason">Reason for Signing</label><select id="editAprReason"><option value="I">Patient is incapacitated</option><option value="O">Other Reasons</option></select></div>
+              <div class="editor-field" id="editAprReasonOtherField" hidden><label for="editAprReasonOther">Specify Reason</label><input id="editAprReasonOther" type="text"></div>
+            </div>
+            </div>
+          </div>
+          <p class="editor-note">The representative name is saved to the printed name field in the CF2 PDF.</p>
+          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="patient-records"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE ACCESS DETAILS</span></button></div>
+          <div class="editor-message" id="patient-recordsEditorMessage" aria-live="polite"></div>
+        </section>
         <section class="editor-section" data-editor-section="receivable" hidden>
           <h3>CF2 Account Receivable</h3>
           <div class="editor-grid">
@@ -393,6 +433,12 @@
           <p class="editor-note">These values update the CF2 HCI representative and eSOA prepared by/contact fields.</p>
           <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="receivable"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE ACCOUNT RECEIVABLE</span></button></div>
           <div class="editor-message" id="receivableEditorMessage" aria-live="polite"></div>
+        </section>
+        <section class="editor-section" data-editor-section="soa" hidden>
+          <h3>SOA Charges and Payments</h3>
+          <p class="editor-note" id="editorSoaSummary">Loading SOA rows...</p>
+          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" id="generateSoaButton" type="button"><i data-lucide="receipt-text" data-icon-size="15" aria-hidden="true"></i><span data-button-label>GENERATE SOA</span></button><button class="cyber-btn danger icon-labeled-button" id="removeGeneratedSoaButton" type="button"><i data-lucide="file-x-2" data-icon-size="15" aria-hidden="true"></i><span data-button-label>REMOVE GENERATED SOA</span></button><button class="cyber-btn danger icon-labeled-button" id="removeSoaButton" type="button"><i data-lucide="trash-2" data-icon-size="15" aria-hidden="true"></i><span data-button-label>REMOVE SOA CHARGES</span></button></div>
+          <div class="editor-message" id="soaEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="doctor">
           <h3>CF2 Doctor and Sign Date</h3>
@@ -433,12 +479,6 @@
           <div class="course-ward-list" id="courseInWardRows"></div>
           <div class="editor-actions"><button class="cyber-btn icon-labeled-button" id="addCourseInWardRow" type="button"><i data-lucide="plus" data-icon-size="15" aria-hidden="true"></i><span>ADD ENTRY</span></button><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="course"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE COURSE IN THE WARD</span></button></div>
           <div class="editor-message" id="courseEditorMessage" aria-live="polite"></div>
-        </section>
-        <section class="editor-section" data-editor-section="soa">
-          <h3>SOA Charges and Payments</h3>
-          <p class="editor-note" id="editorSoaSummary">Loading SOA rows...</p>
-          <div class="editor-actions"><button class="cyber-btn danger icon-labeled-button" id="removeSoaButton" type="button"><i data-lucide="trash-2" data-icon-size="15" aria-hidden="true"></i><span data-button-label>REMOVE SOA CHARGES</span></button><button class="cyber-btn icon-labeled-button" id="generateSoaButton" type="button"><i data-lucide="receipt-text" data-icon-size="15" aria-hidden="true"></i><span data-button-label>GENERATE SOA</span></button></div>
-          <div class="editor-message" id="soaEditorMessage" aria-live="polite"></div>
         </section>
         </div>
       </div>

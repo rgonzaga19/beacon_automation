@@ -10,7 +10,10 @@ const stopAutomationButton = document.getElementById("stopAutomationButton");
 const batchActionButtons = Array.from(document.querySelectorAll(".page-toolbar .solid-btn"))
   .filter((button) => button !== stopAutomationButton);
 const claimEditor = document.getElementById("claimEditor");
-const editorSubtitle = document.getElementById("editorSubtitle");
+const editorPatientNameText = document.getElementById("editorPatientNameText");
+const editorTransmittal = document.getElementById("editorTransmittal");
+const editorAdmissionDate = document.getElementById("editorAdmissionDate");
+const editorDischargeDate = document.getElementById("editorDischargeDate");
 const transmitAllButton = document.getElementById("transmitAllButton");
 const transmitAllStatus = document.getElementById("transmitAllStatus");
 window.BeabotsIcons?.hydrate(document);
@@ -163,13 +166,12 @@ function addCourseInWardRow(entry = {}) {
   remove.className = "cyber-btn danger course-ward-remove icon-labeled-button";
   remove.type = "button";
   remove.setAttribute("aria-label", "Remove course entry");
+  remove.title = "Remove course entry";
   const removeIcon = document.createElement("i");
   removeIcon.dataset.lucide = "trash-2";
   removeIcon.dataset.iconSize = "15";
   removeIcon.setAttribute("aria-hidden", "true");
-  const removeLabel = document.createElement("span");
-  removeLabel.textContent = "REMOVE";
-  remove.append(removeIcon, removeLabel);
+  remove.append(removeIcon);
   remove.addEventListener("click", () => {
     row.remove();
     if (!container.children.length) renderCourseInWardRows();
@@ -410,12 +412,27 @@ async function editorRequest(path, options = {}) {
 
 function setEditorMessage(section, message, error = false) {
   const element = document.getElementById(`${section}EditorMessage`);
+  if (!element) return;
   element.textContent = message;
   element.classList.toggle("error", error);
 }
 
 function setInputValue(id, value) {
   document.getElementById(id).value = value == null ? "" : String(value);
+}
+
+function formatEditorDate(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[2]}/${match[3]}/${match[1]}` : "Not set";
+}
+
+function updateEditorClaimContext() {
+  if (!activeEditClaim) return;
+  const admissionDate = document.getElementById("editAdmissionDate").value;
+  const dischargeDate = document.getElementById("editDischargeDate").value;
+  editorTransmittal.textContent = `Transmittal ${activeEditClaim.transmittalNumber || "—"}`;
+  editorAdmissionDate.textContent = formatEditorDate(admissionDate);
+  editorDischargeDate.textContent = formatEditorDate(dischargeDate);
 }
 
 function populateDoctorFields() {
@@ -432,11 +449,23 @@ function populateDoctorFields() {
 const editorViewTitles = {
   cf2: "Change Admission and Discharge Time",
   receivable: "Account Receivable",
+  "patient-records": "Access Patient Records",
   doctor: "Change Doctor",
   cf4: "Add CF4 Vitals",
   history: "History of Present Illness & Pertinent Past Medical History",
   course: "Update Course in the Ward",
   soa: "Generate/Remove SOA Data",
+};
+
+const editorViewIcons = {
+  cf2: "calendar-clock",
+  receivable: "landmark",
+  "patient-records": "file-lock-2",
+  doctor: "user-round",
+  cf4: "heart-pulse",
+  history: "file-text",
+  course: "list",
+  soa: "receipt",
 };
 
 function applyEditorView(view) {
@@ -446,6 +475,8 @@ function applyEditorView(view) {
     section.hidden = !visibleSections.has(section.dataset.editorSection);
   });
   document.getElementById("editorTitle").textContent = editorViewTitles[view] || "Edit Draft Claim";
+  const sectionIcon = window.BeabotsIcons?.create(editorViewIcons[view] || "file-text", { size: 13 });
+  if (sectionIcon) document.getElementById("editorSectionIcon").replaceChildren(sectionIcon);
   document.querySelectorAll("#editorTabs [data-editor-view]").forEach((button) => {
     const active = button.dataset.editorView === view;
     button.classList.toggle("active", active);
@@ -462,21 +493,36 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
   updateEditorNextButton();
   applyEditorView(view);
   claimEditor.hidden = false;
-  editorSubtitle.textContent = "Loading draft claim...";
+  editorPatientNameText.textContent = "Loading patient...";
+  editorTransmittal.textContent = "Loading transmittal...";
+  editorAdmissionDate.textContent = "Loading...";
+  editorDischargeDate.textContent = "Loading...";
   document.getElementById("editorSoaSummary").textContent = "Loading SOA rows...";
-  ["cf2", "receivable", "doctor", "cf4", "hpi", "pmh", "history", "course", "soa"].forEach((section) => setEditorMessage(section, ""));
+  ["cf2", "receivable", "patient-records", "doctor", "cf4", "hpi", "pmh", "history", "course", "soa"].forEach((section) => setEditorMessage(section, ""));
   try {
     const data = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/edit`);
-    editorSubtitle.textContent = `${data.patient_name || "Draft claim"} | ${data.transmittal_number} | ${data.claim_series || "Claim series pending"}`;
+    editorPatientNameText.textContent = data.patient_name || "Draft claim";
+    activeEditClaim.transmittalNumber = data.transmittal_number;
 
     setInputValue("editAdmissionDate", data.cf2.admission_date);
     setInputValue("editAdmissionTime", data.cf2.admission_time);
     setInputValue("editDischargeDate", data.cf2.discharge_date);
     setInputValue("editDischargeTime", data.cf2.discharge_time);
+    updateEditorClaimContext();
     setInputValue("editReceivableName", data.account_receivable.name);
     setInputValue("editReceivableDesignation", data.account_receivable.designation);
     setInputValue("editReceivableNumber", data.account_receivable.number);
     setInputValue("editReceivableDateSigned", data.account_receivable.date_signed);
+    setInputValue("editAprConsentType", data.access_patient_records.consent_type_code || "1");
+    setInputValue("editAprDate", data.access_patient_records.date || "");
+    document.getElementById("editAprDate").required = true;
+    setInputValue("editAprRepresentativeName", data.access_patient_records.representative_name || "");
+    setInputValue("editAprRelationship", data.access_patient_records.relationship_code || "S");
+    setInputValue("editAprRelationshipOther", data.access_patient_records.relationship_other || "");
+    setInputValue("editAprReason", data.access_patient_records.reason_code || "I");
+    setInputValue("editAprReasonOther", data.access_patient_records.reason_other || "");
+    setInputValue("editAprThumbmarkedBy", data.access_patient_records.thumbmarked_by_code || "P");
+    updateAprRepresentativeFields();
 
     const doctorSelect = document.getElementById("editDoctorSelect");
     doctorSelect.replaceChildren();
@@ -513,12 +559,39 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
       `MED rows: ${data.soa_counts.med} | XLSO rows: ${data.soa_counts.xlso} | Payment receipts: ${data.soa_counts.payments}`;
     editorLoaded = true;
   } catch (error) {
-    editorSubtitle.textContent = error.message || "Unable to load this draft claim.";
+    editorPatientNameText.textContent = "Draft claim";
+    editorTransmittal.textContent = error.message || "Unable to load this draft claim.";
+    editorAdmissionDate.textContent = "Not available";
+    editorDischargeDate.textContent = "Not available";
   } finally {
     editorLoading = false;
     updateEditorNextButton();
   }
 }
+
+function updateAprRepresentativeFields() {
+  const consentType = document.getElementById("editAprConsentType").value;
+  const isSignatureRepresentative = consentType === "2";
+  const isThumbmark = consentType === "3";
+  const isRepresentative = isSignatureRepresentative || (isThumbmark && document.getElementById("editAprThumbmarkedBy").value === "R");
+  const relationshipIsOther = document.getElementById("editAprRelationship").value === "O";
+  const reasonIsOther = document.getElementById("editAprReason").value === "O";
+  document.getElementById("editAprThumbmarkFields").hidden = !isThumbmark;
+  document.getElementById("editAprRepresentativeFields").hidden = !isRepresentative;
+  document.getElementById("editAprSignatureRepresentativeDetails").hidden = !isSignatureRepresentative;
+  document.getElementById("editAprRepresentativeName").required = isRepresentative;
+  document.getElementById("editAprRelationship").required = isSignatureRepresentative;
+  document.getElementById("editAprReason").required = isSignatureRepresentative;
+  document.getElementById("editAprRelationshipOtherField").hidden = !isSignatureRepresentative || !relationshipIsOther;
+  document.getElementById("editAprReasonOtherField").hidden = !isSignatureRepresentative || !reasonIsOther;
+  document.getElementById("editAprRelationshipOther").required = isSignatureRepresentative && relationshipIsOther;
+  document.getElementById("editAprReasonOther").required = isSignatureRepresentative && reasonIsOther;
+}
+
+document.getElementById("editAprConsentType").addEventListener("change", updateAprRepresentativeFields);
+document.getElementById("editAprThumbmarkedBy").addEventListener("change", updateAprRepresentativeFields);
+document.getElementById("editAprRelationship").addEventListener("change", updateAprRepresentativeFields);
+document.getElementById("editAprReason").addEventListener("change", updateAprRepresentativeFields);
 
 function getNextEditableClaimButton() {
   return getAdjacentEditableClaimButton(1);
@@ -564,6 +637,8 @@ document.getElementById("editorPrevious").addEventListener("click", () => naviga
 
 document.querySelector(".editor-content").addEventListener("input", () => { editorDirty = true; });
 document.querySelector(".editor-content").addEventListener("change", () => { editorDirty = true; });
+document.getElementById("editAdmissionDate").addEventListener("change", updateEditorClaimContext);
+document.getElementById("editDischargeDate").addEventListener("change", updateEditorClaimContext);
 
 async function transmitTransmittal(button) {
   const transmittalId = button.dataset.transmittalId;
@@ -712,6 +787,16 @@ document.querySelectorAll("[data-save-editor]").forEach((button) => {
       },
       hpi: { historyOfPresentIllness: document.getElementById("editHistoryOfPresentIllness").value },
       pmh: { pertinentPastMedicalHistory: document.getElementById("editPertinentPastMedicalHistory").value },
+      "patient-records": {
+        consent_type_code: document.getElementById("editAprConsentType").value,
+        date: document.getElementById("editAprDate").value,
+        representative_name: document.getElementById("editAprRepresentativeName").value.trim(),
+        relationship_code: document.getElementById("editAprRelationship").value,
+        relationship_other: document.getElementById("editAprRelationshipOther").value.trim(),
+        reason_code: document.getElementById("editAprReason").value,
+        reason_other: document.getElementById("editAprReasonOther").value.trim(),
+        thumbmarked_by_code: document.getElementById("editAprThumbmarkedBy").value,
+      },
       course: { entries: readCourseInWardRows() },
     };
     button.disabled = true;
@@ -756,6 +841,25 @@ document.getElementById("removeSoaButton").addEventListener("click", async (even
     setEditorMessage("soa", `Removed ${result.med_count} medicine and ${result.xlso_count} other charge rows. No payment receipts were attached.`);
   } catch (error) {
     setEditorMessage("soa", error.message || "Beacon could not remove the SOA data.", true);
+  } finally {
+    button.disabled = false;
+    setEditorButtonLabel(button, originalText);
+  }
+});
+
+document.getElementById("removeGeneratedSoaButton").addEventListener("click", async (event) => {
+  if (!activeEditClaim) return;
+  const button = event.currentTarget;
+  const { transmittalId, claimId } = activeEditClaim;
+  button.disabled = true;
+  const originalText = button.querySelector("[data-button-label]")?.textContent || button.textContent;
+  setEditorButtonLabel(button, "REMOVING...");
+  setEditorMessage("soa", "Removing generated eSOA documents from Beacon...");
+  try {
+    const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/soa/generated`, { method: "DELETE" });
+    setEditorMessage("soa", `Removed ${result.document_count || 0} generated eSOA document${result.document_count === 1 ? "" : "s"}. SOA charge rows and payment receipts were not changed.`);
+  } catch (error) {
+    setEditorMessage("soa", error.message || "Beacon could not remove the generated eSOA documents.", true);
   } finally {
     button.disabled = false;
     setEditorButtonLabel(button, originalText);

@@ -2207,6 +2207,7 @@ def get_finalize_claim_edit_data(transmittal_id, claim_id):
                 "date": order_date.strftime("%Y-%m-%d") if order_date else "",
                 "order": order.get("order") or "",
             })
+        apr_date = _beacon_local_datetime(cf2.get("aprDate"))
         return jsonify({
             "transmittal_number": transmittal.get("transmittalNumber") or "",
             "claim_series": claim_row.get("claimSeriesLhio") or "",
@@ -2222,6 +2223,16 @@ def get_finalize_claim_edit_data(transmittal_id, claim_id):
                 "designation": cf2_pdf.get("officialCapacityDesignation") or "",
                 "number": signatories.get("adminContactNo") or "",
                 "date_signed": last_treatment.strftime("%Y-%m-%d") if last_treatment else "",
+            },
+            "access_patient_records": {
+                "consent_type_code": str(cf2.get("aprConsentTypeCode") or "1"),
+                "date": apr_date.strftime("%Y-%m-%d") if apr_date else "",
+                "representative_name": cf2_pdf.get("sigOverPrintedNameOfAuthRep") or "",
+                "relationship_code": str(cf2.get("aprRelationToPatientCode") or "S"),
+                "relationship_other": cf2.get("aprRelationshipToPatientOthers") or "",
+                "reason_code": str(cf2.get("aprReasonForSigningCode") or "I"),
+                "reason_other": cf2.get("aprReasonForSigningOthers") or "",
+                "thumbmarked_by_code": str(cf2.get("aprThumbmarkedByCode") or "P"),
             },
             "doctors": [
                 {
@@ -2344,6 +2355,93 @@ def save_finalize_claim_account_receivable(transmittal_id, claim_id):
     except Exception as exc:
         logger.error(f"Finalize Claims account receivable save failed for claim {claim_id}: {exc}")
         return jsonify({"error": "Beacon could not save the account receivable details."}), 502
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/patient-records", methods=["POST"])
+@login_required
+@track_dashboard_operation("Edit Claims")
+def save_finalize_claim_patient_records(transmittal_id, claim_id):
+    data = request.get_json(silent=True) or {}
+    consent_code = str(data.get("consent_type_code") or "").strip()
+    date_text = str(data.get("date") or "").strip()
+    representative_name = str(data.get("representative_name") or "").strip()
+    relationship_code = str(data.get("relationship_code") or "").strip()
+    relationship_other = str(data.get("relationship_other") or "").strip()
+    reason_code = str(data.get("reason_code") or "").strip()
+    reason_other = str(data.get("reason_other") or "").strip()
+    thumbmarked_by_code = str(data.get("thumbmarked_by_code") or "").strip()
+    if consent_code not in {"1", "2", "3"}:
+        return jsonify({"error": "Select a valid consent type."}), 400
+    if not date_text:
+        return jsonify({"error": "Enter the consent date."}), 400
+    relationship_values = {"S": "Spouse", "C": "Child", "P": "Parent", "I": "Siblings", "O": "Others"}
+    reason_values = {"I": "Patient is incapacitated", "O": "Other Reasons"}
+    thumbmarked_by_values = {"P": "By patient/member", "R": "By representative"}
+    try:
+        consent_date = datetime.strptime(date_text, "%Y-%m-%d").date()
+        consent_type_value = {"1": "Signature of patient", "2": "Signature of representative", "3": "Thumb mark"}[consent_code]
+        if consent_code == "2":
+            if not representative_name:
+                return jsonify({"error": "Enter the representative name for the CF2 PDF."}), 400
+            if relationship_code not in relationship_values or reason_code not in reason_values:
+                return jsonify({"error": "Select the representative's relationship and reason for signing."}), 400
+            if relationship_code == "O" and not relationship_other:
+                return jsonify({"error": "Specify the representative's relationship to the patient."}), 400
+            if reason_code == "O" and not reason_other:
+                return jsonify({"error": "Specify the reason for signing on the patient's behalf."}), 400
+            thumbmarked_by_code = ""
+        elif consent_code == "3":
+            if thumbmarked_by_code not in thumbmarked_by_values:
+                return jsonify({"error": "Select who provided the thumb mark."}), 400
+            if thumbmarked_by_code == "R" and not representative_name:
+                return jsonify({"error": "Enter the representative name for the CF2 PDF."}), 400
+            relationship_code = reason_code = ""
+            relationship_other = reason_other = ""
+            if thumbmarked_by_code == "P":
+                representative_name = ""
+        else:
+            relationship_code = reason_code = ""
+            relationship_other = reason_other = representative_name = ""
+            thumbmarked_by_code = ""
+
+        user = current_user()
+        beacon_settings, auth_key = _beacon_edit_settings(user)
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            _require_draft_claim(transmittal_id, claim_id)
+            cf2 = cf2_api.get_cf2(claim_id)
+            if not isinstance(cf2, dict) or not cf2:
+                raise RuntimeError("Beacon did not return the CF2 record.")
+
+            cf2.update({
+                "aprConsentTypeCode": consent_code,
+                "aprConsentTypeValue": consent_type_value,
+                "aprDate": cf2_api.to_utc_midnight_iso(consent_date),
+                "aprRelationToPatientCode": relationship_code or None,
+                "aprRelationToPatientValue": relationship_values.get(relationship_code),
+                "aprReasonForSigningCode": reason_code or None,
+                "aprReasonForSigningValue": reason_values.get(reason_code),
+                "aprRelationshipToPatientOthers": relationship_other or None,
+                "aprReasonForSigningOthers": reason_other or None,
+                "aprThumbmarkedByCode": thumbmarked_by_code or None,
+                "aprThumbmarkedByValue": thumbmarked_by_values.get(thumbmarked_by_code),
+                "surgicalProcedures": cf2_api.build_surgical_procedures_for_cf2(claim_id),
+            })
+            cf2_api.edit_cf2(cf2)
+
+            pdf_data = cf2_api.get_cf2_pdf_details(claim_id, cf2_api.get_client_id())
+            if not isinstance(pdf_data, dict) or not pdf_data:
+                raise RuntimeError("Beacon did not return the CF2 PDF data.")
+            pdf_data["sigOverPrintedNameOfAuthRep"] = representative_name
+            pdf_data["patientCheck"] = consent_code == "3" and thumbmarked_by_code == "P"
+            pdf_data["part3RepresentativeCheck"] = consent_code == "3" and thumbmarked_by_code == "R"
+            cf2_api.new_pdf_claim_form_two(claim_id, pdf_data)
+        return jsonify({"saved": True})
+    except (ValueError, LookupError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims access patient records save failed for claim {claim_id}: {exc}")
+        return jsonify({"error": "Beacon could not save the access patient records details."}), 502
 
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/doctor", methods=["POST"])
