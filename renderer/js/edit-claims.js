@@ -464,7 +464,6 @@ const editorViewTitles = {
   cf4: "Add CF4 Vitals",
   history: "History of Present Illness & Pertinent Past Medical History",
   course: "Update Course in the Ward",
-  soa: "Generate/Remove SOA Data",
 };
 
 const editorViewIcons = {
@@ -475,7 +474,6 @@ const editorViewIcons = {
   cf4: "heart-pulse",
   history: "file-text",
   course: "list",
-  soa: "receipt",
 };
 
 function applyEditorView(view) {
@@ -507,8 +505,7 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
   editorTransmittal.textContent = "Loading transmittal...";
   editorAdmissionDate.textContent = "Loading...";
   editorDischargeDate.textContent = "Loading...";
-  document.getElementById("editorSoaSummary").textContent = "Loading SOA rows...";
-  ["cf2", "receivable", "patient-records", "doctor", "cf4", "hpi", "pmh", "history", "course", "soa"].forEach((section) => setEditorMessage(section, ""));
+  ["cf2", "receivable", "patient-records", "doctor", "cf4", "hpi", "pmh", "history", "course"].forEach((section) => setEditorMessage(section, ""));
   try {
     const data = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/edit`);
     editorPatientNameText.textContent = data.patient_name || "Draft claim";
@@ -565,8 +562,6 @@ async function openClaimEditor(transmittalId, claimId, view = "cf2") {
     setInputValue("editPertinentPastMedicalHistory", data.cf4_text.pertinent_past_medical_history);
     renderCourseInWardRows(data.cf4_course_in_ward || []);
 
-    document.getElementById("editorSoaSummary").textContent =
-      `MED rows: ${data.soa_counts.med} | XLSO rows: ${data.soa_counts.xlso} | Payment receipts: ${data.soa_counts.payments}`;
     editorLoaded = true;
   } catch (error) {
     editorPatientNameText.textContent = "Draft claim";
@@ -640,6 +635,16 @@ function navigateClaim(direction) {
   const row = targetButton.closest("tr[data-claim-row]");
   selectClaimRow(row);
   openClaimEditor(targetButton.dataset.transmittalId, targetButton.dataset.claimId, activeEditClaim.view);
+}
+
+function navigateEditorTab(direction) {
+  if (!activeEditClaim || editorLoading) return;
+  const tabs = Array.from(document.querySelectorAll("#editorTabs [data-editor-view]"));
+  const currentIndex = tabs.findIndex((tab) => tab.dataset.editorView === activeEditClaim.view);
+  if (currentIndex < 0 || !tabs.length) return;
+  const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
+  activeEditClaim.view = tabs[nextIndex].dataset.editorView;
+  applyEditorView(activeEditClaim.view);
 }
 
 document.getElementById("editorNext").addEventListener("click", () => navigateClaim(1));
@@ -785,6 +790,21 @@ document.getElementById("editorTabs").addEventListener("click", (event) => {
   applyEditorView(activeEditClaim.view);
 });
 document.addEventListener("keydown", (event) => {
+  if (!claimEditor.hidden && event.altKey && !event.ctrlKey && !event.metaKey
+      && ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(event.key)) {
+    const target = event.target;
+    const isEditingField = target instanceof Element
+      && target.closest('input, textarea, select, [contenteditable="true"]');
+    if (!isEditingField) {
+      event.preventDefault();
+      if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+        navigateClaim(event.key === "ArrowRight" ? 1 : -1);
+      } else {
+        navigateEditorTab(event.key === "ArrowDown" ? 1 : -1);
+      }
+      return;
+    }
+  }
   if (event.key !== "Escape" || claimEditor.hidden) return;
   document.getElementById("editorClose").click();
 });
@@ -868,45 +888,6 @@ document.querySelectorAll("[data-save-editor]").forEach((button) => {
   });
 });
 
-document.getElementById("removeSoaButton").addEventListener("click", async (event) => {
-  if (!activeEditClaim) return;
-  const button = event.currentTarget;
-  const { transmittalId, claimId } = activeEditClaim;
-  button.disabled = true;
-  const originalText = button.querySelector("[data-button-label]")?.textContent || button.textContent;
-  setEditorButtonLabel(button, "REMOVING...");
-  setEditorMessage("soa", "Removing the SOA charge rows from Beacon...");
-  try {
-    const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/soa`, { method: "DELETE" });
-    await openClaimEditor(transmittalId, claimId, activeEditClaim.view);
-    setEditorMessage("soa", `Removed ${result.med_count} medicine and ${result.xlso_count} other charge rows. No payment receipts were attached.`);
-  } catch (error) {
-    setEditorMessage("soa", error.message || "Beacon could not remove the SOA data.", true);
-  } finally {
-    button.disabled = false;
-    setEditorButtonLabel(button, originalText);
-  }
-});
-
-document.getElementById("removeGeneratedSoaButton").addEventListener("click", async (event) => {
-  if (!activeEditClaim) return;
-  const button = event.currentTarget;
-  const { transmittalId, claimId } = activeEditClaim;
-  button.disabled = true;
-  const originalText = button.querySelector("[data-button-label]")?.textContent || button.textContent;
-  setEditorButtonLabel(button, "REMOVING...");
-  setEditorMessage("soa", "Removing generated eSOA documents from Beacon...");
-  try {
-    const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/soa/generated`, { method: "DELETE" });
-    setEditorMessage("soa", `Removed ${result.document_count || 0} generated eSOA document${result.document_count === 1 ? "" : "s"}. SOA charge rows and payment receipts were not changed.`);
-  } catch (error) {
-    setEditorMessage("soa", error.message || "Beacon could not remove the generated eSOA documents.", true);
-  } finally {
-    button.disabled = false;
-    setEditorButtonLabel(button, originalText);
-  }
-});
-
 async function generateEditorFile({ button, section, endpoint, successText }) {
   if (!activeEditClaim) return;
   const { transmittalId, claimId } = activeEditClaim;
@@ -927,15 +908,6 @@ async function generateEditorFile({ button, section, endpoint, successText }) {
     setEditorButtonLabel(button, originalText);
   }
 }
-
-document.getElementById("generateSoaButton").addEventListener("click", (event) => {
-  generateEditorFile({
-    button: event.currentTarget,
-    section: "soa",
-    endpoint: "soa/generate",
-    successText: "SOA validated, generated, and uploaded to Beacon.",
-  });
-});
 
 document.getElementById("generateCf4Button").addEventListener("click", (event) => {
   generateEditorFile({

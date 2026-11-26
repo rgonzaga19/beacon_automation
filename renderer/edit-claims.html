@@ -108,6 +108,9 @@
     .editor-tab svg { width:16px; height:16px; flex:0 0 16px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
     .editor-tab:hover { color:var(--text-pri); background:var(--bg-panel); border-color:var(--border); }
     .editor-tab.active { color:var(--accent); background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 70%,transparent); }
+    .editor-shortcut-hint { display:grid; gap:7px; margin-top:auto; padding:12px 10px 2px; border-top:1px solid var(--border); color:var(--text-sec); font-size:9px; line-height:1.4; }
+    .editor-shortcut-hint strong { color:var(--text-pri); font-size:9px; }
+    .editor-shortcut-hint kbd { display:inline-block; min-width:20px; margin-right:3px; padding:2px 5px; color:var(--text-pri); background:var(--bg-dark); border:1px solid var(--border); border-radius:4px; font:700 9px var(--font-ui); text-align:center; }
     .editor-content { display:grid; flex:1; min-width:0; grid-template-columns:minmax(0,1fr); align-content:start; gap:12px; overflow:auto; padding:24px 28px; }
     .editor-content[data-view] { grid-template-columns:minmax(0,1fr); }
     .editor-section { min-width:0; padding:16px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--bg-panel); }
@@ -378,12 +381,19 @@
             <button class="editor-tab" type="button" role="tab" data-editor-view="doctor" aria-selected="false"><i data-lucide="user-round" data-icon-size="16" aria-hidden="true"></i><span>Doctor and sign date</span></button>
             <button class="editor-tab" type="button" role="tab" data-editor-view="patient-records" aria-selected="false"><i data-lucide="file-lock-2" data-icon-size="16" aria-hidden="true"></i><span>Access patient records</span></button>
             <button class="editor-tab" type="button" role="tab" data-editor-view="receivable" aria-selected="false"><i data-lucide="landmark" data-icon-size="16" aria-hidden="true"></i><span>Account receivable</span></button>
-            <button class="editor-tab" type="button" role="tab" data-editor-view="soa" aria-selected="false"><i data-lucide="receipt" data-icon-size="16" aria-hidden="true"></i><span>SOA charges</span></button>
           </div>
           <div class="editor-nav-group">
             <button class="editor-tab" type="button" role="tab" data-editor-view="history" aria-selected="false"><i data-lucide="file-text" data-icon-size="16" aria-hidden="true"></i><span>HPI and medical history</span></button>
             <button class="editor-tab" type="button" role="tab" data-editor-view="cf4" aria-selected="false"><i data-lucide="heart-pulse" data-icon-size="16" aria-hidden="true"></i><span>Vitals (CF4)</span></button>
             <button class="editor-tab" type="button" role="tab" data-editor-view="course" aria-selected="false"><i data-lucide="list" data-icon-size="16" aria-hidden="true"></i><span>Course in the ward</span></button>
+          </div>
+          <div class="editor-shortcut-hint" aria-label="Editor keyboard shortcuts">
+            <strong>Navigate claims</strong>
+            <span><kbd>Alt</kbd> + <kbd>←</kbd> Previous claim</span>
+            <span><kbd>Alt</kbd> + <kbd>→</kbd> Next claim</span>
+            <strong>Switch sections</strong>
+            <span><kbd>Alt</kbd> + <kbd>↑</kbd> Previous section</span>
+            <span><kbd>Alt</kbd> + <kbd>↓</kbd> Next section</span>
           </div>
         </nav>
         <div class="editor-content">
@@ -439,12 +449,6 @@
           <p class="editor-note">These values update the CF2 HCI representative and eSOA prepared by/contact fields.</p>
           <div class="editor-actions"><button class="cyber-btn icon-labeled-button" type="button" data-save-editor="receivable"><i data-lucide="save" data-icon-size="15" aria-hidden="true"></i><span data-button-label>SAVE ACCOUNT RECEIVABLE</span></button></div>
           <div class="editor-message" id="receivableEditorMessage" aria-live="polite"></div>
-        </section>
-        <section class="editor-section" data-editor-section="soa" hidden>
-          <h3>SOA Charges and Payments</h3>
-          <p class="editor-note" id="editorSoaSummary">Loading SOA rows...</p>
-          <div class="editor-actions"><button class="cyber-btn icon-labeled-button" id="generateSoaButton" type="button"><i data-lucide="receipt-text" data-icon-size="15" aria-hidden="true"></i><span data-button-label>GENERATE SOA</span></button><button class="cyber-btn danger icon-labeled-button" id="removeGeneratedSoaButton" type="button"><i data-lucide="file-x-2" data-icon-size="15" aria-hidden="true"></i><span data-button-label>REMOVE GENERATED SOA</span></button><button class="cyber-btn danger icon-labeled-button" id="removeSoaButton" type="button"><i data-lucide="trash-2" data-icon-size="15" aria-hidden="true"></i><span data-button-label>REMOVE SOA CHARGES</span></button></div>
-          <div class="editor-message" id="soaEditorMessage" aria-live="polite"></div>
         </section>
         <section class="editor-section" data-editor-section="doctor">
           <h3>CF2 Doctor and Sign Date</h3>
