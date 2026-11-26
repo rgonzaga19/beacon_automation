@@ -789,8 +789,10 @@ document.querySelectorAll("[data-save-editor]").forEach((button) => {
         height: document.getElementById("editHeight").value,
         weight: document.getElementById("editWeight").value,
       },
-      hpi: { historyOfPresentIllness: document.getElementById("editHistoryOfPresentIllness").value },
-      pmh: { pertinentPastMedicalHistory: document.getElementById("editPertinentPastMedicalHistory").value },
+      history: {
+        historyOfPresentIllness: document.getElementById("editHistoryOfPresentIllness").value,
+        pertinentPastMedicalHistory: document.getElementById("editPertinentPastMedicalHistory").value,
+      },
       "patient-records": {
         consent_type_code: document.getElementById("editAprConsentType").value,
         date: document.getElementById("editAprDate").value,
@@ -809,10 +811,10 @@ document.querySelectorAll("[data-save-editor]").forEach((button) => {
     setEditorMessage(section, "Saving changes to Beacon...");
     try {
       if (section === "history") {
-        await Promise.all(["hpi", "pmh"].map((historySection) => editorRequest(`${route}/cf4-text`, {
+        await editorRequest(`${route}/cf4-text`, {
           method: "POST",
-          body: JSON.stringify(payloads[historySection]),
-        })));
+          body: JSON.stringify(payloads.history),
+        });
       } else {
         const endpoint = section === "cf4" ? "cf4-vitals" : ["hpi", "pmh"].includes(section) ? "cf4-text" : section === "course" ? "course-in-ward" : section;
         await editorRequest(`${route}/${endpoint}`, {
