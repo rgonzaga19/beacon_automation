@@ -170,7 +170,7 @@ def delete_transmittal(transmittal_id):
 
 
 def transmit_transmittal(transmittal_id, timeout=90):
-    """Submit a draft transmittal and wait for Beacon's terminal status."""
+    """Submit or resubmit a transmittal and wait for Beacon's terminal status."""
     import time as _time
 
     blockers = []

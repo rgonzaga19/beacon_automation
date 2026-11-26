@@ -222,9 +222,10 @@
       .page-toolbar .solid-btn { position:relative; display:grid; width:38px; min-width:38px; height:38px; min-height:38px; place-items:center; padding:0; color:var(--accent); background:var(--bg-dark); border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border)); border-radius:6px; font-size:0; line-height:1; white-space:nowrap; }
       .page-toolbar #stopAutomationButton[hidden] { display:none; }
       .page-toolbar .solid-btn:hover:not(:disabled) { background:var(--accent-soft); border-color:var(--accent); }
-      .page-toolbar .solid-btn:not(.danger-action):not(#finalizeAllButton):not(#transmitAllButton) { background:#12233b; }
+      .page-toolbar .solid-btn:not(.danger-action):not(#finalizeAllButton):not(#transmitAllButton):not(#resubmitAllButton) { background:#12233b; }
       .page-toolbar .solid-btn svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
       .page-toolbar .solid-btn#finalizeAllButton,.page-toolbar .solid-btn#transmitAllButton { color:var(--accent-ink); background:var(--accent); border-color:var(--accent); }
+      .page-toolbar .solid-btn#resubmitAllButton { color:#fdba74; background:#3b2114; border-color:#9a4f1a; }
       .page-toolbar .solid-btn.danger-action { color:var(--error); background:var(--bg-dark); border-color:color-mix(in srgb,var(--error) 55%,var(--border)); }
       .page-toolbar .solid-btn:disabled { opacity:.4; cursor:not-allowed; }
       button:focus-visible,.rail-link:focus-visible,.topnav a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
@@ -295,6 +296,7 @@
       }
       html[data-theme="light"] .lookup-icon-button { color:#fff; background:#0f766e; }
       html[data-theme="light"] .page-toolbar .solid-btn#finalizeAllButton,html[data-theme="light"] .page-toolbar .solid-btn#transmitAllButton { color:#fff; background:#0f766e; border-color:#0f766e; }
+      html[data-theme="light"] .page-toolbar .solid-btn#resubmitAllButton { color:#9a3412; background:#ffedd5; border-color:#fdba74; }
       .field input::placeholder { color:var(--text-sec); opacity:.82; }
       @media(prefers-reduced-motion:reduce) { .page-toolbar .solid-btn[data-tip]::after { transition:none; } }
     </style>
@@ -325,6 +327,7 @@
               <section class="toolbar-group" aria-labelledby="toolbarWorkflowLabel"><h2 class="toolbar-group-label" id="toolbarWorkflowLabel">Finalize &amp; transmit</h2><div class="toolbar-group-actions">
                 <button class="solid-btn" id="finalizeAllButton" type="button" data-tip="Auto Finalize" aria-label="Auto Finalize" title="Auto Finalize" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.6 2.6L16.5 9"/></svg></button>
                 <button class="solid-btn" id="transmitAllButton" type="button" data-tip="Auto Transmit" aria-label="Auto Transmit" title="Auto Transmit" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+                <button class="solid-btn" id="resubmitAllButton" type="button" data-tip="Resubmit Transmit Errors" aria-label="Resubmit Transmit Errors" title="Resubmit Transmit Errors" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4.9 9a8 8 0 0 1 13.2-2L20 7M4 17v-5h5"/><path d="M19.1 15a8 8 0 0 1-13.2 2L4 17"/></svg></button>
               </div></section>
               <section class="toolbar-group" aria-labelledby="toolbarGenerateLabel"><h2 class="toolbar-group-label" id="toolbarGenerateLabel">Generate</h2><div class="toolbar-group-actions">
                 <button class="solid-btn" id="generateCf4AllButton" type="button" data-tip="Generate CF4" aria-label="Generate CF4" title="Generate CF4" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></svg></button>

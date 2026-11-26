@@ -9,6 +9,7 @@ const selectionHeaderLabel = document.getElementById("selectionHeaderLabel");
 const selectionHeaderCount = document.getElementById("selectionHeaderCount");
 const selectedCount = document.getElementById("selectedCount");
 const stopAutomationButton = document.getElementById("stopAutomationButton");
+const resubmitAllButton = document.getElementById("resubmitAllButton");
 const batchActionButtons = Array.from(document.querySelectorAll(".page-toolbar .solid-btn"))
   .filter((button) => button !== stopAutomationButton);
 const claimEditor = document.getElementById("claimEditor");
@@ -83,6 +84,9 @@ function updateSelectionControls() {
   batchActionButtons.forEach((button) => {
     button.disabled = selectedRows.length === 0;
   });
+  resubmitAllButton.disabled = !selectedRows.some((row) =>
+    row.dataset.transmittalId && row.dataset.transmittalStatus.trim().toUpperCase() === "TRANSMIT ERROR"
+  );
 }
 
 selectAllClaims.addEventListener("change", () => {
@@ -306,6 +310,8 @@ lookupForm.addEventListener("submit", async (event) => {
       row.dataset.claimRow = "";
       row.dataset.originalOrder = String(claimsBody.children.length);
       row.dataset.patientSurname = patientSurname(claim.patient_name);
+      row.dataset.transmittalId = claim.transmittal_id || "";
+      row.dataset.claimId = claim.claim_id || "";
       row.tabIndex = 0;
       row.setAttribute("aria-selected", "false");
       const actionCell = document.createElement("td");
@@ -644,27 +650,45 @@ document.querySelector(".editor-content").addEventListener("change", () => { edi
 document.getElementById("editAdmissionDate").addEventListener("change", updateEditorClaimContext);
 document.getElementById("editDischargeDate").addEventListener("change", updateEditorClaimContext);
 
+function getSelectedClaimIdsForTransmittal(transmittalId) {
+  return Array.from(claimsBody.querySelectorAll("tr[data-claim-row].selected"))
+    .filter((row) => row.dataset.transmittalId === String(transmittalId))
+    .map((row) => row.dataset.claimId)
+    .filter(Boolean);
+}
+
 async function transmitTransmittal(button) {
   const transmittalId = button.dataset.transmittalId;
   const row = button.closest("tr[data-claim-row]");
+  const claimIds = getSelectedClaimIdsForTransmittal(transmittalId);
   button.disabled = true;
   button.dataset.state = "transmitting";
   button.title = "Transmitting...";
   try {
-    const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/transmit`, { method: "POST", body: "{}" });
-    const badge = row.querySelector(".transmittal-status");
-    if (badge) {
-      badge.className = `transmittal-status ${statusClass(result.status)}`;
-      badge.lastChild.textContent = result.status || "TRANSMITTED";
-      row.dataset.transmittalStatus = result.status || "TRANSMITTED";
-      const details = [result.e_ticket_number && `eTicket ${result.e_ticket_number}`, result.control_number && `TCN ${result.control_number}`].filter(Boolean).join(" | ");
-      if (details) badge.title = details;
-    }
-    button.dataset.state = "transmitted";
-    button.innerHTML = TRANSMITTED_ICON_SVG;
-    button.title = "Transmitted";
+    const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/transmit`, {
+      method: "POST",
+      body: JSON.stringify({ claim_ids: claimIds }),
+    });
     const details = [result.e_ticket_number && `eTicket ${result.e_ticket_number}`, result.control_number && `TCN ${result.control_number}`].filter(Boolean).join(" | ");
-    setBeaconMessage(row, `Transmitted successfully.${details ? ` ${details}` : ""}`);
+    claimsBody.querySelectorAll("tr[data-claim-row]").forEach((affectedRow) => {
+      if (affectedRow.dataset.transmittalId !== String(transmittalId)) return;
+      const badge = affectedRow.querySelector(".transmittal-status");
+      if (badge) {
+        badge.className = `transmittal-status ${statusClass(result.status)}`;
+        badge.lastChild.textContent = result.status || "TRANSMITTED";
+        if (details) badge.title = details;
+      }
+      affectedRow.dataset.transmittalStatus = result.status || "TRANSMITTED";
+      const affectedButton = affectedRow.querySelector('[data-action="transmit-claim"]');
+      if (affectedButton) {
+        affectedButton.disabled = true;
+        affectedButton.dataset.state = "transmitted";
+        affectedButton.innerHTML = TRANSMITTED_ICON_SVG;
+        affectedButton.title = "Transmitted";
+      }
+      setBeaconMessage(affectedRow, `Transmitted successfully.${details ? ` ${details}` : ""}`);
+    });
+    updateSelectionControls();
     return result;
   } catch (error) {
     button.disabled = false;
@@ -686,7 +710,15 @@ function setBeaconMessage(row, message, error = false) {
 claimsBody.addEventListener("click", (event) => {
   const transmitButton = event.target.closest('[data-action="transmit-claim"]');
   if (transmitButton) {
-    const transmittalNumber = transmitButton.closest("tr").dataset.transmittalNumber;
+    const row = transmitButton.closest("tr[data-claim-row]");
+    const transmittalId = transmitButton.dataset.transmittalId;
+    const transmittalRows = Array.from(claimsBody.querySelectorAll("tr[data-claim-row]"))
+      .filter((item) => item.dataset.transmittalId === String(transmittalId));
+    if (transmittalRows.some((item) => !item.classList.contains("selected"))) {
+      setBeaconMessage(row, "Select every claim in this transmittal before submitting it.", true);
+      return;
+    }
+    const transmittalNumber = row.dataset.transmittalNumber;
     showTransmitClaimConfirm(transmittalNumber, () => transmitTransmittal(transmitButton).catch(() => {}));
     return;
   }
@@ -951,6 +983,18 @@ function getReadyTransmittalGroups() {
   return { rows, groups };
 }
 
+function getFailedTransmittalGroups() {
+  const rows = Array.from(claimsBody.querySelectorAll("tr[data-claim-row].selected"));
+  const groups = new Map();
+  rows.forEach((row) => {
+    if (!row.dataset.transmittalId || row.dataset.transmittalStatus.trim().toUpperCase() !== "TRANSMIT ERROR") return;
+    const transmittalId = row.dataset.transmittalId;
+    if (!groups.has(transmittalId)) groups.set(transmittalId, []);
+    groups.get(transmittalId).push(row);
+  });
+  return { rows, groups };
+}
+
 function closeTransmitAllConfirm(onKey) {
   document.removeEventListener("keydown", onKey);
   document.getElementById("modalRoot").innerHTML = "";
@@ -993,7 +1037,7 @@ function showTransmitAllConfirm(transmittalCount, rowCount, onConfirm) {
     <div class="modal-overlay">
       <div class="modal-box">
         <h3>Confirm Batch Transmit</h3>
-        <p>Transmit ${transmittalCount} draft transmittal${transmittalCount === 1 ? "" : "s"} selected from ${rowCount} selected claim row${rowCount === 1 ? "" : "s"} to PhilHealth now?\n\nBeacon transmits a whole transmittal, so any unselected claims in those transmittals will be included. This action cannot be undone.</p>
+        <p>Transmit ${transmittalCount} draft transmittal${transmittalCount === 1 ? "" : "s"} selected from ${rowCount} selected claim row${rowCount === 1 ? "" : "s"} to PhilHealth now? Every claim in each transmittal must be selected. Beacon submits each transmittal as one unit.</p>
         <div class="modal-actions">
           <button class="cyber-btn" id="transmitAllCancelBtn" type="button">CANCEL</button>
           <button class="cyber-btn danger" id="transmitAllConfirmBtn" type="button">YES, TRANSMIT BATCH</button>
@@ -1016,6 +1060,33 @@ function showTransmitAllConfirm(transmittalCount, rowCount, onConfirm) {
   });
   document.addEventListener("keydown", onKey);
   document.getElementById("transmitAllCancelBtn").focus();
+}
+
+function showResubmitAllConfirm(transmittalCount, rowCount, onConfirm) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Batch Resubmit</h3>
+        <p>Resubmit ${transmittalCount} failed transmittal${transmittalCount === 1 ? "" : "s"} selected from ${rowCount} selected claim row${rowCount === 1 ? "" : "s"}? Every claim in each transmittal must be selected. Beacon submits each transmittal as one unit.</p>
+        <div class="modal-actions">
+          <button class="cyber-btn" id="resubmitAllCancelBtn" type="button">CANCEL</button>
+          <button class="cyber-btn danger" id="resubmitAllConfirmBtn" type="button">YES, RESUBMIT</button>
+        </div>
+      </div>
+    </div>`;
+  function close() { closeTransmitAllConfirm(onKey); }
+  function onKey(event) { if (event.key === "Escape") close(); }
+  document.getElementById("resubmitAllCancelBtn").addEventListener("click", close);
+  document.getElementById("resubmitAllConfirmBtn").addEventListener("click", () => {
+    close();
+    onConfirm();
+  });
+  root.querySelector(".modal-overlay").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  document.addEventListener("keydown", onKey);
+  document.getElementById("resubmitAllCancelBtn").focus();
 }
 
 function getDraftClaimsForSoa() {
@@ -1623,6 +1694,55 @@ async function runTransmitAll() {
   }
 }
 
+async function runResubmitAll() {
+  const { groups } = getFailedTransmittalGroups();
+  if (!groups.size) {
+    setTransmitAllStatus("Select at least one claim in a TRANSMIT ERROR transmittal to resubmit.", true);
+    return;
+  }
+
+  const entries = Array.from(groups.entries());
+  const unlockToolbar = lockClaimsToolbar(resubmitAllButton);
+  let resubmitted = 0;
+  let failed = 0;
+  setToolbarLoading(resubmitAllButton, true);
+  try {
+    for (let index = 0; index < entries.length && !batchStopRequested; index += 1) {
+      const [transmittalId, selectedRows] = entries[index];
+      const transmittalNumber = selectedRows[0].dataset.transmittalNumber;
+      setTransmitAllStatus(`Resubmitting failed transmittal ${index + 1} of ${entries.length}: ${transmittalNumber}...`);
+      try {
+        const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/resubmit`, {
+          method: "POST",
+          body: JSON.stringify({ claim_ids: selectedRows.map((row) => row.dataset.claimId).filter(Boolean) }),
+        });
+        const details = [result.e_ticket_number && `eTicket ${result.e_ticket_number}`, result.control_number && `TCN ${result.control_number}`].filter(Boolean).join(" | ");
+        const affectedRows = Array.from(claimsBody.querySelectorAll("tr[data-claim-row]"))
+          .filter((row) => row.dataset.transmittalId === transmittalId);
+        affectedRows.forEach((row) => {
+          const badge = row.querySelector(".transmittal-status");
+          if (badge) {
+            badge.className = `transmittal-status ${statusClass(result.status)}`;
+            badge.lastChild.textContent = result.status || "TRANSMITTED";
+            if (details) badge.title = details;
+          }
+          row.dataset.transmittalStatus = result.status || "TRANSMITTED";
+          setBeaconMessage(row, `Resubmitted successfully.${details ? ` ${details}` : ""}`);
+        });
+        resubmitted += 1;
+      } catch (error) {
+        failed += 1;
+        selectedRows.forEach((row) => setBeaconMessage(row, `Resubmit failed: ${error.message}`, true));
+      }
+    }
+    setTransmitAllStatus(`${resubmitted} failed transmittal${resubmitted === 1 ? "" : "s"} resubmitted; ${failed} failed.${batchStopRequested ? " Batch stopped by request." : ""}`, failed > 0);
+  } finally {
+    setToolbarLoading(resubmitAllButton, false);
+    unlockToolbar();
+    updateSelectionControls();
+  }
+}
+
 async function runFinalizeAll() {
   const rows = getDraftClaimsForSoa();
   if (!rows.length) {
@@ -1737,6 +1857,17 @@ transmitAllButton.addEventListener("click", () => {
   const transmittalCount = groups.size;
   const rowCount = Array.from(groups.values()).reduce((total, groupRows) => total + groupRows.length, 0);
   showTransmitAllConfirm(transmittalCount, rowCount, runTransmitAll);
+});
+
+resubmitAllButton.addEventListener("click", () => {
+  const { groups } = getFailedTransmittalGroups();
+  if (!groups.size) {
+    setTransmitAllStatus("Select at least one claim in a TRANSMIT ERROR transmittal to resubmit.", true);
+    return;
+  }
+  const transmittalCount = groups.size;
+  const rowCount = Array.from(groups.values()).reduce((total, groupRows) => total + groupRows.length, 0);
+  showResubmitAllConfirm(transmittalCount, rowCount, runResubmitAll);
 });
 
 document.getElementById("generateCf4AllButton").addEventListener("click", () => {

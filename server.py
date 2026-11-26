@@ -2106,6 +2106,7 @@ def delete_finalize_transmittal(transmittal_id):
 @login_required
 @track_dashboard_operation("Edit Claims")
 def transmit_finalize_claims_transmittal(transmittal_id):
+    data = request.get_json(silent=True) or {}
     user = current_user()
     beacon_settings, auth_key = _beacon_edit_settings(user)
     try:
@@ -2114,11 +2115,65 @@ def transmit_finalize_claims_transmittal(transmittal_id):
             transmittal = beacon_api.get_transmittal_by_id(transmittal_id) or {}
             if str(transmittal.get("transmittalStatusDescription") or "").strip().casefold() != "draft":
                 return jsonify({"error": "Only DRAFT transmittals can be transmitted here."}), 409
+            _require_complete_transmittal_selection(transmittal_id, data.get("claim_ids"))
             result = beacon_api.transmit_transmittal(transmittal_id)
             return jsonify({"status": result.get("transmittalStatusDescription"), "transmittal_number": result.get("transmittalNumber"), "e_ticket_number": result.get("eTicketNumber"), "control_number": result.get("transmissionControlNumber")})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     except Exception as exc:
         logger.error(f"Finalize Claims transmit failed for {transmittal_id}: {exc}")
         return jsonify({"error": str(exc) or "Beacon transmit failed."}), 502
+
+
+def _require_complete_transmittal_selection(transmittal_id, selected_claim_ids):
+    if not isinstance(selected_claim_ids, list):
+        raise ValueError("Select every claim in the transmittal before submitting it.")
+    try:
+        selected_ids = {int(claim_id) for claim_id in selected_claim_ids}
+    except (TypeError, ValueError):
+        raise ValueError("The selected claim list is invalid.")
+    claims = beacon_api.get_claims(transmittal_id, refresh=True)
+    actual_ids = {
+        int(claim["id"])
+        for claim in claims
+        if isinstance(claim, dict) and claim.get("id") is not None
+    }
+    if not actual_ids:
+        raise RuntimeError("Beacon returned no claims for this transmittal.")
+    if selected_ids != actual_ids:
+        raise ValueError(
+            "Beacon submits an entire transmittal at once. Select all "
+            f"{len(actual_ids)} claims in this transmittal before submitting."
+        )
+
+
+@app.route("/api/beacon/finalize-claims/<int:transmittal_id>/resubmit", methods=["POST"])
+@login_required
+@track_dashboard_operation("Edit Claims")
+def resubmit_finalize_claims_transmittal(transmittal_id):
+    data = request.get_json(silent=True) or {}
+    user = current_user()
+    beacon_settings, auth_key = _beacon_edit_settings(user)
+    try:
+        with browser_session.use_auth_context(beacon_settings, key=auth_key):
+            browser_session.invalidate_auth_token()
+            transmittal = beacon_api.get_transmittal_by_id(transmittal_id) or {}
+            status = str(transmittal.get("transmittalStatusDescription") or "").strip().casefold()
+            if status != "transmit error":
+                return jsonify({"error": "Only TRANSMIT ERROR transmittals can be resubmitted here."}), 409
+            _require_complete_transmittal_selection(transmittal_id, data.get("claim_ids"))
+            result = beacon_api.transmit_transmittal(transmittal_id)
+            return jsonify({
+                "status": result.get("transmittalStatusDescription"),
+                "transmittal_number": result.get("transmittalNumber"),
+                "e_ticket_number": result.get("eTicketNumber"),
+                "control_number": result.get("transmissionControlNumber"),
+            })
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error(f"Finalize Claims resubmit failed for transmittal {transmittal_id}: {exc}")
+        return jsonify({"error": str(exc) or "Beacon resubmit failed."}), 502
 
 
 @app.route("/api/beacon/finalize-claims/<int:transmittal_id>/<int:claim_id>/finalize", methods=["POST"])
@@ -2343,10 +2398,18 @@ def save_finalize_claim_account_receivable(transmittal_id, claim_id):
             pdf_data = cf2_api.get_cf2_pdf_details(claim_id, cf2_api.get_client_id())
             if not isinstance(pdf_data, dict) or not pdf_data:
                 raise RuntimeError("Beacon did not return the CF2 PDF data.")
+            if "sigOverPrintedNameOfAuthRep" not in pdf_data:
+                raise RuntimeError(
+                    "Beacon did not return the patient representative name, "
+                    "so the CF2 PDF cannot be safely updated."
+                )
+            patient_representative_name = pdf_data["sigOverPrintedNameOfAuthRep"]
             pdf_data["signatureOverPrintedNameOfAuthHCIRep"] = name
             pdf_data["officialCapacityDesignation"] = designation
-            # Match CF2 automation's confirmed local-midnight date encoding.
-            pdf_data["dateSigned"] = cf2_api.to_utc_midnight_iso(last_treatment)
+            # CF2 PDF dateSigned uses local-date-at-16:00Z, not the
+            # previous-day UTC-midnight format used by other CF2 dates.
+            pdf_data["dateSigned"] = cf2_api.to_date_signed_iso(last_treatment)
+            pdf_data["sigOverPrintedNameOfAuthRep"] = patient_representative_name
             cf2_api.new_pdf_claim_form_two(claim_id, pdf_data)
 
             signatories = cf2_api.get_esoa_signatories(claim_id)
@@ -2418,6 +2481,20 @@ def save_finalize_claim_patient_records(transmittal_id, claim_id):
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
             _require_draft_claim(transmittal_id, claim_id)
+            pdf_data_before_cf2_edit = cf2_api.get_cf2_pdf_details(
+                claim_id, cf2_api.get_client_id()
+            )
+            if not isinstance(pdf_data_before_cf2_edit, dict) or not pdf_data_before_cf2_edit:
+                raise RuntimeError("Beacon did not return the CF2 PDF data.")
+            preserved_pdf_fields = {
+                key: pdf_data_before_cf2_edit[key]
+                for key in (
+                    "signatureOverPrintedNameOfAuthHCIRep",
+                    "officialCapacityDesignation",
+                    "dateSigned",
+                )
+                if key in pdf_data_before_cf2_edit
+            }
             cf2 = cf2_api.get_cf2(claim_id)
             if not isinstance(cf2, dict) or not cf2:
                 raise RuntimeError("Beacon did not return the CF2 record.")
@@ -2441,6 +2518,11 @@ def save_finalize_claim_patient_records(transmittal_id, claim_id):
             pdf_data = cf2_api.get_cf2_pdf_details(claim_id, cf2_api.get_client_id())
             if not isinstance(pdf_data, dict) or not pdf_data:
                 raise RuntimeError("Beacon did not return the CF2 PDF data.")
+            # This editor only changes Access Patient Records fields. Keep
+            # the HCI representative, designation, and signed date exactly
+            # as they were before the CF2 update, even if Beacon's subsequent
+            # PDF-details response omits or resets them.
+            pdf_data.update(preserved_pdf_fields)
             pdf_data["sigOverPrintedNameOfAuthRep"] = representative_name
             pdf_data["patientCheck"] = consent_code == "3" and thumbmarked_by_code == "P"
             pdf_data["part3RepresentativeCheck"] = consent_code == "3" and thumbmarked_by_code == "R"
