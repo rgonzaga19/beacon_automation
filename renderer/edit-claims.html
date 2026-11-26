@@ -256,6 +256,9 @@
       .claim-status .status-dot { width:6px; height:6px; }
       .selection-checkbox { width:13px; height:13px; margin:0; accent-color:var(--accent2); vertical-align:middle; cursor:pointer; }
       .selection-checkbox:disabled { cursor:not-allowed; opacity:.5; }
+      .selection-header-content { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
+      .selection-header-label { color:var(--text-pri); }
+      .selection-header-count { color:var(--text-sec); font-size:9px; font-weight:600; }
       #claimsBody td:first-child { min-width:72px; white-space:nowrap; }
       .claims-row-actions { display:inline-flex; align-items:center; gap:4px; margin-left:6px; }
       .icon-btn { width:25px; min-height:25px; height:25px; border-radius:6px; }
@@ -343,8 +346,8 @@
             <div class="summary" id="summary" hidden></div>
             <div class="table-wrap">
               <table aria-label="Claims in transmittal">
-                <thead><tr><th><input class="selection-checkbox" id="selectAllClaims" type="checkbox" aria-label="Select all claims" disabled></th><th>Transmittal</th><th>Claim series</th><th>Patient</th><th>Member</th><th>Admission</th><th>Discharge</th><th>Claim status</th><th>Transmittal status</th><th>Beacon message</th></tr></thead>
-                <tbody id="claimsBody"><tr><td class="message" colspan="10">Enter a transmittal number to view its claims.</td></tr></tbody>
+                <thead><tr><th><div class="selection-header-content"><input class="selection-checkbox" id="selectAllClaims" type="checkbox" aria-label="Select all claims" disabled><span class="selection-header-label" id="selectionHeaderLabel">Select all</span><span class="selection-header-count" id="selectionHeaderCount">0 selected</span></div></th><th>Transmittal</th><th>Patient</th><th>Member</th><th>Admission</th><th>Discharge</th><th>Claim status</th><th>Transmittal status</th><th>Beacon message</th></tr></thead>
+                <tbody id="claimsBody"><tr><td class="message" colspan="9">Enter a transmittal number to view its claims.</td></tr></tbody>
               </table>
             </div>
             <div class="table-footer">

@@ -5,6 +5,8 @@ const summary = document.getElementById("summary");
 const claimsBody = document.getElementById("claimsBody");
 const claimsSort = document.getElementById("claimsSort");
 const selectAllClaims = document.getElementById("selectAllClaims");
+const selectionHeaderLabel = document.getElementById("selectionHeaderLabel");
+const selectionHeaderCount = document.getElementById("selectionHeaderCount");
 const selectedCount = document.getElementById("selectedCount");
 const stopAutomationButton = document.getElementById("stopAutomationButton");
 const batchActionButtons = Array.from(document.querySelectorAll(".page-toolbar .solid-btn"))
@@ -76,6 +78,8 @@ function updateSelectionControls() {
   selectAllClaims.checked = rows.length > 0 && selectedRows.length === rows.length;
   selectAllClaims.indeterminate = selectedRows.length > 0 && selectedRows.length < rows.length;
   selectAllClaims.disabled = rows.length === 0;
+  selectionHeaderLabel.textContent = selectAllClaims.checked ? "All selected" : "Select all";
+  selectionHeaderCount.textContent = `${selectedRows.length} selected`;
   batchActionButtons.forEach((button) => {
     button.disabled = selectedRows.length === 0;
   });
@@ -206,7 +210,7 @@ function showMessage(message, error = false) {
   claimsBody.replaceChildren();
   const row = document.createElement("tr");
   const cell = document.createElement("td");
-  cell.colSpan = 10;
+  cell.colSpan = 9;
   cell.className = `message${error ? " error" : ""}`;
   cell.textContent = message;
   row.append(cell);
@@ -308,7 +312,7 @@ lookupForm.addEventListener("submit", async (event) => {
       const selectionCheckbox = document.createElement("input");
       selectionCheckbox.className = "selection-checkbox";
       selectionCheckbox.type = "checkbox";
-      selectionCheckbox.setAttribute("aria-label", `Select claim ${claim.claim_series || "in transmittal " + claim.transmittal_number}`);
+      selectionCheckbox.setAttribute("aria-label", `Select claim for ${claim.patient_name || "transmittal " + claim.transmittal_number}`);
       actionCell.append(selectionCheckbox);
       if (claim.transmittal_id && claim.claim_id && statusClass(claim.transmittal_status) === "status-draft") {
         const actionButtons = document.createElement("div");
@@ -321,7 +325,7 @@ lookupForm.addEventListener("submit", async (event) => {
         editButton.dataset.transmittalId = claim.transmittal_id;
         editButton.dataset.claimId = claim.claim_id;
         editButton.dataset.action = "edit-claim";
-        editButton.setAttribute("aria-label", `Edit claim ${claim.claim_series || "in transmittal " + claim.transmittal_number}`);
+        editButton.setAttribute("aria-label", `Edit claim for ${claim.patient_name || "transmittal " + claim.transmittal_number}`);
         const transmitButton = document.createElement("button");
         transmitButton.className = "cyber-btn icon-btn";
         transmitButton.type = "button";
@@ -337,12 +341,12 @@ lookupForm.addEventListener("submit", async (event) => {
       row.append(actionCell);
       row.dataset.transmittalNumber = claim.transmittal_number || "";
       row.dataset.transmittalStatus = claim.transmittal_status || "";
-      [claim.transmittal_number, claim.claim_series, claim.patient_name, claim.member_name, claim.admission_date, claim.discharge_date, claim.status].forEach((value) => {
+      [claim.transmittal_number, claim.patient_name, claim.member_name, claim.admission_date, claim.discharge_date, claim.status].forEach((value) => {
         const cell = document.createElement("td");
         cell.textContent = value || "-";
         row.append(cell);
       });
-      const claimStatusCell = row.children[7];
+      const claimStatusCell = row.children[6];
       const claimStatus = document.createElement("span");
       claimStatus.className = `claim-status ${statusClass(claim.status)}`;
       const claimStatusDot = document.createElement("i");
@@ -1131,7 +1135,7 @@ async function runDeleteClaims() {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
       cell.className = "message";
-      cell.colSpan = 10;
+      cell.colSpan = 9;
       cell.textContent = "No claims remain in the current lookup.";
       row.append(cell);
       claimsBody.append(row);
