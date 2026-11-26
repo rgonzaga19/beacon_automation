@@ -2136,8 +2136,17 @@ def finalize_finalize_claim(transmittal_id, claim_id):
             discharge = cf2.get("dischargeDateTime") or claim.get("dischargeDateTime")
             if not admission or not discharge:
                 raise ValueError("Claim admission and discharge dates are required to finalize eligibility.")
+            cf1 = cf2_api.get_cf1_summary(claim_id) or {}
+            if str(cf1.get("eligibilityTrackingNumber") or "").strip():
+                return jsonify({"skipped": True, "reason": "already_finalized"})
+
+            # Auto Finalize mirrors the Beacon flow: refresh eligibility with
+            # isFinal=0 and save its status before generating the final PBEF.
+            cf2_api.validate_claim_eligibility(
+                claim_id, transmittal_id, admission, discharge, force=True
+            )
             result = cf2_api.finalize_claim_eligibility(claim_id, transmittal_id, admission, discharge)
-            return jsonify(result)
+            return jsonify({**result, "revalidated": True})
     except Exception as exc:
         logger.error(f"Finalize Claims eligibility finalize failed for claim {claim_id}: {exc}")
         return jsonify({"error": str(exc) or "Claim finalization failed."}), 502

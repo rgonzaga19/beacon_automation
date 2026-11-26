@@ -223,7 +223,7 @@ def _mm_dd_yyyy(value):
     return _date_from_value(value).strftime("%m-%d-%Y")
 
 
-def validate_claim_eligibility(claim_id, transmittal_id, admission_date, discharge_date):
+def validate_claim_eligibility(claim_id, transmittal_id, admission_date, discharge_date, force=False):
     """Validate claim eligibility without using the Beacon UI.
 
     Confirmed from the 2026-08-31 HAR capture, the Validate Eligibility
@@ -248,9 +248,10 @@ def validate_claim_eligibility(claim_id, transmittal_id, admission_date, dischar
             f"GetPHICCF1Summary returned no usable data for claimId={claim_id}."
         )
 
-    # The UI does not show Validate Eligibility once a result is already
-    # stored. Mirror that behavior and avoid generating a duplicate PBEF.
-    if str(cf1.get("eligibilityIsOk") or "").strip():
+    # Interactive validation can skip a claim that already has an eligibility
+    # result. Batch Auto Finalize passes force=True to refresh that result just
+    # before it requests the final PBEF.
+    if str(cf1.get("eligibilityIsOk") or "").strip() and not force:
         return {
             "skipped": True,
             "reason": "already_validated",

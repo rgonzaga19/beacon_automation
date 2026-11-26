@@ -1531,7 +1531,7 @@ async function runFinalizeAll() {
       const row = rows[index];
       const editButton = row.querySelector('[data-action="edit-claim"]');
       const { transmittalId, claimId } = editButton.dataset;
-      setTransmitAllStatus(`Finalizing selected claim ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
+      setTransmitAllStatus(`Revalidating, then finalizing claim ${index + 1} of ${rows.length}: ${row.dataset.transmittalNumber}...`);
       try {
         const result = await editorRequest(`/api/beacon/finalize-claims/${transmittalId}/${claimId}/finalize`, {
           method: "POST",
@@ -1541,11 +1541,11 @@ async function runFinalizeAll() {
           setBeaconMessage(row, "Already finalized; no changes made.");
           skipped += 1;
         } else {
-          setBeaconMessage(row, `Final PBEF generated and saved (${result.tracking_number}).`);
+          setBeaconMessage(row, `Eligibility revalidated; final PBEF generated and saved (${result.tracking_number}).`);
           finalized += 1;
         }
       } catch (error) {
-        setBeaconMessage(row, `Finalization failed: ${error.message}`, true);
+        setBeaconMessage(row, `Revalidation/finalization failed: ${error.message}`, true);
         failed += 1;
       }
     }
@@ -1564,7 +1564,7 @@ function showFinalizeAllConfirm(claimCount, onConfirm) {
     <div class="modal-overlay">
       <div class="modal-box">
         <h3>Confirm Batch Auto Finalize</h3>
-        <p>Generate a final PBEF and save eligibility data for ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time? Claims already finalized will be skipped.</p>
+        <p>Revalidate eligibility, then generate a final PBEF for ${claimCount} draft claim${claimCount === 1 ? "" : "s"}, one at a time? Claims already finalized will be skipped.</p>
         <div class="modal-actions">
           <button class="cyber-btn" id="finalizeAllCancelBtn" type="button">CANCEL</button>
           <button class="cyber-btn danger" id="finalizeAllConfirmBtn" type="button">YES, FINALIZE BATCH</button>
