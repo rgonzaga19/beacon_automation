@@ -2237,6 +2237,8 @@ def _beacon_local_datetime(value):
 @login_required
 def get_finalize_claim_edit_data(transmittal_id, claim_id):
     user = current_user()
+    user_settings = get_or_create_user_settings(user)
+    saved_account_receivable = (user_settings.cf4_settings or {}).get("account_receivable") or {}
     beacon_settings, auth_key = _beacon_edit_settings(user)
     try:
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
@@ -2284,7 +2286,7 @@ def get_finalize_claim_edit_data(transmittal_id, claim_id):
             },
             "account_receivable": {
                 "name": cf2_pdf.get("signatureOverPrintedNameOfAuthHCIRep") or signatories.get("preparedBy") or "",
-                "designation": cf2_pdf.get("officialCapacityDesignation") or "",
+                "designation": cf2_pdf.get("officialCapacityDesignation") or saved_account_receivable.get("designation") or "",
                 "number": signatories.get("adminContactNo") or "",
                 "date_signed": last_treatment.strftime("%Y-%m-%d") if last_treatment else "",
             },
@@ -2398,18 +2400,14 @@ def save_finalize_claim_account_receivable(transmittal_id, claim_id):
             pdf_data = cf2_api.get_cf2_pdf_details(claim_id, cf2_api.get_client_id())
             if not isinstance(pdf_data, dict) or not pdf_data:
                 raise RuntimeError("Beacon did not return the CF2 PDF data.")
-            if "sigOverPrintedNameOfAuthRep" not in pdf_data:
-                raise RuntimeError(
-                    "Beacon did not return the patient representative name, "
-                    "so the CF2 PDF cannot be safely updated."
-                )
-            patient_representative_name = pdf_data["sigOverPrintedNameOfAuthRep"]
+            patient_representative_name = pdf_data.get("sigOverPrintedNameOfAuthRep")
             pdf_data["signatureOverPrintedNameOfAuthHCIRep"] = name
             pdf_data["officialCapacityDesignation"] = designation
             # CF2 PDF dateSigned uses local-date-at-16:00Z, not the
             # previous-day UTC-midnight format used by other CF2 dates.
             pdf_data["dateSigned"] = cf2_api.to_date_signed_iso(last_treatment)
-            pdf_data["sigOverPrintedNameOfAuthRep"] = patient_representative_name
+            if "sigOverPrintedNameOfAuthRep" in pdf_data:
+                pdf_data["sigOverPrintedNameOfAuthRep"] = patient_representative_name
             cf2_api.new_pdf_claim_form_two(claim_id, pdf_data)
 
             signatories = cf2_api.get_esoa_signatories(claim_id)
@@ -2437,6 +2435,7 @@ def save_finalize_claim_patient_records(transmittal_id, claim_id):
     consent_code = str(data.get("consent_type_code") or "").strip()
     date_text = str(data.get("date") or "").strip()
     representative_name = str(data.get("representative_name") or "").strip()
+    representative_name_from_editor = representative_name
     relationship_code = str(data.get("relationship_code") or "").strip()
     relationship_other = str(data.get("relationship_other") or "").strip()
     reason_code = str(data.get("reason_code") or "").strip()
@@ -2477,6 +2476,8 @@ def save_finalize_claim_patient_records(transmittal_id, claim_id):
             thumbmarked_by_code = ""
 
         user = current_user()
+        user_settings = get_or_create_user_settings(user)
+        saved_account_receivable = (user_settings.cf4_settings or {}).get("account_receivable") or {}
         beacon_settings, auth_key = _beacon_edit_settings(user)
         with browser_session.use_auth_context(beacon_settings, key=auth_key):
             browser_session.invalidate_auth_token()
@@ -2489,12 +2490,34 @@ def save_finalize_claim_patient_records(transmittal_id, claim_id):
             preserved_pdf_fields = {
                 key: pdf_data_before_cf2_edit[key]
                 for key in (
+                    "sigOverPrintedNameOfAuthRep",
                     "signatureOverPrintedNameOfAuthHCIRep",
                     "officialCapacityDesignation",
                     "dateSigned",
                 )
                 if key in pdf_data_before_cf2_edit
             }
+            # Beacon's PDF-details endpoint can omit existing form values.
+            # Use the values already loaded in the editor as fallbacks so
+            # saving access-consent fields cannot blank unrelated PDF fields.
+            editor_pdf_fallbacks = {
+                "signatureOverPrintedNameOfAuthHCIRep": str(data.get("hci_representative_name") or "").strip(),
+                "officialCapacityDesignation": (
+                    str(data.get("hci_designation") or "").strip()
+                    or str(saved_account_receivable.get("designation") or "").strip()
+                ),
+            }
+            for key, value in editor_pdf_fallbacks.items():
+                if value and not preserved_pdf_fields.get(key):
+                    preserved_pdf_fields[key] = value
+            if representative_name_from_editor and not preserved_pdf_fields.get("sigOverPrintedNameOfAuthRep"):
+                preserved_pdf_fields["sigOverPrintedNameOfAuthRep"] = representative_name_from_editor
+            if not preserved_pdf_fields.get("dateSigned"):
+                hci_date_signed = str(data.get("hci_date_signed") or "").strip()
+                if hci_date_signed:
+                    preserved_pdf_fields["dateSigned"] = cf2_api.to_date_signed_iso(
+                        datetime.strptime(hci_date_signed, "%Y-%m-%d").date()
+                    )
             cf2 = cf2_api.get_cf2(claim_id)
             if not isinstance(cf2, dict) or not cf2:
                 raise RuntimeError("Beacon did not return the CF2 record.")
@@ -2515,15 +2538,21 @@ def save_finalize_claim_patient_records(transmittal_id, claim_id):
             })
             cf2_api.edit_cf2(cf2)
 
-            pdf_data = cf2_api.get_cf2_pdf_details(claim_id, cf2_api.get_client_id())
-            if not isinstance(pdf_data, dict) or not pdf_data:
-                raise RuntimeError("Beacon did not return the CF2 PDF data.")
+            # The CF2 edit above is a separate record. Reuse the complete PDF
+            # snapshot from before that edit instead of fetching it again;
+            # Beacon's second GetCf2PdfDetails response can blank unrelated
+            # fields such as Official Capacity/Designation.
+            pdf_data = dict(pdf_data_before_cf2_edit)
             # This editor only changes Access Patient Records fields. Keep
             # the HCI representative, designation, and signed date exactly
-            # as they were before the CF2 update, even if Beacon's subsequent
-            # PDF-details response omits or resets them.
+            # as they were before the CF2 update.
+            if representative_name:
+                preserved_pdf_fields["sigOverPrintedNameOfAuthRep"] = representative_name
+            if not str(preserved_pdf_fields.get("officialCapacityDesignation") or "").strip():
+                preserved_pdf_fields.pop("officialCapacityDesignation", None)
             pdf_data.update(preserved_pdf_fields)
-            pdf_data["sigOverPrintedNameOfAuthRep"] = representative_name
+            if "officialCapacityDesignation" not in preserved_pdf_fields:
+                pdf_data.pop("officialCapacityDesignation", None)
             pdf_data["patientCheck"] = consent_code == "3" and thumbmarked_by_code == "P"
             pdf_data["part3RepresentativeCheck"] = consent_code == "3" and thumbmarked_by_code == "R"
             cf2_api.new_pdf_claim_form_two(claim_id, pdf_data)
